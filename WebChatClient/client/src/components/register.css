@@ -1,0 +1,9 @@
+.register {
+    border: solid grey 1px;
+    max-width: 400px;
+    position: absolute;
+    display: flex;
+    margin-left: 100px;
+    margin-top: 100px;
+    padding: 20px;
+}
