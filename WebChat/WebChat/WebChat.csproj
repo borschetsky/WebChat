@@ -10,4 +10,9 @@
     <PackageReference Include="Microsoft.AspNetCore.Razor.Design" Version="2.2.0" PrivateAssets="All" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\WebChat.Connection\WebChat.Connection.csproj" />
+    <ProjectReference Include="..\WebChat.Services\WebChat.Services.csproj" />
+  </ItemGroup>
+
 </Project>

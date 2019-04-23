@@ -5,6 +5,12 @@ VisualStudioVersion = 15.0.28307.489
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebChat", "WebChat\WebChat.csproj", "{27BABB6E-B817-4914-AA2D-8FEEAC197A84}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebChat.Models", "WebChat.Data\WebChat.Models.csproj", "{32E51932-0EAD-494A-9B17-0B983F16E469}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebChat.Connection", "WebChat.Connection\WebChat.Connection.csproj", "{DF998ECF-F7DB-4E7A-B2BE-B1A3418EBEF5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebChat.Services", "WebChat.Services\WebChat.Services.csproj", "{259B7F21-3199-44CF-A37B-883BAE7F91A8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +21,18 @@ Global
 		{27BABB6E-B817-4914-AA2D-8FEEAC197A84}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{27BABB6E-B817-4914-AA2D-8FEEAC197A84}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{27BABB6E-B817-4914-AA2D-8FEEAC197A84}.Release|Any CPU.Build.0 = Release|Any CPU
+		{32E51932-0EAD-494A-9B17-0B983F16E469}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{32E51932-0EAD-494A-9B17-0B983F16E469}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{32E51932-0EAD-494A-9B17-0B983F16E469}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{32E51932-0EAD-494A-9B17-0B983F16E469}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DF998ECF-F7DB-4E7A-B2BE-B1A3418EBEF5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DF998ECF-F7DB-4E7A-B2BE-B1A3418EBEF5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DF998ECF-F7DB-4E7A-B2BE-B1A3418EBEF5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DF998ECF-F7DB-4E7A-B2BE-B1A3418EBEF5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{259B7F21-3199-44CF-A37B-883BAE7F91A8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{259B7F21-3199-44CF-A37B-883BAE7F91A8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{259B7F21-3199-44CF-A37B-883BAE7F91A8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{259B7F21-3199-44CF-A37B-883BAE7F91A8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
