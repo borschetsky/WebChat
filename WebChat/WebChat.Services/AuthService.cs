@@ -50,7 +50,7 @@ namespace WebChat.Services
             return new AuthData
             {
                 Token = token,
-                TokenExirationTime = ((DateTimeOffset)expirationTime).ToUnixTimeSeconds(),
+                TokenExpirationTime = ((DateTimeOffset)expirationTime).ToUnixTimeSeconds(),
                 Id = id
 
             };

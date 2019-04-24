@@ -48,7 +48,7 @@ namespace WebChat.Controllers
  
             if (!userService.isEmailUniq(model.Email)) return BadRequest(new { email = "user with this email already exists" });
 
-            if (!userService.isUsernameUniq(model.Username)) return BadRequest(new { username = "user with this email already exists" });
+            if (!userService.isUsernameUniq(model.Username)) return BadRequest(new { username = "user with this username already exists" });
 
             var user = userService.CreateUser(model.Username, model.Email, model.Password);
 
