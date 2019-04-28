@@ -1,24 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
 using WebChat.Connection;
+using WebChat.Hubs;
 using WebChat.Services;
+
 
 namespace WebChat
 {
@@ -52,6 +47,8 @@ namespace WebChat
                 options.UseSqlServer(connectionString);
             });
 
+            services.AddSignalR();
+
             
         }
 
@@ -69,6 +66,18 @@ namespace WebChat
 
                         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration.GetValue<string>("JWTSecretKey")))
                     };
+                    options.Events = new JwtBearerEvents
+                    {
+                        OnMessageReceived = context =>
+                        {
+                            var accessToken = context.Request.Query["access_token"];
+                            if (string.IsNullOrEmpty(accessToken) == false)
+                            {
+                                context.Token = accessToken;
+                            }
+                            return Task.CompletedTask;
+                        }
+                    };
                 });
             
         }
@@ -85,6 +94,7 @@ namespace WebChat
                 );
 
             services.AddTransient<IUserService, UserService>();
+            services.AddTransient<IMessageService, MessageService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -99,16 +109,24 @@ namespace WebChat
                 // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
             }
-            app.UseCors(builder => builder
-            .AllowAnyOrigin()
+            app.UseCors(builder => builder.WithOrigins("http://localhost:3000")
+            
             .AllowAnyMethod()
             .AllowAnyHeader()
             .AllowCredentials()
             );
 
             //app.UseHttpsRedirection();
+            
             app.UseAuthentication();
+
+            app.UseSignalR(routes => 
+            {
+                routes.MapHub<ChatHub>("/chat");
+            });
+
             app.UseMvc();
+
         }
     }
 }

@@ -55,6 +55,16 @@ namespace WebChat.Services
             return ctx.User.FirstOrDefault(u => u.Email == email);
         }
 
+        public string GetUserIdByName(string name)
+        {
+            return ctx.User.FirstOrDefault(u => u.Username == name).Id;
+        }
+
+        public string GetUserNameById(string id)
+        {
+            return ctx.User.FirstOrDefault(u => u.Id == id).Username;
+        }
+
         public bool isEmailUniq(string email)
         {
             if (string.IsNullOrEmpty(email))

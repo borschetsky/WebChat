@@ -17,6 +17,10 @@ namespace WebChat.Services
 
         void AddUser(User newUser);
 
+        string GetUserNameById(string id);
+
+        string GetUserIdByName(string name);
+        
 
 
     }

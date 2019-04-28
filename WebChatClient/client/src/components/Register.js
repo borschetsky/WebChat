@@ -89,18 +89,15 @@ class Register extends Component {
         }).catch(err => {
             console.error(err);
             const {data} = err.response;
-            // console.log(data.email);
             for(let key of Object.keys(data)){
                 switch(key){
                     case "email":
-                        console.log(data.email);
                         let formErrors = {...this.state.formErrors};
                         formErrors.email = data.email;
                         this.setState({formErrors});
                     break;
                     case "username":
                         let formErrors2 =  {...this.state.formErrors};
-                        console.log(data.username);
                         formErrors2.userName = data.username;
                         this.setState({formErrors: formErrors2});
                     break;    
@@ -179,7 +176,6 @@ class Register extends Component {
             </div>
         );
     };
-
 };
 
 export {

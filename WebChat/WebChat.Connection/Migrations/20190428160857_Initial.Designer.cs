@@ -10,8 +10,8 @@ using WebChat.Connection;
 namespace WebChat.Connection.Migrations
 {
     [DbContext(typeof(WebChatContext))]
-    [Migration("20190422230025_Initial Create")]
-    partial class InitialCreate
+    [Migration("20190428160857_Initial")]
+    partial class Initial
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -20,6 +20,31 @@ namespace WebChat.Connection.Migrations
                 .HasAnnotation("ProductVersion", "2.2.4-servicing-10062")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128)
                 .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+
+            modelBuilder.Entity("WebChat.Models.Message", b =>
+                {
+                    b.Property<string>("Id")
+                        .ValueGeneratedOnAdd();
+
+                    b.Property<DateTime?>("CreatedOn");
+
+                    b.Property<DateTime?>("DeletedOn");
+
+                    b.Property<DateTime?>("ModifiedOn");
+
+                    b.Property<string>("Text");
+
+                    b.Property<string>("UserId")
+                        .IsRequired();
+
+                    b.Property<bool>("isDeleted");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Message");
+                });
 
             modelBuilder.Entity("WebChat.Models.User", b =>
                 {
@@ -47,6 +72,14 @@ namespace WebChat.Connection.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("User");
+                });
+
+            modelBuilder.Entity("WebChat.Models.Message", b =>
+                {
+                    b.HasOne("WebChat.Models.User", "User")
+                        .WithMany("Messages")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 #pragma warning restore 612, 618
         }

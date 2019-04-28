@@ -11,11 +11,12 @@ namespace WebChat.Connection
     {
         public WebChatContext(DbContextOptions<WebChatContext> options) : base(options)
         {
-            
+
         }
 
         public DbSet<User> User { get; set; }
 
+        public DbSet<Message> Message {get; set;}
         
     }
 }

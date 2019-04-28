@@ -19,6 +19,31 @@ namespace WebChat.Connection.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128)
                 .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
+            modelBuilder.Entity("WebChat.Models.Message", b =>
+                {
+                    b.Property<string>("Id")
+                        .ValueGeneratedOnAdd();
+
+                    b.Property<DateTime?>("CreatedOn");
+
+                    b.Property<DateTime?>("DeletedOn");
+
+                    b.Property<DateTime?>("ModifiedOn");
+
+                    b.Property<string>("Text");
+
+                    b.Property<string>("UserId")
+                        .IsRequired();
+
+                    b.Property<bool>("isDeleted");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Message");
+                });
+
             modelBuilder.Entity("WebChat.Models.User", b =>
                 {
                     b.Property<string>("Id")
@@ -45,6 +70,14 @@ namespace WebChat.Connection.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("User");
+                });
+
+            modelBuilder.Entity("WebChat.Models.Message", b =>
+                {
+                    b.HasOne("WebChat.Models.User", "User")
+                        .WithMany("Messages")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 #pragma warning restore 612, 618
         }
