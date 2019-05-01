@@ -1,0 +1,85 @@
+.search{
+    grid-area: s;
+}
+
+.people-list{
+    grid-area: u;
+}
+
+.people-list .search {
+    padding: 20px;
+  }
+
+  .people-list input {
+    border-radius: 3px;
+    border: none;
+    padding: 14px;
+    color: white;
+    background: #6a6c75;
+    width: 90%;
+    font-size: 14px;
+  }
+  .people-list .fa-search {
+    position: relative;
+    left: -25px;
+  }
+  .people-list ul {
+    padding: 2px;
+    /* height: 770px; */
+  }
+  
+  .people-list ul li {
+    padding-bottom: 10px;
+    padding-top: 10px;
+  }
+  
+  .people-list img {
+    float: left;
+    height: 50px;
+    width: 50px;
+  }
+  .people-list .about {
+    float: left;
+    margin-top: 8px;
+  }
+  .people-list .about {
+    padding-left: 8px;
+  }
+  .people-list .status {
+    color: #92959e;
+  }
+
+  .clearfix-wrapper{
+      padding-left: 20px;
+      height: 100%;
+      display: block;
+      width: auto;
+  }
+
+  
+
+  
+  /* .clearfix:after {
+    visibility: hidden;
+    display: block;
+    font-size: 0;
+    content: " ";
+    clear: both;
+    height: 0;
+  } */
+
+  .clearfix:hover{
+      /* transition: all .2s ease-in-out;
+      transform: scale(1.02); */
+      cursor: pointer;
+      -webkit-box-shadow: inset 0px 0px 5px 4px rgba(232,232,232,1);
+        -moz-box-shadow: inset 0px 0px 5px 4px rgba(232,232,232,1);
+        box-shadow: inset 0px 0px 5px 4px rgba(232,232,232,1);
+  }
+
+  .clearfix.active{
+    cursor: pointer;
+    -webkit-box-shadow: inset 0px 0px 5px 4px rgba(232,232,232,1);
+      -moz-box-shadow: inset 0px 0px 5px 4px rgba(232,232,232,1);
+      box-shadow: inset 0px 0px 5px 4px rgba(232,232,232,1);
+  }

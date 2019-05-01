@@ -25,5 +25,9 @@ namespace WebChat.Models
 
         public ICollection<Message> Messages { get; set; }
 
+        public ICollection<Thread> Threads { get; set; }
+
+        
+
     }
 }

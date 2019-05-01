@@ -22,16 +22,16 @@ namespace WebChat.Services
         {
             ctx.Message.Add(message);
             ctx.SaveChanges();
-
-            
         }
 
-        public Message CreateMessage(string userId, string text)
+        public Message CreateMessage(string userId, string text, string threadId)
         {
             var message = new Message()
             {
-                UserId = userId,
-                Text = text
+                Id = Guid.NewGuid().ToString(),
+                SenderId = userId,
+                Text = text,
+                ThreadId = threadId
             };
 
             return message;
@@ -47,8 +47,8 @@ namespace WebChat.Services
             {
                 var mes = new MessageViewModel()
                 {
-                    UserId = message.UserId,
-                    Username = this.userService.GetUserNameById(message.UserId),
+                    UserId = message.SenderId,
+                    Username = this.userService.GetUserNameById(message.SenderId),
                     Text = message.Text,
                     Time = String.Format("{0:t}", message.CreatedOn)
                 };
@@ -56,6 +56,21 @@ namespace WebChat.Services
             }
 
             return messagesToView;
+        }
+
+        public MessageViewModel MapMessageModelToViewModel(Message model)
+        {
+            var viewModel = new MessageViewModel()
+            {
+                Id = model.Id,
+                UserId = model.SenderId,
+                Text = model.Text,
+                ThreadId = model.ThreadId,
+                Username = this.userService.GetUserNameById(model.SenderId),
+                Time = String.Format("{0:t}", DateTime.Now)
+            };
+
+            return viewModel;
         }
     }
 }

@@ -95,6 +95,7 @@ namespace WebChat
 
             services.AddTransient<IUserService, UserService>();
             services.AddTransient<IMessageService, MessageService>();
+            services.AddTransient<IThreadService, ThreadService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -109,7 +110,7 @@ namespace WebChat
                 // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
             }
-            app.UseCors(builder => builder.WithOrigins("http://localhost:3000")
+            app.UseCors(builder => builder.WithOrigins("http://localhost:3000", "https://ui-avatars.com/api/")
             
             .AllowAnyMethod()
             .AllowAnyHeader()

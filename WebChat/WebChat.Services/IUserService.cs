@@ -20,6 +20,10 @@ namespace WebChat.Services
         string GetUserNameById(string id);
 
         string GetUserIdByName(string name);
+
+        string GetOponentIdByTheadId(string senderId, string threadId);
+
+        ICollection<User> GetUsers();
         
 
 

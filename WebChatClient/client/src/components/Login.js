@@ -40,7 +40,7 @@ export default class Login extends Component {
 
         this.setState({
             [event.target.name]: event.target.value, formErrors
-        }, () => console.log(this.state));
+        });
     };
 
     onSubmit =(event) => {

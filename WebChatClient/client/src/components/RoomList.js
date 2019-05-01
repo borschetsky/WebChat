@@ -1,6 +1,11 @@
 import React from 'react'
 
 class RoomList extends React.Component {
+    state = {
+        users: null,
+        treads: null,
+        loading: true
+    };
     render () {
         // const orderedRooms = [...this.props.rooms].sort((a, b) => a.id > b.id);
         // const items = orderedRooms.map(room => {
@@ -16,12 +21,33 @@ class RoomList extends React.Component {
         //     )
         // });
         // const itemsToDisplay = items ? items : null;
-
+        const {users} = this.props;
+        if(!users){
+            return(
+                <div className="rooms-list">
+                <ul>
+                <h4>loading...</h4>
+                </ul>
+            </div>
+            );
+        };
+        
+        
+        const items = users.map(user => {
+            return(
+                <div key={user.id} onClick={() => this.props.createThread(user.id)}>
+                    <li key={user.id} className="room">
+                    <a >{user.username}</a>
+                </li>
+                </div>
+            );
+        });
+        
         return (
             <div className="rooms-list">
                 <ul>
-                <h3>Your rooms:</h3>
-                    {/* {itemsToDisplay} */}
+                <h4>Avaliable Users</h4>
+                    {items}
                     
                 </ul>
             </div>

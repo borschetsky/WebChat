@@ -10,7 +10,7 @@ using WebChat.Connection;
 namespace WebChat.Connection.Migrations
 {
     [DbContext(typeof(WebChatContext))]
-    [Migration("20190428160857_Initial")]
+    [Migration("20190429200800_Initial")]
     partial class Initial
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -32,18 +32,48 @@ namespace WebChat.Connection.Migrations
 
                     b.Property<DateTime?>("ModifiedOn");
 
+                    b.Property<string>("SenderId")
+                        .IsRequired();
+
                     b.Property<string>("Text");
 
-                    b.Property<string>("UserId")
+                    b.Property<string>("ThreadId")
                         .IsRequired();
 
                     b.Property<bool>("isDeleted");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("SenderId");
+
+                    b.HasIndex("ThreadId");
 
                     b.ToTable("Message");
+                });
+
+            modelBuilder.Entity("WebChat.Models.Thread", b =>
+                {
+                    b.Property<string>("Id")
+                        .ValueGeneratedOnAdd();
+
+                    b.Property<DateTime?>("CreatedOn");
+
+                    b.Property<DateTime?>("DeletedOn");
+
+                    b.Property<DateTime?>("ModifiedOn");
+
+                    b.Property<string>("OponentId");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired();
+
+                    b.Property<bool>("isDeleted");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerId");
+
+                    b.ToTable("Thread");
                 });
 
             modelBuilder.Entity("WebChat.Models.User", b =>
@@ -76,9 +106,22 @@ namespace WebChat.Connection.Migrations
 
             modelBuilder.Entity("WebChat.Models.Message", b =>
                 {
-                    b.HasOne("WebChat.Models.User", "User")
+                    b.HasOne("WebChat.Models.User", "Sender")
                         .WithMany("Messages")
-                        .HasForeignKey("UserId")
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("WebChat.Models.Thread", "Thread")
+                        .WithMany("Messages")
+                        .HasForeignKey("ThreadId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("WebChat.Models.Thread", b =>
+                {
+                    b.HasOne("WebChat.Models.User", "Owner")
+                        .WithMany("Threads")
+                        .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Cascade);
                 });
 #pragma warning restore 612, 618

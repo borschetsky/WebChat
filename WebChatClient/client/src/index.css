@@ -29,15 +29,15 @@ html, body {
 .app {
     display: grid;
     height: 100%;
-    grid-template-columns: repeat(6, 1fr);
-    grid-template-rows: 1fr 1fr 1fr 1fr 1fr 60px;
+    grid-template-columns: 300px 1fr 1fr 1fr 1fr 260px;
+    grid-template-rows: 80px 1fr 1fr 1fr 1fr 60px;
     grid-template-areas: 
-        "r m m m m m"
-        "r m m m m m"
-        "r m m m m m"
-        "r m m m m m"
-        "r m m m m m"
-        "n s s s s s";
+        "x x x x x u"
+        "r m m m m u"
+        "r m m m m u"
+        "r m m m m u"
+        "r m m m m u"
+        "n s s s s u";
 }
 
 .new-room-form {
@@ -48,6 +48,7 @@ html, body {
     grid-area: r;
 }
 
+
 .message-list {
     grid-area: m;
 }
@@ -57,9 +58,16 @@ html, body {
 }
 
 /* REST OF CSS */
+.user-list{
+    box-sizing: border-box;
+    /* padding: 10px; */
+    background-color: var(--main-color);
+    height: 100%;
+    overflow: auto;
+}
 .rooms-list {
     box-sizing: border-box;
-    padding: 10px;
+    /* padding: 10px; */
     background-color: var(--main-color);
     overflow: scroll;
     height: 100%;
@@ -69,10 +77,12 @@ html, body {
     list-style-type: none;    
     padding: 0;
     overflow: scoll;
+    
 }
 
 .rooms-list li {
     margin: 10px 0;
+    border-bottom: 1px solid #c4c4c4;
 }
 
 .rooms-list h3 {

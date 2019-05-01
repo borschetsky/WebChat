@@ -13,7 +13,7 @@ const withAuth = (Wrapped) => {
             }
             this.update(user);
             
-            console.log(this.state.user);
+            
         };
 
         update = (user) => {

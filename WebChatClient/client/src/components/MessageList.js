@@ -17,15 +17,25 @@ class MessageList extends React.Component {
     }
     
     render() {
-        // if (!this.props.roomId) {
-        //     return (
-        //         <div className="message-list">
-        //             <div className="join-room">
-        //                 &larr; Join a room!
-        //             </div>
-        //         </div>
-        //     )
-        // }
+        if (!this.props.threadId) {
+            console.log(this.props);
+            return (
+                <div className="message-list">
+                    <div className="join-room">
+                        Chose Oponent &rarr;
+                    </div>
+                </div>
+            )
+        }
+        if(this.props.messages.length < 1){
+            return(
+                <div className="message-list">
+                    <div className="join-room">
+                        You Still have no messages - begin chatting
+                    </div>
+                </div>
+            );
+        }
         
         return (
             <div className="message-list">
