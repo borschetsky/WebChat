@@ -35,23 +35,23 @@ class Dashboard extends Component  {
         
         this.update();
         
-        Axios.get('http://localhost:5000/api/hey/get', {
-            headers: {'Authorization': `Bearer ${token}`},
-        }).then(res => this.setState({message: res.data.message, error: false}))
-        .catch(err => {
-            if(!err.status){
-                console.log(err);
-                this.setState({error: true});
-            }
-            else{
-                if(err.response.status === 401){
-                    this.props.history.push("/login");
-                };
-                if(err.response.status === 500){
-                    this.setState({error: true});
-                };
-            };
-        });
+        // Axios.get('http://localhost:5000/api/hey/get', {
+        //     headers: {'Authorization': `Bearer ${token}`},
+        // }).then(res => this.setState({message: res.data.message, error: false}))
+        // .catch(err => {
+        //     if(!err.status){
+        //         console.log(err);
+        //         this.setState({error: true});
+        //     }
+        //     else{
+        //         if(err.response.status === 401){
+        //             this.props.history.push("/login");
+        //         };
+        //         if(err.response.status === 500){
+        //             this.setState({error: true});
+        //         };
+        //     };
+        // });
         Axios.get('http://localhost:5000/api/hey/getusername', {
             headers: {'Authorization': `Bearer ${token}`,}
         }).then(res => this.setState({userName : res.data, error: false})).then(() => console.log(`Your username is: ${this.state.userName}`));
@@ -59,15 +59,26 @@ class Dashboard extends Component  {
         
     };
 
+    componentDidUpdate = (prevProps,prevState) =>{
+        if(prevState.threadId !== this.state.threadId){
+            //Invoke get messages for thread
+        }
+    };
+
+   getMessagesForThread = (threadId) => {
+        this.setState({messages: []});
+
+   };
+
    update = async () => {
         const {token} = this.props.user;
 
-
+        //get all registered users
         await Axios.get('http://localhost:5000/api/hey/getusers', {
             headers: {'Authorization': `Bearer ${token}`}
         }).then(res => this.setState({users: res.data})).then(() => console.log(this.state.users));
-
-        await Axios.get('http://localhost:5000/api/hey/getthread', {
+        //Get list of user's threads
+        await Axios.get('http://localhost:5000/api/hey/getthreads', {
             headers: {'Authorization': `Bearer ${token}`}
         }).then(res => {
             if(res.status !== 204){
@@ -116,9 +127,10 @@ class Dashboard extends Component  {
             return;
         }
         Axios.post('http://localhost:5000/api/hey/send', {
-            UserId: this.props.user.id,
+            SenderId: this.props.user.id,
             Text: message,
-            ThreadId: this.state.threadId
+            ThreadId: this.state.threadId,
+            Username: this.state.userName
         }, {
             headers:{
                 'Authorization': `Bearer ${token}`
@@ -127,14 +139,14 @@ class Dashboard extends Component  {
             if(res.status === 200){
                 console.log("Message succesfully been sent");
             }
+        }).catch(err => {
+            console.log(err.response.data);
         });    
     };
 
     subscribeToThread = (threadId) => {
         console.log(`Thred been choosen with id: ${threadId}`);
-        this.setState({threadId: threadId, messages: []});
-
-
+        this.setState({threadId, messages: []});
     };
 
   render(){

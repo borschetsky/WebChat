@@ -8,12 +8,12 @@ namespace WebChat.Services
 {
     public interface IMessageService
     {
-        Message CreateMessage(string userId, string text, string threadId);
+        //Message CreateMessage(string userId, string text, string threadId);
 
-        MessageViewModel MapMessageModelToViewModel(Message model);
+        //MessageViewModel MapMessageModelToViewModel(Message model);
 
-        void AddMessage(Message message);
+        void AddMessage(MessageViewModel message);
 
-        ICollection<MessageViewModel> GetAllMessages();
+        IEnumerable<MessageViewModel> GetAllMessages(string id);
     }
 }

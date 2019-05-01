@@ -13,7 +13,8 @@ using Newtonsoft.Json.Serialization;
 using WebChat.Connection;
 using WebChat.Hubs;
 using WebChat.Services;
-
+using WebChat.Services.Helpers;
+using WebChat.Services.Inerfaces;
 
 namespace WebChat
 {
@@ -96,6 +97,8 @@ namespace WebChat
             services.AddTransient<IUserService, UserService>();
             services.AddTransient<IMessageService, MessageService>();
             services.AddTransient<IThreadService, ThreadService>();
+            services.AddTransient<IMappingService, MappingService>();
+            services.AddTransient<IValidator, Validator>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

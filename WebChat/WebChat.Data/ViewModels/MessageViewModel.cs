@@ -10,7 +10,7 @@ namespace WebChat.Models.ViewModels
         public string Id { get; set; }
 
         [Required]
-        public string UserId { get; set; }
+        public string SenderId { get; set; }
         [Required]
         public string Text { get; set; }
 

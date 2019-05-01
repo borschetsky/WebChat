@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace WebChat.ViewModels
+namespace WebChat.Models.ViewModels
 {
     public class ThreadViewModel
     {

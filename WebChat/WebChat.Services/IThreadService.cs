@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using WebChat.Models;
+using WebChat.Models.ViewModels;
 
 namespace WebChat.Services
 {
@@ -9,8 +10,10 @@ namespace WebChat.Services
     {
         ICollection<Thread> GetUserThreads(string userId);
 
-        void AddThread(Thread thread);
+        void AddThread(ThreadViewModel thread);
 
         Thread GetThreadById(string threadId);
+
+        ThreadViewModel CreateThreadViewModel(string ownerId, string oponentId);
     }
 }

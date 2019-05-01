@@ -10,6 +10,7 @@ using WebChat.Hubs;
 using WebChat.Models;
 using WebChat.Models.ViewModels;
 using WebChat.Services;
+using WebChat.Services.Inerfaces;
 using WebChat.ViewModels;
 
 namespace WebChat.Controllers
@@ -23,27 +24,24 @@ namespace WebChat.Controllers
         private readonly IMessageService messageService;
         private readonly IHubContext<ChatHub> hubContext;
         private readonly IThreadService thredService;
+        private readonly IMappingService mappingService;
 
-        public HeyController(IUserService userSercvice, IMessageService messageService, IHubContext<ChatHub> hubContext, IThreadService thredService)
+        public HeyController
+        (
+            IUserService userSercvice, 
+            IMessageService messageService, 
+            IHubContext<ChatHub> hubContext, 
+            IThreadService thredService,
+            IMappingService mappingService
+        )
         {
             this.userSercvice = userSercvice;
             this.messageService = messageService;
             this.hubContext = hubContext;
             this.thredService = thredService;
+            this.mappingService = mappingService;
         }
 
-        [HttpGet("get")]
-        public ActionResult<User> Get()
-        {
-            var userIdFromContext = this.HttpContext.User.Identity.Name;
-            var userIdFromThis = this.User.Identity.Name;
-            var connectionId = this.HttpContext.Connection.Id;
-            return Ok(new
-            {
-                message = $"Accessed :) userid = {userIdFromContext} userCurrentConnection = {connectionId}"
-
-            });
-        }
 
         [HttpGet("getusername")]
         public ActionResult<string> GetUserName()
@@ -60,27 +58,18 @@ namespace WebChat.Controllers
             {
                 return BadRequest(new { error = "Message should have all props" });
             }
+            model.Id = Guid.NewGuid().ToString();
 
-            var message = this.messageService.CreateMessage(model.UserId, model.Text, model.ThreadId);
-            //this.messageService.AddMessage(message);
+            this.messageService.AddMessage(model);
 
-            var messageVM = this.messageService.MapMessageModelToViewModel(message);
             var senderId = User.Identity.Name;
             var reciverId = this.userSercvice.GetOponentIdByTheadId(senderId, model.ThreadId);
-            //var dateTime = DateTime.Now;
-            //Calling Recieve method on the client
-            //await this.hubContext.Clients.All.SendAsync("SendMessage", messageVM);
-            await hubContext.Clients.Groups(new List<string>() { reciverId, senderId}).SendAsync("ReciveMessage", messageVM);
+            
+            await hubContext.Clients.Groups(new List<string>() { reciverId, senderId}).SendAsync("ReciveMessage", model);
             return Ok();
         }
 
-        [HttpGet("getmessages")]
-        public ActionResult<List<MessageViewModel>> GetAllMessages()
-        {
-            List<MessageViewModel> msgs = this.messageService.GetAllMessages().ToList();
-
-            return msgs;
-        }
+        
 
         [HttpGet("getusers")]
         public ActionResult<List<UserViewModel>> GetUsers()
@@ -105,7 +94,7 @@ namespace WebChat.Controllers
             return userVMCollection;
         }
 
-        [HttpGet("getthread")]
+        [HttpGet("getthreads")]
         public ActionResult<List<ThreadViewModel>> GetUsersThreads()
         {
             var curentUserId = User.Identity.Name;
@@ -143,7 +132,7 @@ namespace WebChat.Controllers
             }
             //Curetn Http Context User
             var curentUserId = User.Identity.Name;
-
+            //TODO: Export valiation logic to Validation helper
             //All curent user's threads
             var curentUserThreads = this.thredService.GetUserThreads(curentUserId);
             //Validation
@@ -152,19 +141,12 @@ namespace WebChat.Controllers
                 var threadId = curentUserThreads.FirstOrDefault(t => t.OwnerId == model.Oponent || t.OponentId == model.Oponent).Id;
                 return BadRequest(new { message = "You already have thread with this user", ThreadId = threadId});
             }
-            
+            //End of validation
+            ThreadViewModel newThreadVM = this.thredService.CreateThreadViewModel(curentUserId, model.Oponent);
 
-            var ownerId = User.Identity.Name;
+            this.thredService.AddThread(newThreadVM);
 
-            var newThread = new Thread()
-            {
-                OwnerId = ownerId,
-                OponentId = model.Oponent
-            };
-
-            this.thredService.AddThread(newThread);
-
-            return Ok();
+            return Ok(new { ThreadId = newThreadVM.Id});
         }
     }
 }
