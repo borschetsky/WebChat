@@ -36,6 +36,9 @@ class SendMessageForm extends React.Component {
                     value={this.state.message}
                     placeholder="Type your message and hit ENTER"
                     type="text" />
+                    <button type="submit">
+                        <i className="material-icons md-36">send</i>
+                    </button>
             </form>
         )
     }

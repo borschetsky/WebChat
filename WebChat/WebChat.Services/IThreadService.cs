@@ -15,5 +15,7 @@ namespace WebChat.Services
         Thread GetThreadById(string threadId);
 
         ThreadViewModel CreateThreadViewModel(string ownerId, string oponentId);
+        //Testing
+        List<MessageViewModel> GetThreadMessages(string threadId);
     }
 }

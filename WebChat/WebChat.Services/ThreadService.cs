@@ -20,6 +20,7 @@ namespace WebChat.Services
             this.mappingService = mappingService;
         }
 
+
         public void AddThread(ThreadViewModel thread)
         {
             var threadModel = this.mappingService.MapThreadViewModelToThreadModel(thread);
@@ -57,6 +58,30 @@ namespace WebChat.Services
             return userThreads;
         }
 
+        public List<MessageViewModel> GetThreadMessages(string id)
+        {
+            var vm = new List<MessageViewModel>();
+            using (ctx)
+            {
+                
+                var tests = (from m in ctx.Message
+                             join u in ctx.User
+                             on m.SenderId equals u.Id
+                             where m.ThreadId == id
+                             orderby m.CreatedOn
+                             select new MessageViewModel
+                             {
+                                 Id = m.Id,
+                                 SenderId = m.SenderId,
+                                 Username = u.Username,
+                                 Text = m.Text,
+                                 ThreadId = m.ThreadId,
+                                 Time = String.Format("{0:t}", m.CreatedOn)
+                             }).ToList();
+                vm = tests;
 
+            }
+            return vm;
+        }
     }
 }

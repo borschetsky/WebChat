@@ -132,7 +132,7 @@ namespace WebChat.Controllers
             }
             //Curetn Http Context User
             var curentUserId = User.Identity.Name;
-            //TODO: Export valiation logic to Validation helper
+            //TODO: Export valiation logic to Validation helper and implement caching
             //All curent user's threads
             var curentUserThreads = this.thredService.GetUserThreads(curentUserId);
             //Validation

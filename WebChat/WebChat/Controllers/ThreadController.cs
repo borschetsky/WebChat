@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using WebChat.Models.ViewModels;
 using WebChat.Services;
 using WebChat.Services.Inerfaces;
@@ -17,11 +16,14 @@ namespace WebChat.Controllers
     {
         private readonly IMessageService messageService;
         private readonly IValidator validator;
+        private readonly IThreadService threadService;
 
-        public ThreadController(IMessageService messageService, IValidator validator)
+        public ThreadController(IMessageService messageService, IValidator validator, IThreadService threadService)
         {
             this.messageService = messageService ?? throw new ArgumentNullException("Message service can not be null");
-            this.validator = validator ?? throw new ArgumentNullException("Validator can not be null"); ;
+            this.validator = validator ?? throw new ArgumentNullException("Validator can not be null");
+            this.threadService = threadService;
+            ;
         }
         [HttpGet("getmessages/{id}")]
         public ActionResult<List<MessageViewModel>> GetAllMessages(string id)
@@ -38,10 +40,12 @@ namespace WebChat.Controllers
             {
                 return BadRequest(new { message = "Sorry! But you have no acces to this thread"});
             }
-            
-            List<MessageViewModel> msgs = this.messageService.GetAllMessages(id).ToList();
+
+            List<MessageViewModel> msgs = this.threadService.GetThreadMessages(id);
 
             return msgs;
         }
+
+        
     }
 }

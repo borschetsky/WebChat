@@ -11,9 +11,9 @@
     width: 80%;
    }
    .received_withd_msg p {
-    background: #ebebeb none repeat scroll 0 0;
+    background: #5ea3d0 none repeat scroll 0 0;
     border-radius: 3px;
-    color: #646464;
+    color: white;
     font-size: 18px;
     margin: 0;
     padding: 5px 10px 5px 12px;
@@ -32,4 +32,51 @@
   float: left;
   padding: 30px 15px 0 25px;
   width: 60%;
+}
+
+
+/*TEST*/
+
+.message-list li {
+  display: inline-block;
+  clear: both;
+  float: left;
+  margin: 15px 15px 5px 15px;
+  width: calc(100% - 25px);
+  font-size: 0.9em;
+}
+
+.message-list li.recived img {
+  margin: 6px 8px 0 0;
+}
+
+.message-list li.recived p {
+  background: #435f7a;
+  color: #f5f5f5;
+  margin-bottom: 0;
+}
+.message-list li.recived span {
+  display: block;
+  margin: 
+}
+
+.message-list li.replies img {
+  float: right;
+  margin: 6px 0 0 8px;
+}
+.message-list li.replies p {
+  background: #f5f5f5;
+  float: right;
+}
+.message-list li img {
+  width: 22px;
+  border-radius: 50%;
+  float: left;
+}
+.message-list li p {
+  display: inline-block;
+  padding: 10px 15px;
+  border-radius: 20px;
+  max-width: 205px;
+  line-height: 130%;
 }

@@ -6,6 +6,8 @@ import RoomList from './RoomList';
 import MessageList from './MessageList';
 import SendMessageForm from './SendMessageForm';
 import UserList from './UserList';
+import Test from './Test';
+import OponentProfile from './oponent-profile'
 
 class Dashboard extends Component  {
 
@@ -15,10 +17,11 @@ class Dashboard extends Component  {
             userId: null,
             userName: null,
             threadId: null,
-            threads: null,
+            oponentName: null,
+            threads: [],
             message: '',
             messages: [],
-            users: null,
+            users: [],
             error: true,
             hubConnection: null
         };
@@ -62,11 +65,21 @@ class Dashboard extends Component  {
     componentDidUpdate = (prevProps,prevState) =>{
         if(prevState.threadId !== this.state.threadId){
             //Invoke get messages for thread
+            const {threadId} = this.state;
+
+            this.getMessagesForThread(threadId);
         }
     };
 
    getMessagesForThread = (threadId) => {
+    const {token} = this.props.user;
         this.setState({messages: []});
+        Axios.get(`http://localhost:5000/api/thread/getmessages/${threadId}`, {
+            headers:{'Authorization': `Bearer ${token}`}
+        }).then(res => {
+            console.log(res.data);
+            this.setState({messages: res.data});
+        });
 
    };
 
@@ -103,20 +116,24 @@ class Dashboard extends Component  {
 
     };
 
-    createThread = (oponent) => {
+    createThread = (oponentId, oponentUsername) => {
         const {token} = this.props.user;
 
-        console.log(oponent);
+        console.log(oponentId);
         Axios.post('http://localhost:5000/api/hey/createthread', {
-            Oponent: oponent
+            Oponent: oponentId
         }, {
             headers:{
                 'Authorization': `Bearer ${token}`
             }
-        }).catch(err => {
+        }).then(res => {
+            const{ threadId } = res.data;
+            this.setState({threadId, oponentName: oponentUsername});
+        })
+        .catch(err => {
             console.log(err.response.data.threadId);
             const { threadId } = err.response.data;
-            this.setState({threadId});
+            this.setState({threadId, oponentName: oponentUsername});
         });    
     };
 
@@ -144,9 +161,11 @@ class Dashboard extends Component  {
         });    
     };
 
-    subscribeToThread = (threadId) => {
+    subscribeToThread = (threadId, oponentName) => {
+        console.log(oponentName);
         console.log(`Thred been choosen with id: ${threadId}`);
-        this.setState({threadId, messages: []});
+        
+        this.setState({threadId, oponentName});
     };
 
   render(){
@@ -156,15 +175,19 @@ class Dashboard extends Component  {
     
     return(
         <div className="app">
-            <RoomList/>
-            <MessageList messages={this.state.messages} threadId={this.state.threadId}/>
+            {/* <RoomList/> */}
+           
+            <OponentProfile name={this.state.oponentName}/>
+            <MessageList messages={this.state.messages} threadId={this.state.threadId} username={this.state.userName}/>
             <SendMessageForm sendMessage={this.sendMessage}/>
-            <RoomList users={this.state.users} user={this.props.user.id} createThread={this.createThread}/>
+            {/* <RoomList users={this.state.users} user={this.props.user.id} createThread={this.createThread}/> */}
             <UserList 
                 threadId={this.state.threadId}
                 threads={this.state.threads} 
                 userId={this.props.user.id} 
-                subscribeToThread={this.subscribeToThread}/>
+                subscribeToThread={this.subscribeToThread}
+                users={this.state.users}
+                createThread={this.createThread}/>
         </div>
     );
   };

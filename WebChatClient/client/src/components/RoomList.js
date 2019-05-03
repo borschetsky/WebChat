@@ -37,7 +37,7 @@ class RoomList extends React.Component {
             return(
                 <div key={user.id} onClick={() => this.props.createThread(user.id)}>
                     <li key={user.id} className="room">
-                    <a >{user.username}</a>
+                    <a>{user.username}</a>
                 </li>
                 </div>
             );

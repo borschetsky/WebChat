@@ -3,7 +3,7 @@ body {
     padding: 0;
     font-family: sans-serif;
   }
-
+ 
 
   :root {
     --main-color: #5ea3d0;
@@ -29,17 +29,20 @@ html, body {
 .app {
     display: grid;
     height: 100%;
-    grid-template-columns: 300px 1fr 1fr 1fr 1fr 260px;
-    grid-template-rows: 80px 1fr 1fr 1fr 1fr 60px;
+    grid-template-columns: 340px 1fr 1fr 1fr 1fr 260px;
+    grid-template-rows: 64px 1fr 1fr 1fr 1fr 60px;
     grid-template-areas: 
-        "x x x x x u"
-        "r m m m m u"
-        "r m m m m u"
-        "r m m m m u"
-        "r m m m m u"
-        "n s s s s u";
+        "c p p p p с"
+        "u m m m m r"
+        "u m m m m r"
+        "u m m m m r"
+        "u m m m m r"
+        "u s s s s r";
 }
 
+.chat-nav{
+    grid-area: c;
+}
 .new-room-form {
     grid-area: n;
 }
@@ -69,14 +72,14 @@ html, body {
     box-sizing: border-box;
     /* padding: 10px; */
     background-color: var(--main-color);
-    overflow: scroll;
+    overflow: auto;
     height: 100%;
 }
 
 .rooms-list ul {
     list-style-type: none;    
     padding: 0;
-    overflow: scoll;
+    overflow: auto;
     
 }
 
@@ -162,10 +165,10 @@ html, body {
 
 .message-list {
     box-sizing: border-box;
-    padding-left: 6px;
+    padding: 20px 10px 20px 10px;
     width: 100%;
     height: 100%;
-    overflow: scroll;
+    overflow: auto;
     background: var(--secondary-color);
 }
 
@@ -181,18 +184,34 @@ html, body {
 .send-message-form {
     background: var(--send-message-form);
     display: flex;
+    align-items: center;
 }
 
 .send-message-form input {
-    width: 100%;
+    width: 90%;
     padding: 15px 10px;
     margin: 0;
     border-style: none;
     background: var(--send-message-form);
     font-weight: 200;
+    display: inline-block;
 
 }
-
+.send-message-form i {
+    width: 10%;
+    display: inline-block;
+    text-align: center;
+}
+.send-message-form i:hover{
+    cursor: pointer;
+}
+.send-message-form button{
+    cursor: pointer;
+    background: none;
+  padding: 0px;
+  border: none;
+  outline:none
+}
 .send-message-form input:focus {
     outline-width: 0;
 }

@@ -4,18 +4,19 @@
 
 .people-list{
     grid-area: u;
+    border-right: 2px solid #eff1f4;
 }
 
 .people-list .search {
-    padding: 20px;
+    padding: 12px 20px 12px 20px;
+    border-bottom: 1px solid #eff1f4;
   }
 
   .people-list input {
     border-radius: 3px;
-    border: none;
-    padding: 14px;
-    color: white;
-    background: #6a6c75;
+    border: 1px solid #eff1f4;    padding: 5;
+    color: grey;
+    /* background: #6a6c75; */
     width: 90%;
     font-size: 14px;
   }
@@ -24,13 +25,14 @@
     left: -25px;
   }
   .people-list ul {
-    padding: 2px;
+    padding: 0px;
     /* height: 770px; */
   }
   
   .people-list ul li {
     padding-bottom: 10px;
     padding-top: 10px;
+    border-bottom: 1px solid #eff1f4;
   }
   
   .people-list img {
@@ -51,7 +53,7 @@
 
   .clearfix-wrapper{
       padding-left: 20px;
-      height: 100%;
+      /* height: 100%; */
       display: block;
       width: auto;
   }
@@ -59,27 +61,30 @@
   
 
   
-  /* .clearfix:after {
+  .clearfix:after {
     visibility: hidden;
     display: block;
     font-size: 0;
     content: " ";
     clear: both;
     height: 0;
-  } */
+  }
 
   .clearfix:hover{
       /* transition: all .2s ease-in-out;
       transform: scale(1.02); */
       cursor: pointer;
-      -webkit-box-shadow: inset 0px 0px 5px 4px rgba(232,232,232,1);
-        -moz-box-shadow: inset 0px 0px 5px 4px rgba(232,232,232,1);
-        box-shadow: inset 0px 0px 5px 4px rgba(232,232,232,1);
+    background-color:#eff1f4
+    ;      
   }
 
   .clearfix.active{
     cursor: pointer;
-    -webkit-box-shadow: inset 0px 0px 5px 4px rgba(232,232,232,1);
-      -moz-box-shadow: inset 0px 0px 5px 4px rgba(232,232,232,1);
-      box-shadow: inset 0px 0px 5px 4px rgba(232,232,232,1);
+    background-color:#eff1f4;
+    border-right: 5px solid #435f7a;
+
   }
+  .list{
+      margin: 0;
+  }
+

@@ -1,7 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom'
 import Message from './Message'
-
+import './message-list.css';
 class MessageList extends React.Component {
     
     componentWillUpdate() {
@@ -18,7 +18,7 @@ class MessageList extends React.Component {
     
     render() {
         if (!this.props.threadId) {
-            console.log(this.props);
+            
             return (
                 <div className="message-list">
                     <div className="join-room">
@@ -36,12 +36,12 @@ class MessageList extends React.Component {
                 </div>
             );
         }
-        
+        console.log(this.props.messages);
         return (
             <div className="message-list">
-                {this.props.messages.map(({username, text, time}, index) => {
+                {this.props.messages.map(({username, text, time, id}, index) => {
                     return (
-                        <Message key={index} username={username} text={text} time={time} />
+                        <Message key={id} username={username} text={text} time={time} curentUsername={this.props.username}/>
                     )
                 })}
             </div>
