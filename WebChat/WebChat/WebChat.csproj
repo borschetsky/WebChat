@@ -11,9 +11,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\WebChat.AvatarWriter\WebChat.AvatarWriter.csproj" />
     <ProjectReference Include="..\WebChat.Connection\WebChat.Connection.csproj" />
     <ProjectReference Include="..\WebChat.Hub\WebChat.Hubs.csproj" />
     <ProjectReference Include="..\WebChat.Services\WebChat.Services.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="wwwroot\images\" />
   </ItemGroup>
 
 </Project>

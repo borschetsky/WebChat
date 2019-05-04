@@ -4,10 +4,11 @@ import { withAuth } from './hoc';
 import * as signalR from '@aspnet/signalr';
 import RoomList from './RoomList';
 import MessageList from './MessageList';
-import SendMessageForm from './SendMessageForm';
+import SendMessageForm from './send-message-form';
 import UserList from './UserList';
 import Test from './Test';
 import OponentProfile from './oponent-profile'
+import MyProfile from './my-profile';
 
 class Dashboard extends Component  {
 
@@ -35,26 +36,11 @@ class Dashboard extends Component  {
         const {token} = this.props.user;
         
         this.connection.start(() => console.log("started")).catch(err => console.log(err));
-        
+        this.connection.on('ReciveConnectionId', connId => {
+            console.log(`CuurentConnectionId: ${connId}`);
+        });
         this.update();
         
-        // Axios.get('http://localhost:5000/api/hey/get', {
-        //     headers: {'Authorization': `Bearer ${token}`},
-        // }).then(res => this.setState({message: res.data.message, error: false}))
-        // .catch(err => {
-        //     if(!err.status){
-        //         console.log(err);
-        //         this.setState({error: true});
-        //     }
-        //     else{
-        //         if(err.response.status === 401){
-        //             this.props.history.push("/login");
-        //         };
-        //         if(err.response.status === 500){
-        //             this.setState({error: true});
-        //         };
-        //     };
-        // });
         Axios.get('http://localhost:5000/api/hey/getusername', {
             headers: {'Authorization': `Bearer ${token}`,}
         }).then(res => this.setState({userName : res.data, error: false})).then(() => console.log(`Your username is: ${this.state.userName}`));
@@ -86,6 +72,7 @@ class Dashboard extends Component  {
    update = async () => {
         const {token} = this.props.user;
 
+
         //get all registered users
         await Axios.get('http://localhost:5000/api/hey/getusers', {
             headers: {'Authorization': `Bearer ${token}`}
@@ -101,6 +88,14 @@ class Dashboard extends Component  {
         });
 
         this.connection.on('ReciveMessage', (message) => {
+            console.log(message);
+            const { threads} = this.state;
+            threads.forEach(t => {
+                if(t.id === message.threadId){
+                    t.lastMessage = message.text;
+                }
+            });
+            this.setState({threads});
             if(message.threadId !== this.state.threadId){
                 return;
             }
@@ -110,6 +105,12 @@ class Dashboard extends Component  {
 
             this.setState({messages: messages});
         });
+
+        this.connection.on('ReciveClientStatus', (userId) => {
+            var connectedUserName = this.state.users.find(u => u.id === userId).userName;
+            console.log(connectedUserName);
+        });
+
 
 
 
@@ -153,8 +154,9 @@ class Dashboard extends Component  {
                 'Authorization': `Bearer ${token}`
             }
         }).then(res => {
-            if(res.status === 200){
+            if(res.status === 201){
                 console.log("Message succesfully been sent");
+                
             }
         }).catch(err => {
             console.log(err.response.data);
@@ -164,19 +166,22 @@ class Dashboard extends Component  {
     subscribeToThread = (threadId, oponentName) => {
         console.log(oponentName);
         console.log(`Thred been choosen with id: ${threadId}`);
-        
         this.setState({threadId, oponentName});
     };
 
+    handleLogOut = () => {
+        localStorage.removeItem('user-data');
+        this.props.history.push('/Login');
+    };
+
+
   render(){
-    //   if(this.state.error){
-    //       return <h2>Error!</h2>
-    //   }
-    
+   
+    const {userName} = this.state;
+    const usernameToDisplay = !userName ? 'Loading...' : userName;
     return(
         <div className="app">
-            {/* <RoomList/> */}
-           
+           <MyProfile username={usernameToDisplay} handleLogOut={this.handleLogOut}/>
             <OponentProfile name={this.state.oponentName}/>
             <MessageList messages={this.state.messages} threadId={this.state.threadId} username={this.state.userName}/>
             <SendMessageForm sendMessage={this.sendMessage}/>

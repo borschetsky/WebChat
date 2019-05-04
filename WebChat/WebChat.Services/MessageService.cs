@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using WebChat.Connection;
 using WebChat.Models;
 using WebChat.Models.ViewModels;
@@ -22,13 +23,15 @@ namespace WebChat.Services
             this.userService = userService;
             this.mappingService = mappingService;
         }
-        public void AddMessage(MessageViewModel message)
+        public async Task<MessageViewModel> AddMessage(MessageViewModel message)
         {
 
-            var messageToAdd = this.mappingService.MapMessageViewModelToMessageModel(message);
+            Message messageToAdd = this.mappingService.MapMessageViewModelToMessageModel(message);
 
-            ctx.Message.Add(messageToAdd);
-            ctx.SaveChanges();
+            await ctx.Message.AddAsync(messageToAdd);
+            await ctx.SaveChangesAsync();
+
+            return mappingService.MapMessageModelToMessageViewModel(messageToAdd);
         }
 
         public MessageViewModel CreateMessageViewModel(string userId, string text, string threadId)

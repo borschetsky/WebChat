@@ -17,5 +17,7 @@ namespace WebChat.Models.ViewModels
 
         public string OponentName { get; set; }
 
+        public string LastMessage { get; set; }
+
     }
 }

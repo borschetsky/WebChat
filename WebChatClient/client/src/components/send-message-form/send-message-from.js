@@ -1,6 +1,7 @@
-import React from 'react'
+import React, { Component } from 'react'
+import './send-message-form.css';
 
-class SendMessageForm extends React.Component {
+class SendMessageForm extends Component {
     
     constructor() {
         super()
@@ -36,7 +37,7 @@ class SendMessageForm extends React.Component {
                     value={this.state.message}
                     placeholder="Type your message and hit ENTER"
                     type="text" />
-                    <button type="submit">
+                    <button type="submit" className="submit">
                         <i className="material-icons md-36">send</i>
                     </button>
             </form>

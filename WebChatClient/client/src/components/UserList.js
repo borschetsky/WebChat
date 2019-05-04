@@ -1,6 +1,8 @@
 import React from 'react'
 import './userlist.css';
 import Search from './Search';
+import MyProfile from './my-profile';
+import './found-users/found-users.css';
 
 class UserList extends React.Component {
     state = {
@@ -53,11 +55,11 @@ class UserList extends React.Component {
                     <div className="clearfix-wrapper" >
                         <img src={imageLink} alt="avatar"/>
                         <div className="about">
-                            <div className="name">{userNameToDisplay}</div>
-                            <div className="status">
+                            <p className="name">{userNameToDisplay}</p>
+                            <p className="status">
                                 {/* <i className="fa fa-circle online"></i> online */}
-                                Last message
-                            </div>
+                                {thread.lastMessage}
+                            </p>
                         </div>
                     </div>
                  </li>
@@ -68,9 +70,11 @@ class UserList extends React.Component {
         //TODO: extract to a separate components
         const users = filteredItems.map( u => {
             const { createThread } = this.props;
+            const isOnline = u.isOnline ? ' active' : '';
             return(
-                <li key={u.id} onClick={() => {createThread(u.id, u.username); this.setState({search: ''});}}>
-                    {u.username}
+                <li className={`found-users${isOnline}`} key={u.id} onClick={() => {createThread(u.id, u.username); this.setState({search: ''});}}>
+                    <img src="http://emilcarlsson.se/assets/harveyspecter.png" alt="avatar"/>
+                    <p> {u.username}</p>
                 </li>
             );
         });
@@ -80,7 +84,9 @@ class UserList extends React.Component {
         
         return (
             <div className="people-list">
+           
             <Search handleSearch={this.handleSearch} value={this.state.search}/>
+            
                 <ul className="list">
                     {itemsToDisplay}
                 </ul>

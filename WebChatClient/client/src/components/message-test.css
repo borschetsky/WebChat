@@ -1,0 +1,78 @@
+.message-list li.recived {
+    display: grid;
+    grid-template-columns: 30px 1fr 1fr 1fr;
+    grid-template-rows: 22px 1fr 1fr;
+    grid-template-areas: 
+    "img msg msg ."
+    ". msg msg ."
+    ". dta . .";
+  }
+  .message-list li.recived img{
+      border-radius: 50%;
+      grid-area: img;
+      width: 22px;
+      height: auto;
+
+  }
+  .message-list li.recived p{
+    grid-area: msg;  
+    background: #435f7a;
+    color: #f5f5f5;
+    margin-bottom: 0;
+    line-height: 130%;
+    border-radius: 12px;
+    padding: 10px 10px;
+    word-wrap: break-word;
+	overflow-wrap: break-word;
+  }
+
+  .message-list li.recived span {
+    grid-area: dta;  
+    display: block;
+    padding-left: 10px;
+    margin-top: 5px;
+    font-size: 13px;
+    
+  }
+/*Reply */
+.message-list li.replies {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 30px;
+    grid-template-rows:  1fr 1fr 22px;
+    grid-template-areas: 
+    ". msgr msgr imgr"
+    ". msgr msgr ."
+    ". . dtar .";
+  }
+
+  .message-list li.replies img{
+    border-radius: 50%;
+    grid-area: imgr;
+    width: 22px;
+    height: auto;
+    justify-self: end;
+
+}
+
+.message-list li.replies p {
+    grid-area: msgr;
+    background: #f5f5f5;
+    margin-bottom: 0;
+    line-height: 130%;
+    border-radius: 12px;
+    padding: 10px 10px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    justify-self: end;
+    max-width: 75%;
+    
+  }
+
+  .message-list li.replies span {
+    grid-area: dtar;  
+    display: block;
+    padding-left: 10px;
+    margin-top: 5px;
+    font-size: 13px;
+    justify-self: end;
+  }

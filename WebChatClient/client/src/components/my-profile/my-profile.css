@@ -1,0 +1,45 @@
+.my-profile{
+    grid-area: c;
+    display: grid;
+    grid-template-columns: 1fr 1fr 110px;
+    grid-template-areas: "avatar username navbar navbar";
+    border-right: 2px solid #eff1f4;
+    border-bottom: 2px solid #eff1f4;
+}
+
+.my-profile .avatar{
+    grid-area: avatar;
+    align-self: center;
+    justify-self: center;
+    
+}
+
+.my-profile .my-username{
+    grid-area: username;
+    align-self: center;
+}
+.my-profile .my-username p{
+    font-weight: 400;
+}
+.my-profile .navbar{
+    grid-area: navbar;
+    align-self: center;
+    cursor: pointer;
+}
+.my-profile .navbar:hover{
+    transform: scale(1.04);
+}
+.my-profile.log-out{
+    width: 100%;
+}
+.my-profile i{
+    float: left;
+}
+
+.my-profile .avatar img{
+    width: 50px;
+    height: auto;
+    border: 2px solid #2ecc71;
+    border-radius: 50%;
+    
+}

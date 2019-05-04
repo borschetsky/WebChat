@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 using WebChat.Models;
 using WebChat.Models.ViewModels;
 
@@ -12,7 +13,7 @@ namespace WebChat.Services
 
         //MessageViewModel MapMessageModelToViewModel(Message model);
 
-        void AddMessage(MessageViewModel message);
+        Task<MessageViewModel> AddMessage(MessageViewModel message);
 
         IEnumerable<MessageViewModel> GetAllMessages(string id);
     }

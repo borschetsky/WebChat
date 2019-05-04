@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -64,6 +65,7 @@ namespace WebChat.Services
             using (ctx)
             {
                 
+
                 var tests = (from m in ctx.Message
                              join u in ctx.User
                              on m.SenderId equals u.Id
@@ -82,6 +84,17 @@ namespace WebChat.Services
 
             }
             return vm;
+        }
+
+        public string GetLastMessageForThread(string threadId)
+        {
+            var result = (from m in ctx.Message
+                          where m.ThreadId == threadId
+                          orderby m.CreatedOn descending
+                          select m.Text).FirstOrDefault().ToString();
+
+            return string.IsNullOrEmpty(result) ? "" : result;
+
         }
     }
 }

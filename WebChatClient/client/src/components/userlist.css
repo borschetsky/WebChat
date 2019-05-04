@@ -33,42 +33,53 @@
     padding-bottom: 10px;
     padding-top: 10px;
     border-bottom: 1px solid #eff1f4;
+    overflow: hidden;
+    position: relative;
   }
   
   .people-list img {
     float: left;
     height: 50px;
     width: 50px;
+    margin-right: 10px;
   }
   .people-list .about {
-    float: left;
-    margin-top: 8px;
+    padding-top: 5px;
+   
   }
-  .people-list .about {
-    padding-left: 8px;
-  }
-  .people-list .status {
+ 
+  .people-list p.status {
     color: #92959e;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    margin: 0;
+    font-weight: 400;
+    margin: 5px 0 0 0 ;
+    padding: 0 0 1px;
   }
-
+  .people-list p.name{
+      margin: 0;
+      font-weight: 500;
+  }
   .clearfix-wrapper{
-      padding-left: 20px;
-      /* height: 100%; */
       display: block;
-      width: auto;
+      width: 88%;
+      position: relative;
+      margin: 0 auto;
   }
 
   
 
   
-  .clearfix:after {
+  /* .clearfix:after {
     visibility: hidden;
     display: block;
     font-size: 0;
     content: " ";
     clear: both;
     height: 0;
-  }
+  } */
 
   .clearfix:hover{
       /* transition: all .2s ease-in-out;

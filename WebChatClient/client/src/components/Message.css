@@ -1,4 +1,4 @@
-.incoming_msg_img {
+/* .incoming_msg_img {
     display: inline-block;
     width: 20%;
     
@@ -32,7 +32,7 @@
   float: left;
   padding: 30px 15px 0 25px;
   width: 60%;
-}
+} */
 
 
 /*TEST*/
@@ -57,7 +57,7 @@
 }
 .message-list li.recived span {
   display: block;
-  margin: 
+  
 }
 
 .message-list li.replies img {
@@ -79,4 +79,8 @@
   border-radius: 20px;
   max-width: 205px;
   line-height: 130%;
+
+  word-wrap: break-word;
+	overflow-wrap: break-word;
+
 }

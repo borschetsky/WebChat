@@ -7,6 +7,8 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using WebChat.Hubs;
+using WebChat.Hubs.ConnectionMapper;
+using WebChat.Hubs.Interfaces;
 using WebChat.Models;
 using WebChat.Models.ViewModels;
 using WebChat.Services;
@@ -25,6 +27,7 @@ namespace WebChat.Controllers
         private readonly IHubContext<ChatHub> hubContext;
         private readonly IThreadService thredService;
         private readonly IMappingService mappingService;
+        private readonly IConnectionMapping<string> connectionMapping;
 
         public HeyController
         (
@@ -32,7 +35,8 @@ namespace WebChat.Controllers
             IMessageService messageService, 
             IHubContext<ChatHub> hubContext, 
             IThreadService thredService,
-            IMappingService mappingService
+            IMappingService mappingService,
+            IConnectionMapping<string> connectionMapping
         )
         {
             this.userSercvice = userSercvice;
@@ -40,6 +44,7 @@ namespace WebChat.Controllers
             this.hubContext = hubContext;
             this.thredService = thredService;
             this.mappingService = mappingService;
+            this.connectionMapping = connectionMapping;
         }
 
 
@@ -59,18 +64,22 @@ namespace WebChat.Controllers
                 return BadRequest(new { error = "Message should have all props" });
             }
             model.Id = Guid.NewGuid().ToString();
-
-            this.messageService.AddMessage(model);
+            
+            //Add message async to Db
+            MessageViewModel responseModel = await messageService.AddMessage(model);
 
             var senderId = User.Identity.Name;
             var reciverId = this.userSercvice.GetOponentIdByTheadId(senderId, model.ThreadId);
+            responseModel.Username = model.Username;
+            var listOfConnections = new List<string>() { senderId, reciverId};
             
-            await hubContext.Clients.Groups(new List<string>() { reciverId, senderId}).SendAsync("ReciveMessage", model);
-            return Ok();
+            await hubContext.Clients.Users(listOfConnections).SendAsync("ReciveMessage", responseModel);
+
+            return Created("", responseModel); 
         }
 
         
-
+        //TODO: Extract all work with Entity models ouside the controller
         [HttpGet("getusers")]
         public ActionResult<List<UserViewModel>> GetUsers()
         {
@@ -80,12 +89,16 @@ namespace WebChat.Controllers
 
             var curentUser = this.User.Identity.Name;
 
+            
             foreach (var user in usersCollection.Where(u => u.Id != curentUser))
             {
+                List<string> userConnections = connectionMapping.GetConnections(user.Id).ToList();
+
                 var curentVModel = new UserViewModel()
                 {
                     Id = user.Id,
-                    Username = this.userSercvice.GetUserNameById(user.Id)
+                    Username = this.userSercvice.GetUserNameById(user.Id),
+                    IsOnline = userConnections.Count == 0 ? false : true
                 };
 
                 userVMCollection.Add(curentVModel);
@@ -115,7 +128,8 @@ namespace WebChat.Controllers
                     Owner = entity.OwnerId,
                     OwnerName = this.userSercvice.GetUserNameById(entity.OwnerId),
                     Oponent = entity.OponentId,
-                    OponentName = this.userSercvice.GetUserNameById(entity.OponentId)
+                    OponentName = this.userSercvice.GetUserNameById(entity.OponentId),
+                    LastMessage = this.thredService.GetLastMessageForThread(entity.Id)
                 };
                 threadsVM.Add(vModel);
             }
