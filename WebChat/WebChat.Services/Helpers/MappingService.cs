@@ -74,6 +74,13 @@ namespace WebChat.Services.Helpers
             return threadModel;
         }
 
-        
+        public UserViewModel MapUserModelToUserViewModel(User model)
+        {
+            return new UserViewModel()
+            {
+                Id = model.Id,
+                AvatarFileName = model.AvatarFileName
+            };
+        }
     }
 }

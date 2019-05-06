@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace WebChat.ViewModels
+namespace WebChat.Models.ViewModels
 {
     public class UserViewModel
     {
@@ -12,5 +12,8 @@ namespace WebChat.ViewModels
         public string Username { get; set; }
 
         public bool IsOnline { get; set; }
+
+        public string AvatarFileName { get; set; }
+
     }
 }

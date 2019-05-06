@@ -18,3 +18,8 @@
 
 /* set button(top and bottom of the scrollbar) */
 .message-list::-webkit-scrollbar-button {display:none}
+
+.message-list{
+    border-right: 2px solid #eff1f4;
+
+}

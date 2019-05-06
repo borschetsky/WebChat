@@ -5,6 +5,8 @@
 .people-list{
     grid-area: u;
     border-right: 2px solid #eff1f4;
+    border-left: 2px solid #eff1f4;
+
 }
 
 .people-list .search {

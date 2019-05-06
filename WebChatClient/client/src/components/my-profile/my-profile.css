@@ -1,10 +1,11 @@
 .my-profile{
     grid-area: c;
     display: grid;
-    grid-template-columns: 1fr 1fr 110px;
+    grid-template-columns: 110px 1fr 110px;
     grid-template-areas: "avatar username navbar navbar";
     border-right: 2px solid #eff1f4;
     border-bottom: 2px solid #eff1f4;
+    border-left: 2px solid #eff1f4;
 }
 
 .my-profile .avatar{
@@ -32,14 +33,34 @@
 .my-profile.log-out{
     width: 100%;
 }
-.my-profile i{
+.my-profile .navbar .log-out i{
     float: left;
 }
-
+/*Edit button*/
+.my-profile .avatar span.edit{
+    background-color: #435f7a;;
+    position: absolute;
+    border-radius: 10px;
+    padding: 2px;
+    margin: 25px 0 0 35px;
+    display: none;
+    cursor: pointer;
+}
+.my-profile .avatar span.edit i{
+    color: #eff1f4;
+    padding: 2px 2px 0 2px;
+}
+/*Hover to edit apear*/
+.my-profile .avatar:hover span.edit{
+    display: block;
+}
 .my-profile .avatar img{
-    width: 50px;
-    height: auto;
+    
+    margin: 0;
+    width:  50px;
     border: 2px solid #2ecc71;
     border-radius: 50%;
+    object-fit: cover;
+    overflow: hidden;
     
 }

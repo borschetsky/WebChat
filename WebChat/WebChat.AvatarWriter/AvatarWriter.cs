@@ -19,11 +19,7 @@ namespace WebChat.AvatarWriter
             return "Invalid image file";
         }
 
-        /// <summary>
-        /// Method to check if file is image file
-        /// </summary>
-        /// <param name="file"></param>
-        /// <returns></returns>
+      
         private bool CheckIfImageFile(IFormFile file)
         {
             byte[] fileBytes;
@@ -36,14 +32,11 @@ namespace WebChat.AvatarWriter
             return WriteHelper.GetImageFormat(fileBytes) != WriteHelper.ImageFormat.unknown;
         }
 
-        /// <summary>
-        /// Method to write file onto the disk
-        /// </summary>
-        /// <param name="file"></param>
-        /// <returns></returns>
+        
         public async Task<string> WriteFile(IFormFile file)
         {
             string fileName;
+            
             try
             {
                 var extension = "." + file.FileName.Split('.')[file.FileName.Split('.').Length - 1];

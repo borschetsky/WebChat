@@ -2,11 +2,16 @@
 using System.Collections.Generic;
 using System.Text;
 using WebChat.Models;
+using WebChat.Models.ViewModels;
 
 namespace WebChat.Services
 {
     public interface IUserService
     {
+        UserViewModel GetUserProfile(string userId);
+
+        void AddAvatar(string avatarId, string userId);
+
         bool isEmailUniq(string email);
 
         bool isUsernameUniq(string userName);

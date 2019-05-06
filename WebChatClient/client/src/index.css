@@ -27,17 +27,18 @@ html, body {
 }
 
 .app {
+    
     display: grid;
     height: 100%;
-    grid-template-columns: minmax(325px, 400px) minmax(325px, 660px) 260px;
+    grid-template-columns: 1fr minmax(325px, 400px) minmax(325px, 660px) 1fr;
     grid-template-rows: 60px 50px 1fr 1fr 1fr 60px;
     grid-template-areas: 
-        "c p с"
-        "c m r"
-        "u m r"
-        "u m r"
-        "u m r"
-        "u s r";
+        ". c p ."
+        ". c m r"
+        ". u m r"
+        ". u m r"
+        ". u m r"
+        ". u s r";
 }
 
 

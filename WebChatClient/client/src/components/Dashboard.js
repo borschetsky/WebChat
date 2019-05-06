@@ -16,6 +16,7 @@ class Dashboard extends Component  {
         super(props);
         this.state = {
             userId: null,
+            userProfile: null,
             userName: null,
             threadId: null,
             oponentName: null,
@@ -34,7 +35,10 @@ class Dashboard extends Component  {
     
     componentDidMount(){
         const {token} = this.props.user;
-        
+        Axios.get('http://localhost:5000/api/hey/getprofile', {
+            headers: {'Authorization': `Bearer ${token}`,}
+        }).then(res => this.setState({userProfile: res.data}));
+
         this.connection.start(() => console.log("started")).catch(err => console.log(err));
         this.connection.on('ReciveConnectionId', connId => {
             console.log(`CuurentConnectionId: ${connId}`);
@@ -44,6 +48,8 @@ class Dashboard extends Component  {
         Axios.get('http://localhost:5000/api/hey/getusername', {
             headers: {'Authorization': `Bearer ${token}`,}
         }).then(res => this.setState({userName : res.data, error: false})).then(() => console.log(`Your username is: ${this.state.userName}`));
+
+        
 
         
     };
@@ -72,7 +78,7 @@ class Dashboard extends Component  {
    update = async () => {
         const {token} = this.props.user;
 
-
+        
         //get all registered users
         await Axios.get('http://localhost:5000/api/hey/getusers', {
             headers: {'Authorization': `Bearer ${token}`}
@@ -177,11 +183,12 @@ class Dashboard extends Component  {
 
   render(){
    
-    const {userName} = this.state;
-    const usernameToDisplay = !userName ? 'Loading...' : userName;
+    
+    const { userProfile, oponentName, messages, threadId, userName, threads} = this.state;
+    console.log(this.props.user.id);
     return(
         <div className="app">
-           <MyProfile username={usernameToDisplay} handleLogOut={this.handleLogOut}/>
+           <MyProfile  handleLogOut={this.handleLogOut} profile={this.state.userProfile}/>
             <OponentProfile name={this.state.oponentName}/>
             <MessageList messages={this.state.messages} threadId={this.state.threadId} username={this.state.userName}/>
             <SendMessageForm sendMessage={this.sendMessage}/>

@@ -15,6 +15,7 @@ using WebChat.Services;
 using WebChat.Services.Inerfaces;
 using WebChat.ViewModels;
 
+
 namespace WebChat.Controllers
 {
     [Authorize]
@@ -47,13 +48,20 @@ namespace WebChat.Controllers
             this.connectionMapping = connectionMapping;
         }
 
-
         [HttpGet("getusername")]
         public ActionResult<string> GetUserName()
         {
             var currentUserId = this.User.Identity.Name;
 
             return this.userSercvice.GetUserNameById(currentUserId);
+        }
+
+        [HttpGet("getprofile")]
+        public ActionResult<UserViewModel> GetProfile()
+        {
+            var currentUserId = this.User.Identity.Name;
+
+            return this.userSercvice.GetUserProfile(currentUserId);
         }
 
         [HttpPost("send")]

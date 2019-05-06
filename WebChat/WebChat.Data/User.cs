@@ -23,6 +23,8 @@ namespace WebChat.Models
         [Required]
         public string Password { get; set; }
 
+        public string AvatarFileName { get; set; }
+
         public ICollection<Message> Messages { get; set; }
 
         public ICollection<Thread> Threads { get; set; }

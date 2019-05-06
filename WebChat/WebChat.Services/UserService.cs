@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using WebChat.Connection;
 using WebChat.Models;
+using WebChat.Models.ViewModels;
+using WebChat.Services.Inerfaces;
 
 namespace WebChat.Services
 {
@@ -12,12 +14,22 @@ namespace WebChat.Services
         private readonly WebChatContext ctx;
         private readonly IAuthService authService;
         private readonly IThreadService threadService;
+        private readonly IMappingService mappingService;
 
-        public UserService(WebChatContext ctx, IAuthService authService, IThreadService threadService)
+        public UserService(WebChatContext ctx, IAuthService authService, IThreadService threadService, IMappingService mappingService)
         {
             this.ctx = ctx ?? throw new ArgumentNullException("Context can not be null");
             this.authService = authService;
             this.threadService = threadService;
+            this.mappingService = mappingService;
+        }
+
+        public void AddAvatar(string avatarId, string userId)
+        {
+            var user = ctx.User.FirstOrDefault(u => u.Id == userId);
+            user.AvatarFileName = avatarId;
+            ctx.User.Update(user);
+            ctx.SaveChanges();
         }
 
         public void AddUser(User newUser)
@@ -77,6 +89,16 @@ namespace WebChat.Services
         public string GetUserNameById(string id)
         {
             return ctx.User.FirstOrDefault(u => u.Id == id).Username;
+        }
+
+        public UserViewModel GetUserProfile(string userId)
+        {
+            var model = ctx.User.FirstOrDefault(u => u.Id == userId);
+            var viewModel = this.mappingService.MapUserModelToUserViewModel(model);
+            viewModel.Username = GetUserNameById(userId);
+
+            return viewModel;
+
         }
 
         public ICollection<User> GetUsers()

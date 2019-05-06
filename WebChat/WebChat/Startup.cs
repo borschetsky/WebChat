@@ -151,12 +151,12 @@ namespace WebChat
 
             //app.UseHttpsRedirection();
             app.UseStaticFiles();
-            app.UseStaticFiles(new StaticFileOptions
-            {
-                FileProvider = new PhysicalFileProvider(
-            Path.Combine(Directory.GetCurrentDirectory(), "static")),
-                RequestPath = "/static"
-            });
+            //app.UseStaticFiles(new StaticFileOptions
+            //{
+            //    FileProvider = new PhysicalFileProvider(
+            //Path.Combine(Directory.GetCurrentDirectory(), "static")),
+            //    RequestPath = "/static"
+            //});
             app.UseAuthentication();
             
             app.UseSignalR(routes => 
