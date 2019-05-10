@@ -14,11 +14,12 @@ namespace WebChat.Connection.Migrations
                     Id = table.Column<string>(nullable: false),
                     isDeleted = table.Column<bool>(nullable: false),
                     DeletedOn = table.Column<DateTime>(nullable: true),
-                    CreatedOn = table.Column<DateTime>(nullable: true),
+                    CreatedOn = table.Column<DateTime>(nullable: false),
                     ModifiedOn = table.Column<DateTime>(nullable: true),
                     Username = table.Column<string>(maxLength: 60, nullable: true),
                     Email = table.Column<string>(maxLength: 60, nullable: false),
-                    Password = table.Column<string>(nullable: false)
+                    Password = table.Column<string>(nullable: false),
+                    AvatarFileName = table.Column<string>(nullable: true)
                 },
                 constraints: table =>
                 {
@@ -32,7 +33,7 @@ namespace WebChat.Connection.Migrations
                     Id = table.Column<string>(nullable: false),
                     isDeleted = table.Column<bool>(nullable: false),
                     DeletedOn = table.Column<DateTime>(nullable: true),
-                    CreatedOn = table.Column<DateTime>(nullable: true),
+                    CreatedOn = table.Column<DateTime>(nullable: false),
                     ModifiedOn = table.Column<DateTime>(nullable: true),
                     OwnerId = table.Column<string>(nullable: false),
                     OponentId = table.Column<string>(nullable: true)
@@ -55,7 +56,7 @@ namespace WebChat.Connection.Migrations
                     Id = table.Column<string>(nullable: false),
                     isDeleted = table.Column<bool>(nullable: false),
                     DeletedOn = table.Column<DateTime>(nullable: true),
-                    CreatedOn = table.Column<DateTime>(nullable: true),
+                    CreatedOn = table.Column<DateTime>(nullable: false),
                     ModifiedOn = table.Column<DateTime>(nullable: true),
                     Text = table.Column<string>(nullable: true),
                     SenderId = table.Column<string>(nullable: false),

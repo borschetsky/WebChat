@@ -19,5 +19,7 @@ namespace WebChat.Services
         List<MessageViewModel> GetThreadMessages(string threadId);
 
         string GetLastMessageForThread(string threadId);
+
+        LastMessageViewModel GetThreadLastMessage(string threadId);
     }
 }

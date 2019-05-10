@@ -55,10 +55,6 @@ namespace WebChat
             });
 
             services.AddSignalR();
-
-            
-
-            
         }
 
         private void RegisterAuthentication(IServiceCollection services)

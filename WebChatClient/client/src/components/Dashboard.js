@@ -36,7 +36,7 @@ class Dashboard extends Component  {
         const {token} = this.props.user;
         Axios.get('http://localhost:5000/api/users/getprofile', {
             headers: {'Authorization': `Bearer ${token}`,}
-        }).then(res => this.setState({userProfile: res.data, userName: res.data.username}));
+        }).then(res => this.setState({userProfile: res.data, userName: res.data.username})).catch(err => console.log(err));
 
         this.connection.start(() => console.log("started"))
         .catch(err => {
@@ -80,7 +80,7 @@ class Dashboard extends Component  {
                console.log(res.data);
                this.setState({threads: res.data});
             };
-        });
+        }).catch(err => console.log(err));
 
         this.connection.on('ReviceThread', (thread) => {
             console.log(thread);
@@ -94,7 +94,7 @@ class Dashboard extends Component  {
             const { threads} = this.state;
             threads.forEach(t => {
                 if(t.id === message.threadId){
-                    t.lastMessage = message.text;
+                    t.lastMessage.text = message.text;
                 }
             });
             this.setState({threads});

@@ -78,7 +78,7 @@ namespace WebChat.Services
                                  Username = u.Username,
                                  Text = m.Text,
                                  ThreadId = m.ThreadId,
-                                 Time = String.Format("{0:t}", m.CreatedOn)
+                                 Time = m.CreatedOn
                              }).ToList();
                 vm = tests;
 
@@ -92,11 +92,31 @@ namespace WebChat.Services
                           where m.ThreadId == threadId
                           orderby m.CreatedOn descending
                           select m.Text).FirstOrDefault();
+
+
             if(string.IsNullOrEmpty(result))
             {
                 return "No messages";
             }
             return result.ToString();
+
+        }
+
+        public LastMessageViewModel GetThreadLastMessage(string threadId)
+        {
+            var message = ctx.Message.Where(m => m.ThreadId == threadId).OrderByDescending(m => m.CreatedOn).FirstOrDefault();
+
+            if (message == null)
+            {
+                return new LastMessageViewModel() { Text = "No messages"};
+            }
+            var result = new LastMessageViewModel()
+            {
+                Text = message.Text,
+                Time = message.CreatedOn
+            };
+
+            return result;
 
         }
     }

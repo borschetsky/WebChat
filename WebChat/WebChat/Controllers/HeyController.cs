@@ -124,7 +124,7 @@ namespace WebChat.Controllers
                     OwnerName = this.userSercvice.GetUserNameById(entity.OwnerId),
                     Oponent = entity.OponentId,
                     OponentName = this.userSercvice.GetUserNameById(entity.OponentId),
-                    LastMessage = this.thredService.GetLastMessageForThread(entity.Id)
+                    LastMessage = this.thredService.GetThreadLastMessage(entity.Id)
                 };
                 threadsVM.Add(vModel);
             }
@@ -157,7 +157,7 @@ namespace WebChat.Controllers
             //Send new thread to connected clients
             newThreadVM.OwnerName = this.userSercvice.GetUserNameById(newThreadVM.Owner);
             newThreadVM.OponentName = this.userSercvice.GetUserNameById(newThreadVM.Oponent);
-            newThreadVM.LastMessage = "No messages";
+            newThreadVM.LastMessage = null;
 
             await hubContext.Clients.Users(newThreadVM.Owner, newThreadVM.Oponent).SendAsync("ReviceThread", newThreadVM);
 

@@ -10,7 +10,7 @@ using WebChat.Connection;
 namespace WebChat.Connection.Migrations
 {
     [DbContext(typeof(WebChatContext))]
-    [Migration("20190429200800_Initial")]
+    [Migration("20190510165033_Initial")]
     partial class Initial
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -26,7 +26,7 @@ namespace WebChat.Connection.Migrations
                     b.Property<string>("Id")
                         .ValueGeneratedOnAdd();
 
-                    b.Property<DateTime?>("CreatedOn");
+                    b.Property<DateTime>("CreatedOn");
 
                     b.Property<DateTime?>("DeletedOn");
 
@@ -56,7 +56,7 @@ namespace WebChat.Connection.Migrations
                     b.Property<string>("Id")
                         .ValueGeneratedOnAdd();
 
-                    b.Property<DateTime?>("CreatedOn");
+                    b.Property<DateTime>("CreatedOn");
 
                     b.Property<DateTime?>("DeletedOn");
 
@@ -81,7 +81,9 @@ namespace WebChat.Connection.Migrations
                     b.Property<string>("Id")
                         .ValueGeneratedOnAdd();
 
-                    b.Property<DateTime?>("CreatedOn");
+                    b.Property<string>("AvatarFileName");
+
+                    b.Property<DateTime>("CreatedOn");
 
                     b.Property<DateTime?>("DeletedOn");
 

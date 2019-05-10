@@ -17,7 +17,7 @@ const UserThreads = (props) => {
             };
             const imageLink = `https://ui-avatars.com/api/?name=${userNameToDisplay}&rounded=true&bold=true&size=128`;
             const active = thread.id === threadId ? 'active' : '';
-            
+            const lasteMessage = thread.lastMessage ? thread.lastMessage.text : 'No messages';
             return(
                 <li key={thread.id} className={"clearfix " + active} onClick={() => props.subscribeToThread(thread.id, userNameToDisplay)}>
                     <div className="clearfix-wrapper" >
@@ -25,7 +25,7 @@ const UserThreads = (props) => {
                         <div className="about">
                             <p className="name">{userNameToDisplay}</p>
                             <p className="status">
-                                {thread.lastMessage}
+                                {lasteMessage}
                             </p>
                         </div>
                     </div>

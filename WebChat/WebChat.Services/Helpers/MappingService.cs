@@ -32,7 +32,7 @@ namespace WebChat.Services.Helpers
                 SenderId = model.SenderId,
                 //Username = this.userService.GetUserNameById(model.SenderId),
                 Text = model.Text,
-                Time = String.Format("{0:t}", model.CreatedOn),
+                Time = model.CreatedOn,
                 ThreadId = model.ThreadId
             };
             return messageViewModel;
