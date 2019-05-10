@@ -12,7 +12,8 @@ li.found-users:hover{
 .found-users img{
     grid-area: found-img;
     width: 30px;
-    height: auto;
+    height: 30px;
+    object-fit: cover;
     border-radius: 50%;
     justify-self: end;
     margin: 0;

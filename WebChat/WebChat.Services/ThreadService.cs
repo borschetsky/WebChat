@@ -91,9 +91,12 @@ namespace WebChat.Services
             var result = (from m in ctx.Message
                           where m.ThreadId == threadId
                           orderby m.CreatedOn descending
-                          select m.Text).FirstOrDefault().ToString();
-
-            return string.IsNullOrEmpty(result) ? "" : result;
+                          select m.Text).FirstOrDefault();
+            if(string.IsNullOrEmpty(result))
+            {
+                return "No messages";
+            }
+            return result.ToString();
 
         }
     }

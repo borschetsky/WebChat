@@ -9,8 +9,7 @@ class MyProfile extends Component {
     }
 
     componentDidMount = () => {
-        console.log(this.props);
-        this.setState({profile: this.props.profile, loading: false}, () => console.log(this.state))
+        this.setState({profile: this.props.profile, loading: false}, () => console.log(this.state.profiles))
         
     };
 
@@ -19,7 +18,7 @@ class MyProfile extends Component {
             this.setState({
                 profile: this.props.profile,
                 loading: false
-            });
+            }, console.log(this.state.profile));
         }
     }
 
@@ -40,7 +39,7 @@ class MyProfile extends Component {
             content = (
                 <React.Fragment>
                     <div className="avatar">
-                        <span className="edit" onClick={() => alert("EDIT")}>
+                        <span className="edit" onClick={() => this.props.handleEditorClose()}>
                             <i className="material-icons">create</i>
                         </span>
                         <img src={imagePath} alt="avatar"/>

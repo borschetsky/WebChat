@@ -1,9 +1,17 @@
 import React, { Component } from 'react';
 import './oponent-profile.css';
+import { withAuth } from '../hoc';
+import Axios from 'axios';
 
-export default class OponentProfile extends Component {
+ class OponentProfile extends Component {
+    state = {
+        profile: null
+    }
+
+    componentDidMount(){
+        Axios.get('')
+    }
     render(){
-        console.log(this.props.name);
         return(
             <div className="oponent-profile">
                 <img src="http://emilcarlsson.se/assets/harveyspecter.png" alt=""/>
@@ -12,3 +20,5 @@ export default class OponentProfile extends Component {
             );
     };
 };
+
+export default withAuth(OponentProfile);

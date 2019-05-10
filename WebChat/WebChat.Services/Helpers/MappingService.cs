@@ -79,6 +79,18 @@ namespace WebChat.Services.Helpers
             return new UserViewModel()
             {
                 Id = model.Id,
+                AvatarFileName = model.AvatarFileName,
+                Username = model.Username
+            };
+        }
+
+        public ProfileViewModel MapUserModelRoProfileViewModel(User model)
+        {
+            return new ProfileViewModel()
+            {
+                Id = model.Id,
+                Username = model.Username,
+                Email = model.Email,
                 AvatarFileName = model.AvatarFileName
             };
         }

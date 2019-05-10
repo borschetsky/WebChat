@@ -8,7 +8,9 @@ namespace WebChat.Services
 {
     public interface IUserService
     {
-        UserViewModel GetUserProfile(string userId);
+        IEnumerable<UserViewModel> FindUserByMatch(string match, string curentUser);
+
+        ProfileViewModel GetUserProfile(string userId);
 
         void AddAvatar(string avatarId, string userId);
 

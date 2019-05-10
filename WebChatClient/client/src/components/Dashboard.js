@@ -2,11 +2,9 @@ import React, {Component } from 'react';
 import Axios from 'axios';
 import { withAuth } from './hoc';
 import * as signalR from '@aspnet/signalr';
-import RoomList from './RoomList';
 import MessageList from './MessageList';
 import SendMessageForm from './send-message-form';
 import UserList from './UserList';
-import Test from './Test';
 import OponentProfile from './oponent-profile'
 import MyProfile from './my-profile';
 
@@ -25,7 +23,8 @@ class Dashboard extends Component  {
             messages: [],
             users: [],
             error: true,
-            hubConnection: null
+            hubConnection: null,
+            isEdit: false
         };
         this.connection = new signalR.HubConnectionBuilder().withUrl("http://localhost:5000/chat", {
             accessTokenFactory: () => this.props.user.token
@@ -35,26 +34,23 @@ class Dashboard extends Component  {
     
     componentDidMount(){
         const {token} = this.props.user;
-        Axios.get('http://localhost:5000/api/hey/getprofile', {
+        Axios.get('http://localhost:5000/api/users/getprofile', {
             headers: {'Authorization': `Bearer ${token}`,}
-        }).then(res => this.setState({userProfile: res.data}));
+        }).then(res => this.setState({userProfile: res.data, userName: res.data.username}));
 
-        this.connection.start(() => console.log("started")).catch(err => console.log(err));
+        this.connection.start(() => console.log("started"))
+        .catch(err => {
+            console.log(err)
+            this.props.history.push("/login");
+
+        });
         this.connection.on('ReciveConnectionId', connId => {
             console.log(`CuurentConnectionId: ${connId}`);
         });
         this.update();
-        
-        Axios.get('http://localhost:5000/api/hey/getusername', {
-            headers: {'Authorization': `Bearer ${token}`,}
-        }).then(res => this.setState({userName : res.data, error: false})).then(() => console.log(`Your username is: ${this.state.userName}`));
-
-        
-
-        
     };
 
-    componentDidUpdate = (prevProps,prevState) =>{
+    componentDidUpdate = (prevProps, prevState) => {
         if(prevState.threadId !== this.state.threadId){
             //Invoke get messages for thread
             const {threadId} = this.state;
@@ -69,21 +65,14 @@ class Dashboard extends Component  {
         Axios.get(`http://localhost:5000/api/thread/getmessages/${threadId}`, {
             headers:{'Authorization': `Bearer ${token}`}
         }).then(res => {
-            console.log(res.data);
             this.setState({messages: res.data});
-        });
+        }).catch(err => console.log(err.response));
 
    };
 
    update = async () => {
         const {token} = this.props.user;
 
-        
-        //get all registered users
-        await Axios.get('http://localhost:5000/api/hey/getusers', {
-            headers: {'Authorization': `Bearer ${token}`}
-        }).then(res => this.setState({users: res.data})).then(() => console.log(this.state.users));
-        //Get list of user's threads
         await Axios.get('http://localhost:5000/api/hey/getthreads', {
             headers: {'Authorization': `Bearer ${token}`}
         }).then(res => {
@@ -91,6 +80,13 @@ class Dashboard extends Component  {
                console.log(res.data);
                this.setState({threads: res.data});
             };
+        });
+
+        this.connection.on('ReviceThread', (thread) => {
+            console.log(thread);
+            let {threads} = this.state;
+            threads = [...threads, thread];
+            this.setState({threads});
         });
 
         this.connection.on('ReciveMessage', (message) => {
@@ -116,32 +112,32 @@ class Dashboard extends Component  {
             var connectedUserName = this.state.users.find(u => u.id === userId).userName;
             console.log(connectedUserName);
         });
-
-
-
-
-
     };
 
     createThread = (oponentId, oponentUsername) => {
         const {token} = this.props.user;
-
         console.log(oponentId);
-        Axios.post('http://localhost:5000/api/hey/createthread', {
-            Oponent: oponentId
-        }, {
-            headers:{
-                'Authorization': `Bearer ${token}`
-            }
-        }).then(res => {
-            const{ threadId } = res.data;
-            this.setState({threadId, oponentName: oponentUsername});
-        })
-        .catch(err => {
-            console.log(err.response.data.threadId);
-            const { threadId } = err.response.data;
-            this.setState({threadId, oponentName: oponentUsername});
-        });    
+        var thread = this.state.threads.find(t => t.oponent === oponentId || t.owner === oponentId);
+        if(!thread){
+            Axios.post('http://localhost:5000/api/hey/createthread', {
+                Oponent: oponentId
+            }, {
+                headers:{
+                    'Authorization': `Bearer ${token}`
+                }
+            }).then(res => {
+                const{ threadId } = res.data;
+                this.setState({threadId, oponentName: oponentUsername});
+            })
+            .catch(err => {
+                console.log(err.response.data.threadId);
+                const { threadId } = err.response.data;
+                this.setState({threadId, oponentName: oponentUsername});
+            });    
+        }else{
+            this.setState({threadId: thread.id, oponentName: oponentUsername});
+        };
+       
     };
 
     sendMessage = (message) => {
@@ -179,27 +175,32 @@ class Dashboard extends Component  {
         localStorage.removeItem('user-data');
         this.props.history.push('/Login');
     };
-
+    handleEditorClose = () => {
+        this.setState((state) => ({
+            isEdit: !state.isEdit
+        }));
+    }
 
   render(){
    
     
-    const { userProfile, oponentName, messages, threadId, userName, threads} = this.state;
-    console.log(this.props.user.id);
+    const { userProfile, oponentName, messages, threadId, userName, threads, isEdit} = this.state;
+   
     return(
         <div className="app">
-           <MyProfile  handleLogOut={this.handleLogOut} profile={this.state.userProfile}/>
-            <OponentProfile name={this.state.oponentName}/>
-            <MessageList messages={this.state.messages} threadId={this.state.threadId} username={this.state.userName}/>
+           <MyProfile  handleLogOut={this.handleLogOut} profile={userProfile} handleEditorClose={this.handleEditorClose}/>
+            <OponentProfile name={oponentName}/>
+            <MessageList messages={messages} threadId={threadId} username={userName}/>
             <SendMessageForm sendMessage={this.sendMessage}/>
-            {/* <RoomList users={this.state.users} user={this.props.user.id} createThread={this.createThread}/> */}
             <UserList 
-                threadId={this.state.threadId}
-                threads={this.state.threads} 
+                profile={userProfile}
+                threadId={threadId}
+                threads={threads} 
                 userId={this.props.user.id} 
                 subscribeToThread={this.subscribeToThread}
-                users={this.state.users}
-                createThread={this.createThread}/>
+                createThread={this.createThread}
+                handleEditorClose={this.handleEditorClose}
+                isEdit={isEdit}/>
         </div>
     );
   };

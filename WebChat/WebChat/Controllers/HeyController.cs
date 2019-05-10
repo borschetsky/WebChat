@@ -48,21 +48,8 @@ namespace WebChat.Controllers
             this.connectionMapping = connectionMapping;
         }
 
-        [HttpGet("getusername")]
-        public ActionResult<string> GetUserName()
-        {
-            var currentUserId = this.User.Identity.Name;
-
-            return this.userSercvice.GetUserNameById(currentUserId);
-        }
-
-        [HttpGet("getprofile")]
-        public ActionResult<UserViewModel> GetProfile()
-        {
-            var currentUserId = this.User.Identity.Name;
-
-            return this.userSercvice.GetUserProfile(currentUserId);
-        }
+        
+        
 
         [HttpPost("send")]
         public async Task<ActionResult> SendMessage([FromBody]MessageViewModel model)
@@ -146,7 +133,7 @@ namespace WebChat.Controllers
         }
 
         [HttpPost("createthread")]
-        public ActionResult CreateThread([FromBody] ThreadViewModel model)
+        public async Task<ActionResult> CreateThread([FromBody] ThreadViewModel model)
         {
             if (string.IsNullOrEmpty(model.Oponent))
             {
@@ -167,6 +154,12 @@ namespace WebChat.Controllers
             ThreadViewModel newThreadVM = this.thredService.CreateThreadViewModel(curentUserId, model.Oponent);
 
             this.thredService.AddThread(newThreadVM);
+            //Send new thread to connected clients
+            newThreadVM.OwnerName = this.userSercvice.GetUserNameById(newThreadVM.Owner);
+            newThreadVM.OponentName = this.userSercvice.GetUserNameById(newThreadVM.Oponent);
+            newThreadVM.LastMessage = "No messages";
+
+            await hubContext.Clients.Users(newThreadVM.Owner, newThreadVM.Oponent).SendAsync("ReviceThread", newThreadVM);
 
             return Ok(new { ThreadId = newThreadVM.Id});
         }

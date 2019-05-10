@@ -1,11 +1,32 @@
 .search{
     grid-area: s;
 }
+/* total width */
+.people-list::-webkit-scrollbar {
+  background-color:#fff;
+  width:16px
+}
+
+/* background of the scrollbar except button or resizer */
+.people-list::-webkit-scrollbar-track {
+  background-color:#fff
+}
+
+/* scrollbar itself */
+.people-list::-webkit-scrollbar-thumb {
+  background-color:#435f7a;
+  border-radius:16px;
+  border:4px solid #fff
+}
+
+/* set button(top and bottom of the scrollbar) */
+.people-list::-webkit-scrollbar-button {display:none}
 
 .people-list{
     grid-area: u;
     border-right: 2px solid #eff1f4;
     border-left: 2px solid #eff1f4;
+    overflow: auto;
 
 }
 

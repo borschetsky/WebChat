@@ -1,92 +1,78 @@
 import React from 'react'
 import './userlist.css';
 import Search from './Search';
-import MyProfile from './my-profile';
 import './found-users/found-users.css';
+import Axios from 'axios';
+import UserSearch from './user-search';
+import UserThreads from './user-threads';
+import EditProfile from './edit-profile';
+import { withAuth } from './hoc/';
 
 class UserList extends React.Component {
     state = {
-        users: null,
-        treads: [],
+        users: [],
+        threadId: '',
+        threads: [],
         loading: true,
-        search: ''
+        search: '',
+        isEdit: false,
+        profile: null
+        
     };
 
+    componentDidMount(){
+        console.log(this.props.profile);
+        this.setState({
+            threads: this.props.threads,
+            threadId: this.props.threadId,
+            isEdit: this.props.isEdit,
+            profile: this.props.profile
+        });
+    }
+    componentDidUpdate(prevProps){
+        if(prevProps.threads !== this.props.threads ){
+            this.setState({threads: this.props.threads});
+        }
+        if(prevProps.threadId !== this.props.threadId){
+            this.setState({threadId: this.props.threadId});
+        }
+        if(prevProps.isEdit !== this.props.isEdit){
+            this.setState({isEdit: this.props.isEdit})
+        }
+        if(prevProps.profile !== this.props.profile){
+            this.setState({profile: this.props.profile}, console.log(this.state.profile))
+        }
+       
+    }
     handleSearch = (e) => {
+        const { token } = this.props.user;
         const { value } = e.target;
+        Axios.get(`http://localhost:5000/api/users/search?name=${value}`, 
+            {headers: {'Authorization': `Bearer ${token}`}}
+            ).then(res => this.setState({users: res.data}));
         this.setState({search: value});
     };
-
-    searchItems = (items, search) => {
-        if(search.length === 0){
-            return items;
-        };
-        return items.filter(item => {
-            return item.username.toLowerCase().indexOf(search.toLowerCase()) > -1;
-        });
+    clearSearch = () =>{
+        this.setState({search: ''});
     };
+    
+    
     render () {
-        const {threads} = this.props;
-        // if(!threads){
-        //     return(
-        //         <div className="user-list">
-        //         <ul>
-        //         <h4>You have no threads</h4>
-        //         </ul>
-        //     </div>
-        //     );
-        // };
-        
-        
-        const items = threads.map(thread => {
-            let userNameToDisplay = '';
-            
-            if (thread.owner === this.props.userId){
-                userNameToDisplay = thread.oponentName;  
-            }
-            if(thread.oponent === this.props.userId){
-                userNameToDisplay = thread.ownerName;
-            };
-            const imageLink = `https://ui-avatars.com/api/?name=${userNameToDisplay}&rounded=true&bold=true&size=128`;
-            const active = thread.id === this.props.threadId ? 'active' : '';
-            
+        const { threads, threadId} = this.state;
+        const { userId, subscribeToThread } = this.props; 
+        let itemsToDisplay = this.state.search.length > 0 ? 
+        <UserSearch users={this.state.users} createThread={this.props.createThread} clearSearch={this.clearSearch}/>
+        : <UserThreads threads={threads} userId={userId} subscribeToThread={subscribeToThread} threadId={threadId}/>;
+        if(this.state.isEdit){
             return(
-                <li key={thread.id} className={"clearfix " + active} onClick={() => this.props.subscribeToThread(thread.id, userNameToDisplay)}>
-                    <div className="clearfix-wrapper" >
-                        <img src={imageLink} alt="avatar"/>
-                        <div className="about">
-                            <p className="name">{userNameToDisplay}</p>
-                            <p className="status">
-                                {/* <i className="fa fa-circle online"></i> online */}
-                                {thread.lastMessage}
-                            </p>
-                        </div>
-                    </div>
-                 </li>
-                 );
-            
-        });
-        const filteredItems = this.searchItems(this.props.users, this.state.search);
-        //TODO: extract to a separate components
-        const users = filteredItems.map( u => {
-            const { createThread } = this.props;
-            const isOnline = u.isOnline ? ' active' : '';
-            return(
-                <li className={`found-users${isOnline}`} key={u.id} onClick={() => {createThread(u.id, u.username); this.setState({search: ''});}}>
-                    <img src="http://emilcarlsson.se/assets/harveyspecter.png" alt="avatar"/>
-                    <p> {u.username}</p>
-                </li>
+                <div className="people-list">
+                    <EditProfile handleEditorClose={this.props.handleEditorClose} profile={this.state.profile}/>
+                </div>
             );
-        });
-
-        let itemsToDisplay = this.state.search.length > 0 ? users : items;
-        
-        
+        }
         return (
             <div className="people-list">
-           
             <Search handleSearch={this.handleSearch} value={this.state.search}/>
-            
                 <ul className="list">
                     {itemsToDisplay}
                 </ul>
@@ -95,4 +81,4 @@ class UserList extends React.Component {
     }
 }
 
-export default UserList;
+export default withAuth(UserList);

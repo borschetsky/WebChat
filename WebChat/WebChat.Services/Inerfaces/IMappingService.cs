@@ -20,5 +20,7 @@ namespace WebChat.Services.Inerfaces
         Thread MapThreadViewModelToThreadModel(ThreadViewModel model);
 
         UserViewModel MapUserModelToUserViewModel(User model);
+
+        ProfileViewModel MapUserModelRoProfileViewModel(User model);
     }
 }

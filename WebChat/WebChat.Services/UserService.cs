@@ -19,9 +19,23 @@ namespace WebChat.Services
         public UserService(WebChatContext ctx, IAuthService authService, IThreadService threadService, IMappingService mappingService)
         {
             this.ctx = ctx ?? throw new ArgumentNullException("Context can not be null");
-            this.authService = authService;
-            this.threadService = threadService;
-            this.mappingService = mappingService;
+            this.authService = authService ?? throw new ArgumentNullException("Authorization service can not be null");  
+            this.threadService = threadService ?? throw new ArgumentNullException("Thread service service can not be null");
+            this.mappingService = mappingService ?? throw new ArgumentNullException("Mapping service service can not be null");
+        }
+
+        public IEnumerable<UserViewModel> FindUserByMatch(string match, string curentUser)
+        {
+            if (string.IsNullOrEmpty(curentUser)) throw new ArgumentNullException("Current user Id can not be null");
+
+            var queryResult = ctx.User.Where(u => u.Username.IndexOf(match) > -1 && u.Id != curentUser);
+            var searchResult = new List<UserViewModel>();
+            foreach (var user in queryResult)
+            {
+                var userVm = mappingService.MapUserModelToUserViewModel(user);
+                searchResult.Add(userVm);
+            }
+            return searchResult;
         }
 
         public void AddAvatar(string avatarId, string userId)
@@ -91,10 +105,10 @@ namespace WebChat.Services
             return ctx.User.FirstOrDefault(u => u.Id == id).Username;
         }
 
-        public UserViewModel GetUserProfile(string userId)
+        public ProfileViewModel GetUserProfile(string userId)
         {
             var model = ctx.User.FirstOrDefault(u => u.Id == userId);
-            var viewModel = this.mappingService.MapUserModelToUserViewModel(model);
+            var viewModel = this.mappingService.MapUserModelRoProfileViewModel(model);
             viewModel.Username = GetUserNameById(userId);
 
             return viewModel;
