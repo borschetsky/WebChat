@@ -9,7 +9,7 @@ class MyProfile extends Component {
     }
 
     componentDidMount = () => {
-        this.setState({profile: this.props.profile, loading: false}, () => console.log(this.state.profiles))
+        this.setState({profile: this.props.profile, loading: false});
         
     };
 
@@ -18,7 +18,7 @@ class MyProfile extends Component {
             this.setState({
                 profile: this.props.profile,
                 loading: false
-            }, console.log(this.state.profile));
+            });
         }
     }
 

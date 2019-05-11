@@ -9,9 +9,11 @@
 
 .oponent-profile img{
     width: 40px;
+    height: 40px;
     border-radius: 50%;
     float: left;
     margin: 9px 12px 0 9px;
+    object-fit: cover;
 }
 
 .contact-profile p {

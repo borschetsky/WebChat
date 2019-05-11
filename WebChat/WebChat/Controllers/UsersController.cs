@@ -38,11 +38,16 @@ namespace WebChat.Controllers
 
             return this.userService.GetUserProfile(currentUserId);
         }
-        [HttpGet("profilebyid")]
-        public ActionResult<ProfileViewModel> GetProfileById()
+        [HttpGet("profilebyid/{id}")]
+        public ActionResult<OponentViewModel> GetProfileById(string id)
         {
+            if(string.IsNullOrEmpty(id))
+            {
+                return BadRequest(new { message = "Oponent id can not be null or empty" });
+            }
+            var profile = this.userService.GetOponentProfile(id);
 
-            return Ok();
+            return profile;
         }
     }
 }

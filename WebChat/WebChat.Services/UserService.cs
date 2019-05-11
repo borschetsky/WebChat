@@ -115,6 +115,14 @@ namespace WebChat.Services
 
         }
 
+        public OponentViewModel GetOponentProfile(string id)
+        {
+            var profile = (from u in ctx.User
+                           where u.Id == id
+                           select new OponentViewModel { Name = u.Username, AvatarFileName = u.AvatarFileName }).FirstOrDefault();
+            return profile;
+        }
+
         public ICollection<User> GetUsers()
         {
             return ctx.User.ToList();

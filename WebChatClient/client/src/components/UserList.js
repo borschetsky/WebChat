@@ -49,7 +49,7 @@ class UserList extends React.Component {
         const { value } = e.target;
         Axios.get(`http://localhost:5000/api/users/search?name=${value}`, 
             {headers: {'Authorization': `Bearer ${token}`}}
-            ).then(res => this.setState({users: res.data}));
+            ).then(res => {this.setState({users: res.data}); console.log(res.data)});
         this.setState({search: value});
     };
     clearSearch = () =>{

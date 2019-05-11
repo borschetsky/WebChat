@@ -17,7 +17,7 @@ class Dashboard extends Component  {
             userProfile: null,
             userName: null,
             threadId: null,
-            oponentName: null,
+            oponentId: null,
             threads: [],
             message: '',
             messages: [],
@@ -57,6 +57,7 @@ class Dashboard extends Component  {
 
             this.getMessagesForThread(threadId);
         }
+        
     };
 
    getMessagesForThread = (threadId) => {
@@ -95,6 +96,7 @@ class Dashboard extends Component  {
             threads.forEach(t => {
                 if(t.id === message.threadId){
                     t.lastMessage.text = message.text;
+                    t.lastMessage.time = message.time;
                 }
             });
             this.setState({threads});
@@ -113,8 +115,8 @@ class Dashboard extends Component  {
             console.log(connectedUserName);
         });
     };
-
-    createThread = (oponentId, oponentUsername) => {
+    //change oponent name to id
+    createThread = (oponentId) => {
         const {token} = this.props.user;
         console.log(oponentId);
         var thread = this.state.threads.find(t => t.oponent === oponentId || t.owner === oponentId);
@@ -127,15 +129,15 @@ class Dashboard extends Component  {
                 }
             }).then(res => {
                 const{ threadId } = res.data;
-                this.setState({threadId, oponentName: oponentUsername});
+                this.setState({threadId, oponentId: oponentId});
             })
             .catch(err => {
                 console.log(err.response.data.threadId);
                 const { threadId } = err.response.data;
-                this.setState({threadId, oponentName: oponentUsername});
+                this.setState({threadId, oponentId: oponentId});
             });    
         }else{
-            this.setState({threadId: thread.id, oponentName: oponentUsername});
+            this.setState({threadId: thread.id, oponentId: oponentId});
         };
        
     };
@@ -165,10 +167,8 @@ class Dashboard extends Component  {
         });    
     };
 
-    subscribeToThread = (threadId, oponentName) => {
-        console.log(oponentName);
-        console.log(`Thred been choosen with id: ${threadId}`);
-        this.setState({threadId, oponentName});
+    subscribeToThread = (threadId, oponentId) => {
+        this.setState({threadId, oponentId: oponentId});
     };
 
     handleLogOut = () => {
@@ -184,12 +184,12 @@ class Dashboard extends Component  {
   render(){
    
     
-    const { userProfile, oponentName, messages, threadId, userName, threads, isEdit} = this.state;
+    const { userProfile, oponentId, messages, threadId, userName, threads, isEdit} = this.state;
    
     return(
         <div className="app">
            <MyProfile  handleLogOut={this.handleLogOut} profile={userProfile} handleEditorClose={this.handleEditorClose}/>
-            <OponentProfile name={oponentName}/>
+            <OponentProfile oponentId={oponentId}/>
             <MessageList messages={messages} threadId={threadId} username={userName}/>
             <SendMessageForm sendMessage={this.sendMessage}/>
             <UserList 

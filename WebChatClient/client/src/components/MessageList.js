@@ -17,6 +17,7 @@ class MessageList extends React.Component {
     }
     
     render() {
+        
         if (!this.props.threadId) {
             
             return (
@@ -36,10 +37,13 @@ class MessageList extends React.Component {
                 </div>
             );
         }
-        console.log(this.props.messages);
+
+        
         return (
             <div className="message-list">
                 {this.props.messages.map(({username, text, time, id}, index) => {
+                    var myDate = new Date(time);
+                    console.log(myDate.toTimeString());
                     return (
                         <Message key={id} username={username} text={text} time={time} curentUsername={this.props.username}/>
                     )

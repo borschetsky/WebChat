@@ -59,7 +59,9 @@ export default class Login extends Component {
                     this.props.history.push("/dashboard");
                 };
             }).catch(err => {
-                const {data} = err.response;
+                console.error(err);
+                if(err){
+                    const {data} = err.response;
                 for(let key of Object.keys(data)){
                     switch(key){
                         case "email":
@@ -77,8 +79,10 @@ export default class Login extends Component {
                         default:
                         break;
                     } 
+                }
+                
                 };
-                console.log(err.response.data);
+                
             });
         };
     };

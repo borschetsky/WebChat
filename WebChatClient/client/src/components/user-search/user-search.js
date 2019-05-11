@@ -14,7 +14,7 @@ export default class UserSearch extends Component {
             const isOnline = u.isOnline ? ' active' : '';
     
             return(
-                <li className={`found-users${isOnline}`} key={id} onClick={() => {createThread(id, username); this.props.clearSearch()}}>
+                <li className={`found-users${isOnline}`} key={id} onClick={() => {createThread(id); this.props.clearSearch()}}>
                     <img src={imagePath} alt="avatar"/>
                     <p> {username}</p>
                 </li>
