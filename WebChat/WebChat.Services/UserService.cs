@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using WebChat.Connection;
+using WebChat.Hubs.Interfaces;
 using WebChat.Models;
 using WebChat.Models.ViewModels;
 using WebChat.Services.Inerfaces;
@@ -15,13 +16,20 @@ namespace WebChat.Services
         private readonly IAuthService authService;
         private readonly IThreadService threadService;
         private readonly IMappingService mappingService;
+        private readonly IConnectionMapping<string> connectionMapping;
 
-        public UserService(WebChatContext ctx, IAuthService authService, IThreadService threadService, IMappingService mappingService)
+        public UserService(
+            WebChatContext ctx, 
+            IAuthService authService, 
+            IThreadService threadService, 
+            IMappingService mappingService, 
+            IConnectionMapping<string> connectionMapping)
         {
             this.ctx = ctx ?? throw new ArgumentNullException("Context can not be null");
             this.authService = authService ?? throw new ArgumentNullException("Authorization service can not be null");  
             this.threadService = threadService ?? throw new ArgumentNullException("Thread service service can not be null");
             this.mappingService = mappingService ?? throw new ArgumentNullException("Mapping service service can not be null");
+            this.connectionMapping = connectionMapping ?? throw new ArgumentNullException(nameof(connectionMapping));
         }
 
         public IEnumerable<UserViewModel> FindUserByMatch(string match, string curentUser)
@@ -32,7 +40,11 @@ namespace WebChat.Services
             var searchResult = new List<UserViewModel>();
             foreach (var user in queryResult)
             {
+                //Check is current user has any connection to provide online/offline status
+                List<string> userConnections = connectionMapping.GetConnections(user.Id).ToList();
+
                 var userVm = mappingService.MapUserModelToUserViewModel(user);
+                userVm.IsOnline = userConnections.Count == 0 ? false : true;
                 searchResult.Add(userVm);
             }
             return searchResult;
@@ -119,7 +131,7 @@ namespace WebChat.Services
         {
             var profile = (from u in ctx.User
                            where u.Id == id
-                           select new OponentViewModel { Name = u.Username, AvatarFileName = u.AvatarFileName }).FirstOrDefault();
+                           select new OponentViewModel { Id = u.Id, Username = u.Username, AvatarFileName = u.AvatarFileName }).FirstOrDefault();
             return profile;
         }
 

@@ -61,6 +61,8 @@ namespace WebChat.Controllers
             model.Id = Guid.NewGuid().ToString();
             
             //Add message async to Db
+            //TODO:
+            //Check time format!!!!
             MessageViewModel responseModel = await messageService.AddMessage(model);
 
             var senderId = User.Identity.Name;
@@ -117,15 +119,26 @@ namespace WebChat.Controllers
 
             foreach (var entity in threadsEM)
             {
+                
+                var oponentId = curentUserId;
+                if (entity.OwnerId == curentUserId)
+                {
+                    oponentId = entity.OponentId;
+                }
+                if (entity.OponentId == curentUserId)
+                {
+                    oponentId = entity.OwnerId;
+                }
+
+                var connections = this.connectionMapping.GetConnections(oponentId);
                 var vModel = new ThreadViewModel()
                 {
                     Id = entity.Id,
-                    Owner = entity.OwnerId,
-                    OwnerName = this.userSercvice.GetUserNameById(entity.OwnerId),
-                    Oponent = entity.OponentId,
-                    OponentName = this.userSercvice.GetUserNameById(entity.OponentId),
-                    LastMessage = this.thredService.GetThreadLastMessage(entity.Id)
+                    LastMessage = this.thredService.GetThreadLastMessage(entity.Id),
+                    OponentVM = userSercvice.GetOponentProfile(oponentId)
                 };
+                vModel.OponentVM.IsOnline = connections.Count() == 0 ? false : true;
+
                 threadsVM.Add(vModel);
             }
 
@@ -135,32 +148,38 @@ namespace WebChat.Controllers
         [HttpPost("createthread")]
         public async Task<ActionResult> CreateThread([FromBody] ThreadViewModel model)
         {
-            if (string.IsNullOrEmpty(model.Oponent))
+            if (!ModelState.IsValid)
             {
                 return BadRequest();
             }
             //Curetn Http Context User
             var curentUserId = User.Identity.Name;
+            //Oponent Id
+            var curentOponentId = model.OponentVM.Id;
             //TODO: Export valiation logic to Validation helper and implement caching
             //All curent user's threads
             var curentUserThreads = this.thredService.GetUserThreads(curentUserId);
             //Validation
-            if (curentUserThreads.Any(t => t.OwnerId == model.Oponent || t.OponentId == model.Oponent))
+            if (curentUserThreads.Any(t => t.OwnerId == curentOponentId || t.OponentId == curentOponentId))
             {
-                var threadId = curentUserThreads.FirstOrDefault(t => t.OwnerId == model.Oponent || t.OponentId == model.Oponent).Id;
+                var threadId = curentUserThreads.FirstOrDefault(t => t.OwnerId == model.OponentVM.Id || t.OponentId == model.OponentVM.Id).Id;
                 return BadRequest(new { message = "You already have thread with this user", ThreadId = threadId});
             }
             //End of validation
-            ThreadViewModel newThreadVM = this.thredService.CreateThreadViewModel(curentUserId, model.Oponent);
+            //Creating response ViewModel
+            ThreadViewModel newThreadVM = this.thredService.CreateThreadViewModel(curentUserId, curentOponentId);
 
+            //Adding thread to DB
             this.thredService.AddThread(newThreadVM);
-            //Send new thread to connected clients
-            newThreadVM.OwnerName = this.userSercvice.GetUserNameById(newThreadVM.Owner);
-            newThreadVM.OponentName = this.userSercvice.GetUserNameById(newThreadVM.Oponent);
-            newThreadVM.LastMessage = null;
-
-            await hubContext.Clients.Users(newThreadVM.Owner, newThreadVM.Oponent).SendAsync("ReviceThread", newThreadVM);
-
+            
+            newThreadVM.LastMessage = new LastMessageViewModel() { Text = "No messages"};
+            newThreadVM.OponentVM = userSercvice.GetOponentProfile(curentUserId);
+            //Send thread to Oponent with curent User Info
+            await hubContext.Clients.User(curentOponentId).SendAsync("ReviceThread", newThreadVM);
+            newThreadVM.OponentVM = model.OponentVM;
+            //Send thread to curent user with opopnent info
+            await hubContext.Clients.User(curentUserId).SendAsync("ReviceThread", newThreadVM);
+            //Send created thread Id to be setted on front end
             return Ok(new { ThreadId = newThreadVM.Id});
         }
     }

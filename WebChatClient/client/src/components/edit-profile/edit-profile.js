@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import './edit-profile.css';
-import { getDefaultImageUrl, getUserAvatar } from '../../services'
+import { getDefaultImageUrl, getUserAvatar, defaultimage } from '../../services'
 import Axios from 'axios';
 import { withAuth } from '../hoc';
 
@@ -26,7 +26,8 @@ class EditProfile extends Component{
 
     fileSelectedHandler = (e) => {
         this.setState({
-            selsectedFile: e.target.files[0]
+            selsectedFile: e.target.files[0], 
+
         });
     };
 
@@ -55,7 +56,7 @@ class EditProfile extends Component{
             <div className="edit-profile">
                 <h5>EDIT PROFILE</h5>
                 <div className="edit-image">
-                    <img src={imagePath} alt="avatar"/>
+                    <img onError={defaultimage} src={imagePath} alt="avatar" name={username}/>
                     <h6>Upload new avatar...</h6>
                 </div>
                 <div className="file-upload">

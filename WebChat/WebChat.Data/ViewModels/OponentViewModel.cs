@@ -6,8 +6,12 @@ namespace WebChat.Models.ViewModels
 {
     public class OponentViewModel
     {
-        public string Name { get; set; }
+        public string Id { get; set; }
+
+        public string Username { get; set; }
 
         public string AvatarFileName { get; set; }
+
+        public bool IsOnline { get; set; }
     }
 }

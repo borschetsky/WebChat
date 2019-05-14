@@ -9,7 +9,7 @@ import OponentProfile from './oponent-profile'
 import MyProfile from './my-profile';
 
 class Dashboard extends Component  {
-
+//TODO: use only user profile with props needed
     constructor(props){
         super(props);
         this.state = {
@@ -18,6 +18,7 @@ class Dashboard extends Component  {
             userName: null,
             threadId: null,
             oponentId: null,
+            oponentProfile:{},
             threads: [],
             message: '',
             messages: [],
@@ -47,6 +48,7 @@ class Dashboard extends Component  {
         this.connection.on('ReciveConnectionId', connId => {
             console.log(`CuurentConnectionId: ${connId}`);
         });
+        this.setState({hubConnection: this.connection});
         this.update();
     };
 
@@ -60,26 +62,28 @@ class Dashboard extends Component  {
         
     };
 
-   getMessagesForThread = (threadId) => {
-    const {token} = this.props.user;
-        this.setState({messages: []});
-        Axios.get(`http://localhost:5000/api/thread/getmessages/${threadId}`, {
-            headers:{'Authorization': `Bearer ${token}`}
-        }).then(res => {
-            this.setState({messages: res.data});
-        }).catch(err => console.log(err.response));
+    getMessagesForThread = (threadId) => {
+        const {token} = this.props.user;
+            this.setState({messages: []});
+            Axios.get(`http://localhost:5000/api/thread/getmessages/${threadId}`, {
+                headers:{'Authorization': `Bearer ${token}`}
+            }).then(res => {
+                this.setState({messages: res.data});
+            }).catch(err => console.log(err.response));
 
-   };
+    };
 
    update = async () => {
         const {token} = this.props.user;
-
+        //Getting user's threads
         await Axios.get('http://localhost:5000/api/hey/getthreads', {
             headers: {'Authorization': `Bearer ${token}`}
         }).then(res => {
-            if(res.status !== 204){
+            const { status } = res;
+            if(status !== 204){
                console.log(res.data);
-               this.setState({threads: res.data});
+               const { data: threads} = res;
+               this.setState({threads});
             };
         }).catch(err => console.log(err));
 
@@ -88,6 +92,22 @@ class Dashboard extends Component  {
             let {threads} = this.state;
             threads = [...threads, thread];
             this.setState({threads});
+        });
+
+        this.connection.on('ReciveAvatar', (avatar) => {
+            const { userProfile, oponentProfile, threads } = this.state;
+            if(avatar.uploaderId === userProfile.id){
+                userProfile.avatarFileName = avatar.body.value;
+            };
+            if(avatar.uploaderId === oponentProfile.id){
+                oponentProfile.avatarFileName = avatar.body.value;
+            }
+            threads.forEach(t => {
+                if(t.oponentVM.id === avatar.uploaderId){
+                    t.oponentVM.avatarFileName = avatar.body.value;
+                }
+            });
+            this.setState({userProfile, oponentProfile, threads});
         });
 
         this.connection.on('ReciveMessage', (message) => {
@@ -103,41 +123,57 @@ class Dashboard extends Component  {
             if(message.threadId !== this.state.threadId){
                 return;
             }
-            console.log(message);
             let {messages} = this.state;
             messages = [...messages, message];
 
             this.setState({messages: messages});
         });
 
-        this.connection.on('ReciveClientStatus', (userId) => {
-            var connectedUserName = this.state.users.find(u => u.id === userId).userName;
-            console.log(connectedUserName);
+        this.connection.on('ReciveConnectedStatus', (connectedUserId) => {
+            const { threads } = this.state;
+            threads.forEach(t => {
+                if(t.oponentVM.id === connectedUserId){
+                    t.oponentVM.isOnline = true;
+                };
+            });
+            this.setState({threads});
         });
+
+        this.connection.on('ReciveDisconnectedStatus', disconnectedUserId => {
+            const { threads } = this.state;
+            threads.forEach(t => {
+                if(t.oponentVM.id === disconnectedUserId){
+                    t.oponentVM.isOnline = false;
+                };
+            });
+            this.setState({threads});
+        });
+
     };
     //change oponent name to id
-    createThread = (oponentId) => {
+    createThread = (oponentVM) => {
         const {token} = this.props.user;
-        console.log(oponentId);
-        var thread = this.state.threads.find(t => t.oponent === oponentId || t.owner === oponentId);
+        const { id } = this.state.userProfile;
+        var thread = this.state.threads.find(t => t.oponentVM.id === oponentVM.id || t.owner === oponentVM.id);
         if(!thread){
             Axios.post('http://localhost:5000/api/hey/createthread', {
-                Oponent: oponentId
+                Owner: id,
+                OponentVM: {Id: oponentVM.id, Username: oponentVM.username, AvatarFileName: oponentVM.avatarFileName}
             }, {
                 headers:{
                     'Authorization': `Bearer ${token}`
                 }
             }).then(res => {
                 const{ threadId } = res.data;
-                this.setState({threadId, oponentId: oponentId});
+                this.setState({threadId, oponentId: oponentVM.id, oponentProfile: oponentVM});
             })
             .catch(err => {
                 console.log(err.response.data.threadId);
                 const { threadId } = err.response.data;
-                this.setState({threadId, oponentId: oponentId});
+                this.setState({threadId, oponentId: oponentVM.id, oponentProfile: oponentVM});
             });    
         }else{
-            this.setState({threadId: thread.id, oponentId: oponentId});
+            this.setState({threadId: thread.id, oponentId: oponentVM.id, oponentProfile: oponentVM});
         };
        
     };
@@ -167,8 +203,8 @@ class Dashboard extends Component  {
         });    
     };
 
-    subscribeToThread = (threadId, oponentId) => {
-        this.setState({threadId, oponentId: oponentId});
+    subscribeToThread = (threadId, oponentVm) => {
+        this.setState({threadId, oponentId: oponentVm.id, oponentProfile: oponentVm});
     };
 
     handleLogOut = () => {
@@ -184,12 +220,12 @@ class Dashboard extends Component  {
   render(){
    
     
-    const { userProfile, oponentId, messages, threadId, userName, threads, isEdit} = this.state;
+    const { userProfile, oponentId, messages, threadId, userName, threads, isEdit, oponentProfile} = this.state;
    
     return(
         <div className="app">
            <MyProfile  handleLogOut={this.handleLogOut} profile={userProfile} handleEditorClose={this.handleEditorClose}/>
-            <OponentProfile oponentId={oponentId}/>
+            <OponentProfile oponentId={oponentId} profile={oponentProfile}/>
             <MessageList messages={messages} threadId={threadId} username={userName}/>
             <SendMessageForm sendMessage={this.sendMessage}/>
             <UserList 

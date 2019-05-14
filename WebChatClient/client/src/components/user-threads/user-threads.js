@@ -1,44 +1,46 @@
 import React from 'react';
+import { getDefaultImageUrl, getUserAvatar, defaultimage } from '../../services';
+import './user-threads.css';
+
 
 
 const UserThreads = (props) => {
     
-        const {threads, threadId, userId} = props;
+        const {threads, threadId} = props;
         if(threads.length === 0){
             return <h4>Yo still have no threads</h4>;
         };
+        //Sorting threads by last message time
         threads.sort(function(a, b){
+            if(a.lastMessage === null && b.lastMessage !== null) return -1;
+            if(a.lastMessage !== null && b.lastMessage === null) return 1;
+            if(a.lastMessage === null && b.lastMessage === null) return 1;
             return new Date(b.lastMessage.time).getTime() - new Date(a.lastMessage.time).getTime()
         });
+        
         const items = threads.map(thread => {
-           
-            let userNameToDisplay = '';
-            let oponetId = '';
-            if (thread.owner === userId){
-                userNameToDisplay = thread.oponentName;
-                oponetId = thread.oponent;  
-            }
-            if(thread.oponent === userId){
-                userNameToDisplay = thread.ownerName;
-                oponetId = thread.owner;
-            };
-            const imageLink = `https://ui-avatars.com/api/?name=${userNameToDisplay}&rounded=true&bold=true&size=128`;
             const active = thread.id === threadId ? 'active' : '';
             const lasteMessage = thread.lastMessage ? thread.lastMessage.text : 'No messages';
-            console.log(oponetId);
+            const { oponentVM } = thread; 
+            const imagePath = oponentVM.avatarFileName === null ? getDefaultImageUrl(oponentVM.username) : getUserAvatar(oponentVM.avatarFileName);
+            const lastMessageTime = lasteMessage !== 'No messages' ? new Date(thread.lastMessage.time).toLocaleTimeString() : '';
+            const { isOnline } = thread.oponentVM;
+            const classStatus = isOnline ? 'online' : '';
+            console.log(isOnline);
             return(
                 <li key={thread.id} className={"clearfix " + active} onClick={() => {
-                    props.subscribeToThread(thread.id, oponetId);
+                    props.subscribeToThread(thread.id, oponentVM);
                     
                     }}>
                     <div className="clearfix-wrapper" >
-                        <img src={imageLink} alt="avatar"/>
+                        <img onError={defaultimage} src={imagePath} alt="avatar" name={oponentVM.username} className={`oponent ${classStatus}`}/>
                         <div className="about">
-                            <p className="name">{userNameToDisplay}</p>
+                            <p className="name">{oponentVM.username}</p>
                             <p className="status">
                                 {lasteMessage}
                             </p>
                         </div>
+                        <span><small>{lastMessageTime}</small></span>
                     </div>
                  </li>
                  );

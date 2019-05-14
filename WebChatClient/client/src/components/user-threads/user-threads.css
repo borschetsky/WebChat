@@ -1,0 +1,47 @@
+div.clearfix-wrapper img{
+    height: 50px;
+    width: 50px;
+    border-radius: 49.9%;
+    object-fit: cover;
+}
+
+div.clearfix-wrapper object{
+    height: 50px;
+    width: 50px;
+    border-radius: 49.9%;
+    object-fit: cover;
+}
+
+li.clearfix div.clearfix-wrapper{
+    display: grid;
+    width: 88%;
+    grid-template-columns: 50px 1fr 50px;
+    grid-template-rows: 1fr 1fr;
+    grid-template-areas: 
+    "ava ab time"
+    "ava ab .";
+}
+li.clearfix div.clearfix-wrapper img.oponent{
+    grid-area: ava;
+    border: 2px solid grey;
+}
+li.clearfix div.clearfix-wrapper img.oponent.online{
+    border: 2px solid #2ecc71;;
+}
+/* li.clearfix div.clearfix-wrapper div.about p.name{
+    grid-area: nam;
+    
+}
+li.clearfix div.clearfix-wrapper div.about p.status{
+    grid-area: msg;
+} */
+
+li.clearfix div.clearfix-wrapper div.about{
+    grid-area: ab;
+    padding-left: 15px;
+}
+
+li.clearfix div.clearfix-wrapper span{
+    justify-self: end;
+    align-self: start;
+}

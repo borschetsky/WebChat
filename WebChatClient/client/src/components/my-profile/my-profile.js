@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import './my-profile.css';
-import {getDefaultImageUrl, getUserAvatar} from '../../services/';
+import {getDefaultImageUrl, getUserAvatar, defaultimage} from '../../services/';
 
 class MyProfile extends Component {
     state = {
@@ -42,7 +42,7 @@ class MyProfile extends Component {
                         <span className="edit" onClick={() => this.props.handleEditorClose()}>
                             <i className="material-icons">create</i>
                         </span>
-                        <img src={imagePath} alt="avatar"/>
+                        <img onError={defaultimage} src={imagePath} alt="avatar" name={username}/>
                     </div>
                     <div className="my-username">
                         <p>{username}</p>

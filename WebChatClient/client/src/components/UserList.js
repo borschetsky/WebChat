@@ -49,7 +49,7 @@ class UserList extends React.Component {
         const { value } = e.target;
         Axios.get(`http://localhost:5000/api/users/search?name=${value}`, 
             {headers: {'Authorization': `Bearer ${token}`}}
-            ).then(res => {this.setState({users: res.data}); console.log(res.data)});
+            ).then(res => {this.setState({users: res.data});});
         this.setState({search: value});
     };
     clearSearch = () =>{
@@ -59,10 +59,10 @@ class UserList extends React.Component {
     
     render () {
         const { threads, threadId} = this.state;
-        const { userId, subscribeToThread } = this.props; 
+        const { subscribeToThread } = this.props; 
         let itemsToDisplay = this.state.search.length > 0 ? 
         <UserSearch users={this.state.users} createThread={this.props.createThread} clearSearch={this.clearSearch}/>
-        : <UserThreads threads={threads} userId={userId} subscribeToThread={subscribeToThread} threadId={threadId}/>;
+        : <UserThreads threads={threads}  subscribeToThread={subscribeToThread} threadId={threadId}/>;
         if(this.state.isEdit){
             return(
                 <div className="people-list">

@@ -1,8 +1,7 @@
 import React, { Component } from 'react';
 import './oponent-profile.css';
 import { withAuth } from '../hoc';
-import Axios from 'axios';
-import { getDefaultImageUrl, getUserAvatar } from '../../services';
+import { getDefaultImageUrl, getUserAvatar, defaultimage } from '../../services';
 
  class OponentProfile extends Component {
     state = {
@@ -11,33 +10,35 @@ import { getDefaultImageUrl, getUserAvatar } from '../../services';
     }
 
     componentDidMount(){
-        this.setState({oponentId: this.props.oponentId});
+        this.setState({
+            oponentId: this.props.oponentId,
+            profile: this.props.profile
+        });
+        
     }
     componentDidUpdate(prevProps){
         if(prevProps.oponentId !== this.props.oponentId){
             this.setState({oponentId: this.props.oponentId});
-            this.getProfile();
         }
+        if(prevProps.profile !== this.props.profile){
+            this.setState({profile: this.props.profile})
+        }
+        
     }
-    getProfile = () =>{
-        const { oponentId } = this.props;
-        const { token } = this.props.user;
-
-        Axios.get(`http://localhost:5000/api/users/profilebyid/${oponentId}`,{
-            headers:{'Authorization': `Bearer ${token}`}
-        }).then(res => this.setState({profile: res.data}));
-    }
+    
     render(){
-        const { avatarFileName, name} = this.state.profile;
-        const { oponentId } = this.state
-        const imagePath = !avatarFileName ? getDefaultImageUrl(name) : getUserAvatar(avatarFileName);
+        const { profile } = this.state;
+        const { oponentId } = this.state;
+        const imagePath = profile.avatarFileName === null ? getDefaultImageUrl(profile.username) : getUserAvatar(profile.avatarFileName);
         if(!oponentId){
-            return(<div></div>)
+            return(<div className="oponent-profile">
+                <p></p>
+        </div>)
         }
         return(
             <div className="oponent-profile">
-                <img src={imagePath} alt="avatar"/>
-                <p>{name}</p>
+                <img onError={defaultimage} src={imagePath} alt="avatar" name={profile.username}/>
+                <p>{profile.username}</p>
             </div>
             );
     };

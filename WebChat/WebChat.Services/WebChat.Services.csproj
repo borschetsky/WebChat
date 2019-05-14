@@ -11,6 +11,7 @@
   <ItemGroup>
     <ProjectReference Include="..\WebChat.Connection\WebChat.Connection.csproj" />
     <ProjectReference Include="..\WebChat.Data\WebChat.Models.csproj" />
+    <ProjectReference Include="..\WebChat.Hub\WebChat.Hubs.csproj" />
   </ItemGroup>
 
   <ItemGroup>

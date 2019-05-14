@@ -57,7 +57,7 @@ namespace WebChat.Services.Helpers
             {
                 Id = model.Id,
                 Owner = model.OwnerId,
-                Oponent = model.OponentId
+                //Oponent = model.OponentId
             };
             return threadVM;
         }
@@ -68,7 +68,7 @@ namespace WebChat.Services.Helpers
             {
                 Id = model.Id,
                 OwnerId = model.Owner,
-                OponentId = model.Oponent
+                OponentId = model.OponentVM.Id
             };
 
             return threadModel;

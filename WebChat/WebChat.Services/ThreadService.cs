@@ -41,7 +41,7 @@ namespace WebChat.Services
             {
                 Id = Guid.NewGuid().ToString(),
                 Owner = ownerId,
-                Oponent = oponentId
+                OponentVM = new OponentViewModel() { Id = oponentId}
             };
 
             return newThread;

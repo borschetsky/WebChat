@@ -42,10 +42,11 @@ class MessageList extends React.Component {
         return (
             <div className="message-list">
                 {this.props.messages.map(({username, text, time, id}, index) => {
-                    var myDate = new Date(time);
-                    console.log(myDate.toTimeString());
+                    var myDate = new Date(time).toLocaleTimeString();
+                    
+                    
                     return (
-                        <Message key={id} username={username} text={text} time={time} curentUsername={this.props.username}/>
+                        <Message key={id} username={username} text={text} time={myDate} curentUsername={this.props.username}/>
                     )
                 })}
             </div>
