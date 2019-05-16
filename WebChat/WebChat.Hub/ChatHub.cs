@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using WebChat.Hubs.ConnectionMapper;
 using WebChat.Hubs.Interfaces;
+using System.Threading;
 
 namespace WebChat.Hubs
 {
@@ -14,13 +15,25 @@ namespace WebChat.Hubs
     {
         private readonly IConnectionMapping<string> connections;
 
-        //public readonly static ConnectionMapping<string> _connections = new ConnectionMapping<string>();
         public ChatHub(IConnectionMapping<string> connections)
         {
-            this.connections = connections;
+            this.connections = connections ?? throw new ArgumentNullException(nameof(connections));
         }
         
-
+        //Typing notification
+        public async Task OnTyping(string threadId)
+        {
+            var curentUserId = Context.User.Identity.Name;
+            await Clients.All.SendAsync("ReciveTypingStatus", new { UserId = curentUserId, ThreadId = threadId });
+       
+            
+        }
+        public async Task OnStopTyping(string threadId)
+        {
+            var curentUserId = Context.User.Identity.Name;
+            await Clients.All.SendAsync("ReciveStopTypingStatus", new { UserId = curentUserId, ThreadId = threadId });
+        }
+        //Online status
         public override Task OnConnectedAsync()
         {
             var curentUserId = Context.User.Identity.Name;

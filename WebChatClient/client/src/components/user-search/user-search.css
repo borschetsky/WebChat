@@ -1,0 +1,7 @@
+div.people-list ul.list{
+    display: grid;
+}
+div.people-list ul.list h4{
+    align-self: center;
+    justify-self: center;
+}

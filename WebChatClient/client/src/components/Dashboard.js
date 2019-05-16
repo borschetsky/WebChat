@@ -8,6 +8,7 @@ import UserList from './UserList';
 import OponentProfile from './oponent-profile'
 import MyProfile from './my-profile';
 
+
 class Dashboard extends Component  {
 //TODO: use only user profile with props needed
     constructor(props){
@@ -56,10 +57,8 @@ class Dashboard extends Component  {
         if(prevState.threadId !== this.state.threadId){
             //Invoke get messages for thread
             const {threadId} = this.state;
-
             this.getMessagesForThread(threadId);
         }
-        
     };
 
     getMessagesForThread = (threadId) => {
@@ -127,6 +126,49 @@ class Dashboard extends Component  {
             messages = [...messages, message];
 
             this.setState({messages: messages});
+        });
+
+        this.connection.on('ReciveTypingStatus', ({userId, threadId}) => {
+            const {threads: currentThreads } = this.state;
+            const { oponentProfile: currentOpponentProfile } = this.state;
+            if(currentOpponentProfile.id === userId && currentOpponentProfile.isTyping === false){
+                currentOpponentProfile.isTyping = true;
+                this.setState(() => ({oponentProfile: currentOpponentProfile}));
+                this.opponentTimer = setTimeout(() => {currentOpponentProfile.isTyping = false; this.setState({oponentProfile: currentOpponentProfile})}, 3000);
+                
+            }
+            currentThreads.forEach(t => {
+                if(t.id === threadId){
+                    const { oponentVM } = t;
+                    if(oponentVM.id === userId && !oponentVM.isTyping){
+                        t.oponentVM.isTyping = true;
+                        this.setState({threads: currentThreads});
+                        setTimeout(() => {t.oponentVM.isTyping = false; this.setState({threads: currentThreads})}, 3000);
+                    }
+                }
+            });
+        });
+
+        
+        this.connection.on('ReciveStopTypingStatus', ({userId, threadId}) => {
+            const {threads} = this.state;
+            const { oponentProfile } = this.state;
+            if(oponentProfile.id === userId && oponentProfile.isTyping){
+                oponentProfile.isTyping = false;
+            }
+            threads.forEach(t => {
+                if(t.id === threadId){
+                    const { oponentVM } = t;
+                    if(oponentVM.id === userId && oponentVM.isTyping){
+                        oponentVM.isTyping = false;
+                    }
+                }
+               
+            });
+            this.setState({
+                threads, oponentProfile
+            });
+
         });
 
         this.connection.on('ReciveConnectedStatus', (connectedUserId) => {
@@ -217,6 +259,26 @@ class Dashboard extends Component  {
         }));
     }
 
+    handleTyping = (e) => {
+        console.log(e.value);
+        if(e.value.length === 0 ){
+            console.log('stop')
+            this.onStopTyping(e.name);
+        }else{
+            this.onTyping(e.name);
+            
+        }
+        
+    }
+
+    onTyping = (id) => {
+        this.connection.invoke('OnTyping', id);
+    };
+    onStopTyping = (id) => {
+        this.connection.invoke('OnStopTyping', id);
+        
+    }
+
   render(){
    
     
@@ -227,7 +289,7 @@ class Dashboard extends Component  {
            <MyProfile  handleLogOut={this.handleLogOut} profile={userProfile} handleEditorClose={this.handleEditorClose}/>
             <OponentProfile oponentId={oponentId} profile={oponentProfile}/>
             <MessageList messages={messages} threadId={threadId} username={userName}/>
-            <SendMessageForm sendMessage={this.sendMessage}/>
+            <SendMessageForm sendMessage={this.sendMessage} typing={this.handleTyping} threadId={threadId}/>
             <UserList 
                 profile={userProfile}
                 threadId={threadId}

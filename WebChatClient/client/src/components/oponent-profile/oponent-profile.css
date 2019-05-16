@@ -5,17 +5,40 @@
     justify-content: center;
     background: #f5f5f5;
     border-left: 2px solid #eff1f4;
+    display: grid;
+    grid-template-columns: 80px 1fr 80px;
+    grid-template-areas: "opponent-avatar opponent-info oponent-status"
 }
 
 .oponent-profile img{
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    float: left;
-    margin: 9px 12px 0 9px;
+    align-self: center;
+    justify-self: center;
+    
     object-fit: cover;
+    grid-area: opponent-avatar;
 }
 
-.contact-profile p {
-    float: left;
+.oponent-profile div.info{
+    width: 50%;
+    grid-area: opponent-info;
+    display: grid;
+    align-self: center;
+    justify-self: center;
+    justify-items: center;
+    align-items: center;
+}
+.oponent-profile div.info p.username {
+    margin: 0;
+    font-weight: 500;
+    justify-self: center;
+  }
+  .oponent-profile div.info p.satus{
+      margin: 3px 0 0 0 ;
+
+      font-size: 13px;
+      font-weight: 300;
+      justify-self: center;
   }

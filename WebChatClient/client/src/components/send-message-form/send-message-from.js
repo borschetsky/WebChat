@@ -16,14 +16,18 @@ class SendMessageForm extends Component {
         this.setState({
             message: e.target.value
         })
+        this.props.typing(e.target);
     }
     
     handleSubmit(e) {
-        e.preventDefault()
+        e.preventDefault();
+        const target = e.target.querySelector('input');
         this.props.sendMessage(this.state.message);
         this.setState({
             message: ''
         })
+        target.value = '';
+        this.props.typing(target);
     }
     
     render() {
@@ -36,7 +40,9 @@ class SendMessageForm extends Component {
                     onChange={this.handleChange}
                     value={this.state.message}
                     placeholder="Type your message and hit ENTER"
-                    type="text" />
+                    type="text"
+                    name={this.props.threadId} />
+                    
                     <button type="submit" className="submit">
                         <i className="material-icons md-36">send</i>
                     </button>

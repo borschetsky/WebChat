@@ -42,6 +42,7 @@ class UserList extends React.Component {
         if(prevProps.profile !== this.props.profile){
             this.setState({profile: this.props.profile}, console.log(this.state.profile))
         }
+        
        
     }
     handleSearch = (e) => {

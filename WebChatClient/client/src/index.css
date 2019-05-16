@@ -1,7 +1,7 @@
 body {
     margin: 0;
     padding: 0;
-    font-family: sans-serif;
+    font-family: 'Roboto', sans-serif;
   }
  
 
@@ -17,7 +17,7 @@ html, body {
     height: 100%;
     margin: 0;
     padding: 0;
-    font-family: system-ui;
+    font-family: 'Roboto', sans-serif;
     font-weight: 200;
     color: 	#3e5869; 
 }

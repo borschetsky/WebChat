@@ -53,8 +53,8 @@
   }
   
   .people-list ul li {
-    padding-bottom: 10px;
-    padding-top: 10px;
+    padding-bottom: 6px;
+    padding-top: 6px;
     border-bottom: 1px solid #eff1f4;
     overflow: hidden;
     position: relative;
@@ -66,21 +66,9 @@
     width: 50px;
     margin-right: 10px;
   }
-  .people-list .about {
-    padding-top: 5px;
-   
-  }
+  
  
-  .people-list p.status {
-    color: #92959e;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    margin: 0;
-    font-weight: 400;
-    margin: 5px 0 0 0 ;
-    padding: 0 0 1px;
-  }
+  
   .people-list p.name{
       margin: 0;
       font-weight: 500;

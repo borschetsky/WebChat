@@ -21,12 +21,13 @@ const UserThreads = (props) => {
         const items = threads.map(thread => {
             const active = thread.id === threadId ? 'active' : '';
             const lasteMessage = thread.lastMessage ? thread.lastMessage.text : 'No messages';
+            const typingOrLM = thread.oponentVM.isTyping ? 'Typing...' : lasteMessage;
             const { oponentVM } = thread; 
             const imagePath = oponentVM.avatarFileName === null ? getDefaultImageUrl(oponentVM.username) : getUserAvatar(oponentVM.avatarFileName);
             const lastMessageTime = lasteMessage !== 'No messages' ? new Date(thread.lastMessage.time).toLocaleTimeString() : '';
             const { isOnline } = thread.oponentVM;
             const classStatus = isOnline ? 'online' : '';
-            console.log(isOnline);
+            
             return(
                 <li key={thread.id} className={"clearfix " + active} onClick={() => {
                     props.subscribeToThread(thread.id, oponentVM);
@@ -37,7 +38,7 @@ const UserThreads = (props) => {
                         <div className="about">
                             <p className="name">{oponentVM.username}</p>
                             <p className="status">
-                                {lasteMessage}
+                                {typingOrLM}
                             </p>
                         </div>
                         <span><small>{lastMessageTime}</small></span>

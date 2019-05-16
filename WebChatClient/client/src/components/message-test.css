@@ -32,6 +32,7 @@
     padding-left: 10px;
     margin-top: 5px;
     font-size: 13px;
+    font-weight: 300;
     
   }
 /*Reply */
@@ -75,4 +76,6 @@
     margin-top: 5px;
     font-size: 13px;
     justify-self: end;
+    font-weight: 300;
+
   }

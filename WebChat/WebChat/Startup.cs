@@ -71,18 +71,6 @@ namespace WebChat
 
                         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration.GetValue<string>("JWTSecretKey")))
                     };
-                    //options.Events = new JwtBearerEvents
-                    //{
-                    //    OnMessageReceived = context =>
-                    //    {
-                    //        var accessToken = context.Request.Query["access_token"];
-                    //        if (string.IsNullOrEmpty(accessToken) == false)
-                    //        {
-                    //            context.Token = accessToken;
-                    //        }
-                    //        return Task.CompletedTask;
-                    //    }
-                    //};
                     options.Events = new JwtBearerEvents
                     {
                         OnMessageReceived = context =>
@@ -147,12 +135,7 @@ namespace WebChat
 
             //app.UseHttpsRedirection();
             app.UseStaticFiles();
-            //app.UseStaticFiles(new StaticFileOptions
-            //{
-            //    FileProvider = new PhysicalFileProvider(
-            //Path.Combine(Directory.GetCurrentDirectory(), "static")),
-            //    RequestPath = "/static"
-            //});
+            
             app.UseAuthentication();
             
             app.UseSignalR(routes => 

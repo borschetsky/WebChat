@@ -13,5 +13,7 @@ namespace WebChat.Models.ViewModels
         public string AvatarFileName { get; set; }
 
         public bool IsOnline { get; set; }
+
+        public bool IsTyping { get; set; } = false;
     }
 }
