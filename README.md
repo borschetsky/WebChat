@@ -10,3 +10,6 @@ You can clone the repo to your local machine. At VS run the backend with hardcod
 
 >Handling connection status, showing online/offline statuses for each registered user, not only connection with connectin mapper implemented on backend
 >![](status.gif)
+
+>Direct messages and avatar uploader with connected clients notification
+>![](avatar.gif)
