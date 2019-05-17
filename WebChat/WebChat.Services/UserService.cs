@@ -126,12 +126,19 @@ namespace WebChat.Services
             return viewModel;
 
         }
-
+        //TODO: Check opponent's status
         public OponentViewModel GetOponentProfile(string id)
         {
+            var userConnections = connectionMapping.GetConnections(id);
+
             var profile = (from u in ctx.User
                            where u.Id == id
-                           select new OponentViewModel { Id = u.Id, Username = u.Username, AvatarFileName = u.AvatarFileName }).FirstOrDefault();
+                           select new OponentViewModel
+                           {
+                               Id = u.Id, Username = u.Username,
+                               AvatarFileName = u.AvatarFileName,
+                               IsOnline = userConnections.Count() > 0 ? true : false
+                           }).FirstOrDefault();
             return profile;
         }
 

@@ -48,6 +48,7 @@ namespace WebChat.Hubs
             return base.OnConnectedAsync();
         }
 
+        //TODO: INvoke this method when user logOut
         public override Task OnDisconnectedAsync(Exception exception)
         {
             Groups.RemoveFromGroupAsync(Context.ConnectionId, Context.User.Identity.Name);

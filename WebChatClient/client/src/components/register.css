@@ -105,6 +105,10 @@ light green: #A3C4BC
     flex-direction: column;
     align-items: center;
   }
+
+  div.createAccount a{
+    text-decoration: none;
+  }
   
   .createAccount button {
     background-color: #519e8a;
@@ -127,5 +131,6 @@ light green: #A3C4BC
   
   .createAccount small {
     color: #999;
-    font-weight: lighter
+    font-weight: lighter;
+    text-decoration: none;
   }

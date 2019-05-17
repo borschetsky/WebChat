@@ -5,7 +5,7 @@ import './message-test.css';
 
 function Message(props) {
     const classToDispay = props.username === props.curentUsername ? 'replies' : 'recived';
-
+    
     const imageLink = `https://ui-avatars.com/api/?name=${props.username}&rounded=true&bold=true&size=128`;
     return (
             <li className={ classToDispay }>

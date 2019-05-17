@@ -194,13 +194,14 @@ class Dashboard extends Component  {
     };
     //change oponent name to id
     createThread = (oponentVM) => {
+        console.log(oponentVM);
         const {token} = this.props.user;
         const { id } = this.state.userProfile;
         var thread = this.state.threads.find(t => t.oponentVM.id === oponentVM.id || t.owner === oponentVM.id);
         if(!thread){
             Axios.post('http://localhost:5000/api/hey/createthread', {
                 Owner: id,
-                OponentVM: {Id: oponentVM.id, Username: oponentVM.username, AvatarFileName: oponentVM.avatarFileName}
+                OponentVM: oponentVM
             }, {
                 headers:{
                     'Authorization': `Bearer ${token}`
@@ -252,6 +253,7 @@ class Dashboard extends Component  {
     handleLogOut = () => {
         localStorage.removeItem('user-data');
         this.props.history.push('/Login');
+        this.connection.stop();
     };
     handleEditorClose = () => {
         this.setState((state) => ({
@@ -266,9 +268,7 @@ class Dashboard extends Component  {
             this.onStopTyping(e.name);
         }else{
             this.onTyping(e.name);
-            
         }
-        
     }
 
     onTyping = (id) => {
