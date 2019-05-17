@@ -14,18 +14,24 @@
       height: auto;
 
   }
-  .message-list li.recived p{
+  .message-list li.recived div{
     grid-area: msg;  
+  }
+  .message-list li.recived div p{
     background: #435f7a;
     color: #f5f5f5;
     margin-bottom: 0;
     line-height: 130%;
     border-radius: 12px;
-    padding: 10px 10px;
+    padding: 5px 10px 5px 10px;
+    margin-top: 15px;
     word-wrap: break-word;
     overflow-wrap: break-word;
     max-width: 75%;
-    
+    min-width: auto;
+    font-weight: 300;
+    font-size: 15px;
+    display: inline-block;
   }
 
   .message-list li.recived span {
@@ -56,9 +62,11 @@
     justify-self: end;
 
 }
+.message-list li.replies div{
+  grid-area: msgr;
 
-.message-list li.replies p {
-    grid-area: msgr;
+}
+.message-list li.replies div p {
     background: #f5f5f5;
     margin-bottom: 0;
     line-height: 130%;
@@ -68,6 +76,12 @@
     overflow-wrap: break-word;
     justify-self: end;
     max-width: 75%;
+    font-weight: 300;
+    font-size: 15px;
+    padding: 5px 10px 5px 10px;
+    display: inline-block;
+    
+    float: right;
     
   }
 

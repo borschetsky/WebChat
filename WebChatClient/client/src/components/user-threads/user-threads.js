@@ -24,7 +24,8 @@ const UserThreads = (props) => {
             const typingOrLM = thread.oponentVM.isTyping ? 'Typing...' : lasteMessage;
             const { oponentVM } = thread; 
             const imagePath = oponentVM.avatarFileName === null ? getDefaultImageUrl(oponentVM.username) : getUserAvatar(oponentVM.avatarFileName);
-            const lastMessageTime = lasteMessage !== 'No messages' ? new Date(thread.lastMessage.time).toLocaleTimeString() : '';
+            const lastMessageTime = lasteMessage !== 'No messages' ? new Date(thread.lastMessage.time).toLocaleTimeString('en-GB',
+                 {hour: '2-digit', minute: '2-digit'}) : '';
             const { isOnline } = thread.oponentVM;
             const classStatus = isOnline ? 'online' : '';
             
