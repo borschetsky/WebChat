@@ -21,12 +21,7 @@ export default class UserSearch extends Component {
                 </li>
             );
         });
-        if(users.length === 0){
-            return <h4>No users found</h4>
-        }else{
-            return people;
-        }
-        
-
+        const content = users.length === 0 ? (<h4>No users found</h4>) : people;
+        return content;
     };
 };

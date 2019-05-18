@@ -55,6 +55,7 @@ form.edit-profile.form {
     grid-area: form;
     padding-left: 10px;
     margin-top: 20px;
+    display: block;
 }
 
 div.edit-profile button{

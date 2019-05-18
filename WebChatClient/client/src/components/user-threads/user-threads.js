@@ -1,8 +1,7 @@
 import React from 'react';
 import { getDefaultImageUrl, getUserAvatar, defaultimage } from '../../services';
+import { getDateInfoForThread } from '../../helpers';
 import './user-threads.css';
-
-
 
 const UserThreads = (props) => {
     
@@ -18,17 +17,18 @@ const UserThreads = (props) => {
             return new Date(b.lastMessage.time).getTime() - new Date(a.lastMessage.time).getTime()
         });
         
+
         const items = threads.map(thread => {
             const active = thread.id === threadId ? 'active' : '';
             const lasteMessage = thread.lastMessage ? thread.lastMessage.text : 'No messages';
             const typingOrLM = thread.oponentVM.isTyping ? 'Typing...' : lasteMessage;
             const { oponentVM } = thread; 
             const imagePath = oponentVM.avatarFileName === null ? getDefaultImageUrl(oponentVM.username) : getUserAvatar(oponentVM.avatarFileName);
-            const lastMessageTime = lasteMessage !== 'No messages' ? new Date(thread.lastMessage.time).toLocaleTimeString('en-GB',
-                 {hour: '2-digit', minute: '2-digit'}) : '';
+           
+            const lastMessageTime = lasteMessage !== 'No messages' ? getDateInfoForThread(thread.lastMessage.time) : '';
             const { isOnline } = thread.oponentVM;
             const classStatus = isOnline ? 'online' : '';
-            
+            //TODO: Create thread View Compoennt and extract to separate file
             return(
                 <li key={thread.id} className={"clearfix " + active} onClick={() => {
                     props.subscribeToThread(thread.id, oponentVM);

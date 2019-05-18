@@ -1,12 +1,12 @@
 import React, {Component } from 'react';
-import Axios from 'axios';
 import { withAuth } from './hoc';
 import * as signalR from '@aspnet/signalr';
-import MessageList from './MessageList';
+import MessageList from './message-list';
 import SendMessageForm from './send-message-form';
-import UserList from './UserList';
+import ThreadList from '../components/thread-list';
 import OponentProfile from './oponent-profile'
 import MyProfile from './my-profile';
+import {getProfile, getMessages, getThreads, createThread, sendMessageToApi } from '../services';
 
 
 class Dashboard extends Component  {
@@ -28,27 +28,32 @@ class Dashboard extends Component  {
             hubConnection: null,
             isEdit: false
         };
-        this.connection = new signalR.HubConnectionBuilder().withUrl("http://localhost:5000/chat", {
+        this.connection = new signalR.HubConnectionBuilder().withUrl("https://localhost:44397/chat", {
             accessTokenFactory: () => this.props.user.token
         }).build();
-
+        this.token = this.props.user.token;
     }
     
     componentDidMount(){
         const {token} = this.props.user;
-        Axios.get('http://localhost:5000/api/users/getprofile', {
-            headers: {'Authorization': `Bearer ${token}`,}
-        }).then(res => this.setState({userProfile: res.data, userName: res.data.username})).catch(err => console.log(err));
+        getProfile(token).then(res => {
+            console.log(res.data);
+            this.setState({
+                userProfile: res.data,
+                userName: res.data.username
+            });
+        }).catch(err => console.error(err));
 
         this.connection.start(() => console.log("started"))
         .catch(err => {
             console.log(err)
             this.props.history.push("/login");
-
         });
+
         this.connection.on('ReciveConnectionId', connId => {
             console.log(`CuurentConnectionId: ${connId}`);
         });
+
         this.setState({hubConnection: this.connection});
         this.update();
     };
@@ -64,23 +69,16 @@ class Dashboard extends Component  {
     getMessagesForThread = (threadId) => {
         const {token} = this.props.user;
             this.setState({messages: []});
-            Axios.get(`http://localhost:5000/api/thread/getmessages/${threadId}`, {
-                headers:{'Authorization': `Bearer ${token}`}
-            }).then(res => {
+            getMessages(threadId, token).then(res => {
                 this.setState({messages: res.data});
-            }).catch(err => console.log(err.response));
-
+            }).catch(err => console.log(err));
     };
 
    update = async () => {
-        const {token} = this.props.user;
         //Getting user's threads
-        await Axios.get('http://localhost:5000/api/hey/getthreads', {
-            headers: {'Authorization': `Bearer ${token}`}
-        }).then(res => {
+        await getThreads(this.token).then(res => {
             const { status } = res;
             if(status !== 204){
-               console.log(res.data);
                const { data: threads} = res;
                this.setState({threads});
             };
@@ -163,7 +161,6 @@ class Dashboard extends Component  {
                         oponentVM.isTyping = false;
                     }
                 }
-               
             });
             this.setState({
                 threads, oponentProfile
@@ -194,19 +191,9 @@ class Dashboard extends Component  {
     };
     //change oponent name to id
     createThread = (oponentVM) => {
-        console.log(oponentVM);
-        const {token} = this.props.user;
-        const { id } = this.state.userProfile;
         var thread = this.state.threads.find(t => t.oponentVM.id === oponentVM.id || t.owner === oponentVM.id);
         if(!thread){
-            Axios.post('http://localhost:5000/api/hey/createthread', {
-                Owner: id,
-                OponentVM: oponentVM
-            }, {
-                headers:{
-                    'Authorization': `Bearer ${token}`
-                }
-            }).then(res => {
+            createThread(oponentVM, this.token).then(res => {
                 const{ threadId } = res.data;
                 this.setState({threadId, oponentId: oponentVM.id, oponentProfile: oponentVM});
             })
@@ -218,28 +205,25 @@ class Dashboard extends Component  {
         }else{
             this.setState({threadId: thread.id, oponentId: oponentVM.id, oponentProfile: oponentVM});
         };
-       
     };
 
     sendMessage = (message) => {
-        const {token} = this.props.user;
+        if(message.length === 0 || message === ''){
+            return;
+        }
         if(!this.state.threadId){
             console.log("Thread isn't choosen");
             return;
-        }
-        Axios.post('http://localhost:5000/api/hey/send', {
+        };
+        const messageViewModel = {
             SenderId: this.props.user.id,
             Text: message,
             ThreadId: this.state.threadId,
             Username: this.state.userName
-        }, {
-            headers:{
-                'Authorization': `Bearer ${token}`
-            }
-        }).then(res => {
+        };
+        sendMessageToApi(messageViewModel, this.token).then(res => {
             if(res.status === 201){
                 console.log("Message succesfully been sent");
-                
             }
         }).catch(err => {
             console.log(err.response.data);
@@ -262,7 +246,6 @@ class Dashboard extends Component  {
     }
 
     handleTyping = (e) => {
-        console.log(e.value);
         if(e.value.length === 0 ){
             console.log('stop')
             this.onStopTyping(e.name);
@@ -276,12 +259,9 @@ class Dashboard extends Component  {
     };
     onStopTyping = (id) => {
         this.connection.invoke('OnStopTyping', id);
-        
-    }
+    };
 
-  render(){
-   
-    
+  render(){ 
     const { userProfile, oponentId, messages, threadId, userName, threads, isEdit, oponentProfile} = this.state;
    
     return(
@@ -290,7 +270,7 @@ class Dashboard extends Component  {
             <OponentProfile oponentId={oponentId} profile={oponentProfile}/>
             <MessageList messages={messages} threadId={threadId} username={userName}/>
             <SendMessageForm sendMessage={this.sendMessage} typing={this.handleTyping} threadId={threadId}/>
-            <UserList 
+            <ThreadList 
                 profile={userProfile}
                 threadId={threadId}
                 threads={threads} 

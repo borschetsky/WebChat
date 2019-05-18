@@ -1,14 +1,14 @@
 import React from 'react'
-import './userlist.css';
-import Search from './Search';
-import './found-users/found-users.css';
-import Axios from 'axios';
-import UserSearch from './user-search';
-import UserThreads from './user-threads';
-import EditProfile from './edit-profile';
-import { withAuth } from './hoc/';
+import './thread-list.css';
+import Search from '../search';
+import '../found-users/found-users.css';
+import UserSearch from '../user-search';
+import UserThreads from '../user-threads';
+import EditProfile from '../edit-profile';
+import { withAuth } from '../hoc/';
+import { searchForUsers } from '../../services';
 
-class UserList extends React.Component {
+class ThreadList extends React.Component {
     state = {
         users: [],
         threadId: '',
@@ -17,7 +17,6 @@ class UserList extends React.Component {
         search: '',
         isEdit: false,
         profile: null
-        
     };
 
     componentDidMount(){
@@ -48,9 +47,7 @@ class UserList extends React.Component {
     handleSearch = (e) => {
         const { token } = this.props.user;
         const { value } = e.target;
-        Axios.get(`http://localhost:5000/api/users/search?name=${value}`, 
-            {headers: {'Authorization': `Bearer ${token}`}}
-            ).then(res => {this.setState({users: res.data});});
+        searchForUsers(value, token).then(res => {this.setState({users: res.data});});
         this.setState({search: value});
     };
     clearSearch = () =>{
@@ -82,4 +79,4 @@ class UserList extends React.Component {
     }
 }
 
-export default withAuth(UserList);
+export default withAuth(ThreadList);

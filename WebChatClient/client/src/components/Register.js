@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import './register.css';
-import Axios from 'axios';
 import {Link} from 'react-router-dom';
+import { register } from '../services';
 
 const emailRegex = RegExp(
     /^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/
@@ -72,12 +72,12 @@ class Register extends Component {
         event.preventDefault();
         if(formValid(this.state)){
             const {userName, email, password} = this.state;
-
-            Axios.post('http://localhost:5000/api/auth/register', {
-            username: userName,
-            email: email,
-            password: password
-            }).then(result => {
+            const registerObj = {
+                username: userName,
+                email: email,
+                password: password
+            };
+            register(registerObj).then(result => {
                 var data = JSON.parse(localStorage.getItem('user-data'));
                 if(data!= null){
                     localStorage.removeItem('user-data');

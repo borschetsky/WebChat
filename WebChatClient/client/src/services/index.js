@@ -1,4 +1,20 @@
 import { getDefaultImageUrl, defaultimage}  from './default-image-service';
 import getUserAvatar from './avatar-image-service';
+import authHeader from './auth-header';
+import { getProfile, getMessages, getThreads, createThread, sendMessageToApi, uploadAvatar, searchForUsers, login, register } from './api-service';
 
-export {getDefaultImageUrl, getUserAvatar, defaultimage};
+export {
+    getDefaultImageUrl, 
+    getUserAvatar, 
+    defaultimage, 
+    authHeader, 
+    getProfile, 
+    getMessages,
+    getThreads, 
+    createThread, 
+    sendMessageToApi, 
+    uploadAvatar, 
+    searchForUsers,
+    login,
+    register
+};

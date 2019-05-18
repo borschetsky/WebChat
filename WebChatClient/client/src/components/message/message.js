@@ -1,11 +1,10 @@
 import React from 'react';
-// import './Message.css';
-import './message-test.css';
+import './message.css';
 
 
 function Message(props) {
     const classToDispay = props.username === props.curentUsername ? 'replies' : 'recived';
-
+    //TODO: integrate images from pre-loaded profiles
     const imageLink = `https://ui-avatars.com/api/?name=${props.username}&rounded=true&bold=true&size=128`;
     return (
             <li className={ classToDispay }>
@@ -13,9 +12,9 @@ function Message(props) {
                 <div>
                     <p>{props.text}</p>
                 </div>
-                <span>At | {props.time}</span>
+                <span>{props.time}</span>
             </li>
-    )
-}
+    );
+};
 
-export default Message
+export default Message;

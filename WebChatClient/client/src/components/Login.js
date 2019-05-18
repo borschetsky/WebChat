@@ -1,9 +1,8 @@
 import React, {Component} from 'react';
-import axios from 'axios';
-
 import './login.css';
 import { Link } from 'react-router-dom';
 import {emailRegex, formValid} from './Register';
+import { login } from '../services';
 
 
 export default class Login extends Component {
@@ -50,10 +49,11 @@ export default class Login extends Component {
             if(data!= null){
                 localStorage.removeItem('user-data');
             }
-            axios.post('http://localhost:5000/api/auth/login', {
+            const loginObj = {
                 email: this.state.email,
                 password: this.state.password
-            }).then((result) => {
+            };
+            login(loginObj).then((result) => {
                 if(result.status === 200){
                     localStorage.setItem('user-data', JSON.stringify(result.data))
                     this.props.history.push("/dashboard");

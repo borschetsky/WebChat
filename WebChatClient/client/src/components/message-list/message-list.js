@@ -1,7 +1,9 @@
 import React from 'react'
 import ReactDOM from 'react-dom'
-import Message from './Message'
+import Message from '../message';
+import { getDateInfoForMessage } from '../../helpers/';//Formating DateTime Today, Yesterday, Up to 6 days ago, Week Ago and if more showing date
 import './message-list.css';
+
 class MessageList extends React.Component {
     
     componentWillUpdate() {
@@ -15,7 +17,6 @@ class MessageList extends React.Component {
             node.scrollTop = node.scrollHeight   
         }
     }
-    
     render() {
         
         if (!this.props.threadId) {
@@ -40,10 +41,7 @@ class MessageList extends React.Component {
         return (
             <div className="message-list">
                 {this.props.messages.map(({username, text, time, id}, index) => {
-                    var myDate = new Date(time).toLocaleTimeString('en-GB', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    });
+                    var myDate = getDateInfoForMessage(time);
                     return (
                         <Message key={id} username={username} text={text} time={myDate} curentUsername={this.props.username}/>
                     )

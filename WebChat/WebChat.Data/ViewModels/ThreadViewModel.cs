@@ -9,7 +9,7 @@ namespace WebChat.Models.ViewModels
     public class ThreadViewModel
     {
         public string Id { get; set; }
-        [Required]
+        
         public string Owner { get; set; }
 
         //public string OwnerName { get; set; }
