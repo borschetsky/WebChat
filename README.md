@@ -9,6 +9,8 @@ WebChat using .NET Core, SignalR, Rest API, React JS, HTML/CSS, CSS Grid, MS SQL
 * Online/Offline status notification
 * Default avatar/upload personal image avatar
 * Last message and threads sortig by last message
+* Last message time dispay format Today, Yesterday, Up to 6 days ago, Week Ago, if more showing day and month.
+* On chat bubble hover showing time when message was send.
 ### Todo: 
 * Responsive design
 * Change email and password 
