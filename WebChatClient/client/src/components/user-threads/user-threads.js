@@ -18,7 +18,6 @@ const UserThreads = (props) => {
             return new Date(b.lastMessage.time).getTime() - new Date(a.lastMessage.time).getTime()
         });
         
-
         const items = threads.map(thread => {
             const active = thread.id === threadId ? 'active' : '';
             const lasteMessage = thread.lastMessage ? thread.lastMessage.text : 'No messages';
@@ -29,7 +28,6 @@ const UserThreads = (props) => {
             const lastMessageTime = lasteMessage !== 'No messages' ? getDateInfoForThread(thread.lastMessage.time) : '';
             const { isOnline } = thread.oponentVM;
             const classStatus = isOnline ? 'online' : '';
-            //TODO: Create thread View Compoennt and extract to separate file
             return(
                 <li key={thread.id} className={"clearfix " + active} onClick={() => {props.subscribeToThread(thread.id, oponentVM);}}>
                     <UserThreadsItem 

@@ -18,13 +18,16 @@ const getDateInfoForMessage = (jsonTimeFormat) =>{
     const numberOfDays = dateNow - messageDate;
     const time = new Date(jsonTimeFormat).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit'});
     const date = new Date(jsonTimeFormat).toLocaleDateString('en-BG', {month: 'short', day: 'numeric'});
-    console.log(date);
+    if(numberOfDays > 1 && numberOfDays < 7){
+        return `${numberOfDays} days ago At | ${time}`; 
+    }
     switch(numberOfDays){
         case 0:
             return `Today At | ${time}`;
         case 1:
             return `Yesterday At | ${time}`;
-        case numberOfDays > 1 && numberOfDays < 7:
+        case (numberOfDays > 1 && numberOfDays < 7):
+            console.log('Hello');
             return `${numberOfDays} days ago At | ${time}`;     
         case 7:
             return `Week ago At | ${time}`;   

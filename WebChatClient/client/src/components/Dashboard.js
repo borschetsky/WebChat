@@ -4,9 +4,8 @@ import * as signalR from '@aspnet/signalr';
 import MessageList from './message-list';
 import SendMessageForm from './send-message-form';
 import ThreadList from '../components/thread-list';
-import OponentProfile from './oponent-profile'
 import MyProfile from './my-profile';
-import {getProfile, getMessages, getThreads, createThread, sendMessageToApi } from '../services';
+import {getProfile, getThreads, createThread, sendMessageToApi } from '../services';
 
 
 class Dashboard extends Component  {
@@ -21,8 +20,6 @@ class Dashboard extends Component  {
             oponentId: null,
             oponentProfile:{},
             threads: [],
-            message: '',
-            messages: [],
             users: [],
             error: true,
             hubConnection: null,
@@ -56,22 +53,6 @@ class Dashboard extends Component  {
 
         this.setState({hubConnection: this.connection});
         this.update();
-    };
-
-    componentDidUpdate = (prevProps, prevState) => {
-        if(prevState.threadId !== this.state.threadId){
-            //Invoke get messages for thread
-            const {threadId} = this.state;
-            this.getMessagesForThread(threadId);
-        }
-    };
-
-    getMessagesForThread = (threadId) => {
-        const {token} = this.props.user;
-            this.setState({messages: []});
-            getMessages(threadId, token).then(res => {
-                this.setState({messages: res.data});
-            }).catch(err => console.log(err));
     };
 
    update = async () => {
@@ -108,7 +89,6 @@ class Dashboard extends Component  {
         });
 
         this.connection.on('ReciveMessage', (message) => {
-            console.log(message);
             const { threads} = this.state;
             threads.forEach(t => {
                 if(t.id === message.threadId){
@@ -117,16 +97,12 @@ class Dashboard extends Component  {
                 }
             });
             this.setState({threads});
-            if(message.threadId !== this.state.threadId){
-                return;
-            }
-            let {messages} = this.state;
-            messages = [...messages, message];
-
-            this.setState({messages: messages});
         });
 
         this.connection.on('ReciveTypingStatus', ({userId, threadId}) => {
+            if(!threadId){
+                return;
+            }
             const {threads: currentThreads } = this.state;
             const { oponentProfile: currentOpponentProfile } = this.state;
             if(currentOpponentProfile.id === userId && currentOpponentProfile.isTyping === false){
@@ -262,13 +238,16 @@ class Dashboard extends Component  {
     };
 
   render(){ 
-    const { userProfile, oponentId, messages, threadId, userName, threads, isEdit, oponentProfile} = this.state;
+    const { userProfile, threadId, userName, threads, isEdit, oponentProfile} = this.state;
    
     return(
         <div className="app">
            <MyProfile  handleLogOut={this.handleLogOut} profile={userProfile} handleEditorClose={this.handleEditorClose}/>
-            <OponentProfile oponentId={oponentId} profile={oponentProfile}/>
-            <MessageList messages={messages} threadId={threadId} username={userName}/>
+            <MessageList 
+                oponentProfile={oponentProfile}
+                threadId={threadId}
+                username={userName}
+                connection={this.connection}/>
             <SendMessageForm sendMessage={this.sendMessage} typing={this.handleTyping} threadId={threadId}/>
             <ThreadList 
                 profile={userProfile}

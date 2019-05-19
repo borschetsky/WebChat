@@ -6,46 +6,25 @@ import { getDefaultImageUrl, getUserAvatar, defaultimage } from '../../services'
  class OponentProfile extends Component {
     state = {
         profile: {},
-        oponentId: null
     }
 
     componentDidMount(){
         this.setState({
-            oponentId: this.props.oponentId,
             profile: this.props.profile
         }, console.log(this.state.profile));
-        
-            // this.timer = setTimeout(this.stopTyping(), 3000);
-        
-        
-        
     }
+
     componentDidUpdate(prevProps){
-        if(prevProps.oponentId !== this.props.oponentId){
-            this.setState({oponentId: this.props.oponentId});
-        }
         if(prevProps.profile !== this.props.profile){
             this.setState({profile: this.props.profile})
         }
         
     }
-
-    componentWillMount(){
-        clearTimeout(this.timer);
-    }
-
-    stopTyping = () => {
-        const { profile } = this.state;
-        profile.isTyping = false;
-        this.setState({profile}, console.log(this.state.profile));
-    }
-    
+ 
     render(){
         const { profile } = this.state;
-        
-        const { oponentId } = this.state;
         const imagePath = profile.avatarFileName === null ? getDefaultImageUrl(profile.username) : getUserAvatar(profile.avatarFileName);
-        if(!oponentId){
+        if(!profile.id){
             return(<div className="oponent-profile">
                 <p></p>
         </div>)

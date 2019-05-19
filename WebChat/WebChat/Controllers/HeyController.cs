@@ -129,7 +129,8 @@ namespace WebChat.Controllers
                 {
                     oponentId = entity.OwnerId;
                 }
-
+                //TODO: Upcomming feature changing direct chat to group chat
+                //      By changing database from OpponentId to collection of opponents.
                 var connections = this.connectionMapping.GetConnections(oponentId);
                 var vModel = new ThreadViewModel()
                 {
