@@ -1,5 +1,6 @@
 import React from 'react';
-import { getDefaultImageUrl, getUserAvatar, defaultimage } from '../../services';
+import UserThreadsItem from '../user-threads-item';
+import { getDefaultImageUrl, getUserAvatar} from '../../services';
 import { getDateInfoForThread } from '../../helpers';
 import './user-threads.css';
 
@@ -30,20 +31,13 @@ const UserThreads = (props) => {
             const classStatus = isOnline ? 'online' : '';
             //TODO: Create thread View Compoennt and extract to separate file
             return(
-                <li key={thread.id} className={"clearfix " + active} onClick={() => {
-                    props.subscribeToThread(thread.id, oponentVM);
-                    
-                    }}>
-                    <div className="clearfix-wrapper" >
-                        <img onError={defaultimage} src={imagePath} alt="avatar" name={oponentVM.username} className={`oponent ${classStatus}`}/>
-                        <div className="about">
-                            <p className="name">{oponentVM.username}</p>
-                            <p className="status">
-                                {typingOrLM}
-                            </p>
-                        </div>
-                        <span><small>{lastMessageTime}</small></span>
-                    </div>
+                <li key={thread.id} className={"clearfix " + active} onClick={() => {props.subscribeToThread(thread.id, oponentVM);}}>
+                    <UserThreadsItem 
+                        oponentVM={oponentVM}
+                        imagePath={imagePath}
+                        classStatus={classStatus}
+                        typingOrLM={typingOrLM}
+                        lastMessageTime={lastMessageTime}/>
                  </li>
                  );
             
