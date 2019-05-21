@@ -1,5 +1,4 @@
 import React from 'react'
-import ReactDOM from 'react-dom'
 import Message from '../message';
 import OponentProfile from '../oponent-profile';
 import MessageHistorySearch from '../message-history-search';
@@ -36,13 +35,13 @@ class MessageList extends React.Component {
     }
 
     componentWillUpdate() {
-        const node = ReactDOM.findDOMNode(this)
-        this.shouldScrollToBottom = node.scrollTop + node.clientHeight + 100 >= node.scrollHeight
+        const node = this.refs.messages;
+        this.shouldScrollToBottom = node.scrollTop + node.clientHeight + 100 >= node.scrollHeight;
     }
     
     componentDidUpdate(prevProps) {
         if (this.shouldScrollToBottom) {
-            const node = ReactDOM.findDOMNode(this)
+            const node = this.refs.messages;
             node.scrollTop = node.scrollHeight   
         }
         if(prevProps.threadId !== this.props.threadId){
@@ -87,12 +86,15 @@ class MessageList extends React.Component {
         const { messages, oponentProfile, threadId, isSearch, search } = this.state;
         const chooseOpponent = (<div className="join-room">&larr; Chose Opponent</div>);
         const noMessages = (<div className="join-room">You Still have no messages - begin chatting</div>);
+        
         const messagesMap =  this.searchMessages(messages, search).map(({ username, text, time, id }, index) => {
             var myDate = getDateInfoForMessage(time);
+            
             return (
                 <Message key={id} username={username} text={text} time={myDate} curentUsername={this.props.username} />
             )
         });
+        
         const content = messages.length < 1 ? noMessages : messagesMap;
         const contentToDisplay = !threadId ? chooseOpponent : content;
         //
@@ -103,9 +105,9 @@ class MessageList extends React.Component {
         return (
             <React.Fragment>
                     {oponentProfileVsSeach}
-                    <div className="message-list">
+                    <ul className="message-list" ref="messages">
                         {contentToDisplay}
-                    </div>
+                    </ul>
             </React.Fragment>
 
         )

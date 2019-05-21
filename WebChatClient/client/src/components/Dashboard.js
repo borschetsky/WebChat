@@ -166,7 +166,7 @@ class Dashboard extends Component  {
 
         this.connection.on('ReviceUpdatedOpponentProfile', profile =>{
             if(profile){
-                const { userProfile, oponentProfile, threads } = this.state;
+                const { userProfile, threads } = this.state;
                 if(userProfile.id === profile.id){
                     this.setState({userProfile: profile});
                 }

@@ -15,6 +15,7 @@ import { getDefaultImageUrl, getUserAvatar, defaultimage } from '../../services'
     }
 
     componentDidUpdate(prevProps){
+        
         if(prevProps.profile !== this.props.profile){
             this.setState({profile: this.props.profile})
         }
