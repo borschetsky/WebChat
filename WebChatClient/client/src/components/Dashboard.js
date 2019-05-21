@@ -164,6 +164,25 @@ class Dashboard extends Component  {
             this.setState({threads});
         });
 
+        this.connection.on('ReviceUpdatedOpponentProfile', profile =>{
+            if(profile){
+                const { userProfile, oponentProfile, threads } = this.state;
+                if(userProfile.id === profile.id){
+                    this.setState({userProfile: profile});
+                }
+                threads.forEach(thread => {
+                    let { oponentVM } = thread;
+                    if(oponentVM.id === profile.id){
+                        thread.oponentVM.username = profile.username;
+                        thread.oponentVM.email = profile.email;
+                    }
+                });
+                this.setState({threads});
+
+            };
+            console.log(profile);
+        });
+
     };
     //change oponent name to id
     createThread = (oponentVM) => {

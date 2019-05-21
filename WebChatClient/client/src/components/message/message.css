@@ -1,11 +1,11 @@
 .message-list li.recived {
     display: grid;
-    grid-template-columns: 30px 1fr 1fr 1fr;
+    grid-template-columns: 30px minmax(10%, 1fr)  1fr;
     grid-template-rows: 22px 1fr 22px;
     grid-template-areas: 
-    "img msg msg ."
-    ". msg msg ."
-    ". dta dta .";
+    "img msg ."
+    ". msg ."
+    ". dta .";
   }
   .message-list li.recived img{
       border-radius: 50%;
@@ -15,32 +15,36 @@
 
   }
   .message-list li.recived div{
-    grid-area: msg;  
+    grid-area: msg;
+    padding-top: 10px;
+    
   }
 
   .message-list li.recived:hover span{
     display: block;
   }
-  .message-list li.recived div p{
+  .message-list li.recived div.tooltip p{
     background: #435f7a;
     color: #f5f5f5;
     margin-bottom: 0;
     line-height: 130%;
     border-radius: 12px;
     padding: 5px 10px 5px 10px;
-    margin-top: 15px;
+    box-sizing: border-box;
     word-wrap: break-word;
     overflow-wrap: break-word;
-    max-width: 75%;
+    /* max-width: 75%; */
     min-width: auto;
     font-weight: 300;
     font-size: 15px;
     display: inline-block;
+    position: relative;
+    margin-top: 0px;
   }
-
+  
   .message-list li.recived span {
     grid-area: dta;  
-    /* display: inline-block; */
+    
     display: none;
     padding-left: 7px;
     margin-top: 5px;

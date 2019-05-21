@@ -32,6 +32,15 @@ namespace WebChat.Services
             this.connectionMapping = connectionMapping ?? throw new ArgumentNullException(nameof(connectionMapping));
         }
 
+        public void UpdateProfile(ProfileViewModel model)
+        {
+            var entity = this.ctx.User.FirstOrDefault(u => u.Id == model.Id);
+            entity.Email = model.Email;
+            entity.Username = model.Username;
+            ctx.User.Update(entity);
+            ctx.SaveChanges();
+        }
+
         public IEnumerable<UserViewModel> FindUserByMatch(string match, string curentUser)
         {
             if (string.IsNullOrEmpty(curentUser)) throw new ArgumentNullException("Current user Id can not be null");

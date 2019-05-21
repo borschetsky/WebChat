@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom'
 import Message from '../message';
 import OponentProfile from '../oponent-profile';
+import MessageHistorySearch from '../message-history-search';
 import { getDateInfoForMessage } from '../../helpers/';//Formating DateTime Today, Yesterday, Up to 6 days ago, Week Ago and if more showing date
 import './message-list.css';
 import { withAuth } from '../hoc';
@@ -13,7 +14,9 @@ class MessageList extends React.Component {
         threadId: null,
         userProfile: null, 
         oponentProfile: null,
-        messages:[]
+        messages:[],
+        isSearch: false,
+        search: ''
     };
 
     componentDidMount(){
@@ -46,6 +49,8 @@ class MessageList extends React.Component {
            
             this.setState({
                 threadId: this.props.threadId,
+                isSearch: false,
+                search: ''
             });
             this.getMessagesForThread(this.props.threadId);
         }
@@ -62,11 +67,27 @@ class MessageList extends React.Component {
             }).catch(err => console.log(err));
     };
 
+    handleSearchbar = () => {
+        this.setState({isSearch: !this.state.isSearch, search: ''});
+        
+    };
+    onSearchChange = (search) => {
+        this.setState({search});
+    };
+    searchMessages = (messages, search) => {
+        if(search.length === 0){
+            return messages;
+        }
+        return messages.filter(msg => {
+            return msg.text.toLowerCase().indexOf(search.toLowerCase()) > -1
+        });
+    }
+
     render() {
-        const { messages, oponentProfile, threadId } = this.state;
+        const { messages, oponentProfile, threadId, isSearch, search } = this.state;
         const chooseOpponent = (<div className="join-room">&larr; Chose Opponent</div>);
         const noMessages = (<div className="join-room">You Still have no messages - begin chatting</div>);
-        const messagesMap =  messages.map(({ username, text, time, id }, index) => {
+        const messagesMap =  this.searchMessages(messages, search).map(({ username, text, time, id }, index) => {
             var myDate = getDateInfoForMessage(time);
             return (
                 <Message key={id} username={username} text={text} time={myDate} curentUsername={this.props.username} />
@@ -74,38 +95,17 @@ class MessageList extends React.Component {
         });
         const content = messages.length < 1 ? noMessages : messagesMap;
         const contentToDisplay = !threadId ? chooseOpponent : content;
-        // if (!this.state.threadId) {
-            
-        //     return (
-        //         <div className="message-list">
-        //             <div className="join-room">
-        //             &larr; Chose Opponent
-        //             </div>
-        //         </div>
-        //     )
-        // }
-        // if(messages.length < 1){
-        //     return(
-        //         <div className="message-list">
-        //             <div className="join-room">
-        //                 You Still have no messages - begin chatting
-        //             </div>
-        //         </div>
-        //     );
-        // }
+        //
+        const oponentProfileVsSeach = !isSearch ? 
+            <OponentProfile profile={oponentProfile} handleSearchbar={this.handleSearchbar}/>
+        : <MessageHistorySearch handleSearchbar={this.handleSearchbar} profile={oponentProfile} onSearchChange={this.onSearchChange}/>
         
         return (
             <React.Fragment>
-                <OponentProfile profile={oponentProfile} />
-                <div className="message-list">
-                    {/* {messages.map(({ username, text, time, id }, index) => {
-                        var myDate = getDateInfoForMessage(time);
-                        return (
-                            <Message key={id} username={username} text={text} time={myDate} curentUsername={this.props.username} />
-                        )
-                    })} */}
-                    {contentToDisplay}
-                </div>
+                    {oponentProfileVsSeach}
+                    <div className="message-list">
+                        {contentToDisplay}
+                    </div>
             </React.Fragment>
 
         )

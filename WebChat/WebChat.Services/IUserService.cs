@@ -8,6 +8,8 @@ namespace WebChat.Services
 {
     public interface IUserService
     {
+        void UpdateProfile(ProfileViewModel model);
+
         OponentViewModel GetOponentProfile(string id);
 
         IEnumerable<UserViewModel> FindUserByMatch(string match, string curentUser);

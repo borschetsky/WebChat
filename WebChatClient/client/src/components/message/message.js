@@ -9,8 +9,9 @@ function Message(props) {
     return (
             <li className={ classToDispay }>
                 <img src={imageLink} alt="avatar" height="22" width="22"/>
-                <div>
+                <div className="tooltip">
                     <p>{props.text}</p>
+                    
                 </div>
                 <span>{props.time}</span>
             </li>

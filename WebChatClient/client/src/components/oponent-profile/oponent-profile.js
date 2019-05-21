@@ -23,6 +23,7 @@ import { getDefaultImageUrl, getUserAvatar, defaultimage } from '../../services'
  
     render(){
         const { profile } = this.state;
+        const { handleSearchbar } = this.props;
         const imagePath = profile.avatarFileName === null ? getDefaultImageUrl(profile.username) : getUserAvatar(profile.avatarFileName);
         if(!profile.id){
             return(<div className="oponent-profile">
@@ -38,7 +39,13 @@ import { getDefaultImageUrl, getUserAvatar, defaultimage } from '../../services'
                     <p className="username">{profile.username}</p>
                     <p className="satus">{typingStatus}</p>
                 </div>
-                
+                <div className="aside">
+                    <div className="aside-search">
+                        <i className="material-icons md-32" onClick={() => handleSearchbar()}>search</i>
+                        
+                    </div>
+                    
+                </div>
             </div>
             );
     };

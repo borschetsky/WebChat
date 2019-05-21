@@ -1,33 +1,72 @@
 import React, { Component } from 'react';
 import './edit-profile.css';
-import { getDefaultImageUrl, getUserAvatar, defaultimage, uploadAvatar } from '../../services';
-import { withAuth } from '../hoc';
+import { getDefaultImageUrl, getUserAvatar, defaultimage, uploadAvatar, getProfile, authHeader } from '../../services';
 
+import { withAuth } from '../hoc';
+import Axios from 'axios';
+//TODO: Add validations
 class EditProfile extends Component{
     state = {
-        profile: null,
-        selsectedFile: null
+        id: '',
+        selsectedFile: null,
+        username: '',
+        email: '',
+        avatarFileName: '',
     }
 
     componentDidMount(){
-        this.setState({profile: this.props.profile});
+        const { username, email, avatarFileName, id } = this.props.profile;
+        this.setState({
+            avatarFileName, email, username, id});
     };
-    componentDidUpdate(prevProps){
+    componentDidUpdate(prevProps, prevState){
         if(prevProps.profile !== this.props.profile){
-            this.setState({profile: this.props.profile});
+            const { email, username, avatarFileName, id } = this.props.profile;
+            this.setState({
+                email,
+                username,
+                avatarFileName,
+                id
+            })
+        }
+        if(prevState.avatarFileName !== this.state.avatarFileName){
+            this.setState({avatarFileName: this.state.avatarFileName});
         }
     }
 
     handleChange = (e) => {
         const {name, value } = e.target;    
-        this.setState({ profile:{[name]: value} });
+        this.setState({[name]: value });
     };
 
     fileSelectedHandler = (e) => {
+        var img = new FileReader();
+        img.readAsDataURL(e.target.files[0]);
+        console.log(img);
         this.setState({
-            selsectedFile: e.target.files[0], 
-
+            selsectedFile: e.target.files[0],
         });
+    };
+
+    onSaveChanges = async () => {
+        const { token }  = this.props.user;
+        const {id, username, email, avatarFileName } = this.state;
+        const dbProfile = await getProfile(token);
+        const userObj = {
+            id, username, email, avatarFileName
+        };
+        
+        if(JSON.stringify(userObj) !== JSON.stringify(dbProfile.data)){
+            await Axios.post('https://localhost:44397/api/users/update', 
+                userObj
+            , {
+                headers: authHeader(token)
+            }).then(res => {
+                if(res.status === 200){
+                   
+                }
+            });
+        }
     };
 
     fileUploadHandler = (e) => {
@@ -35,18 +74,16 @@ class EditProfile extends Component{
         var fromData = new FormData();
         fromData.append('image', this.state.selsectedFile, this.state.selsectedFile.name);
         uploadAvatar(fromData, token).then(res => {
-            const { profile } = this.state;
-            profile.avatarFileName = res.data;
-            this.setState({profile: profile});
+            this.setState({avatarFileName: res.data});
         });
     };
 
     render(){
-        if(!this.state.profile){
-            return (<h5>Loading</h5>);
-        }
+        // if(!this.state.username){
+        //     return (<h5>Loading</h5>);
+        // }
         
-        const { username, avatarFileName, email } = this.state.profile;
+        const { avatarFileName, username, email } = this.state;
 
         const imagePath = !avatarFileName ? getDefaultImageUrl(username) : getUserAvatar(avatarFileName);
         return(
@@ -72,7 +109,10 @@ class EditProfile extends Component{
                     </div>
                 </form>
                 
-                <button onClick={() => this.props.handleEditorClose()}>Save</button>
+                <button onClick={() => {
+                    this.props.handleEditorClose();
+                    this.onSaveChanges();
+                }}>Save</button>
             </div>
 
             
