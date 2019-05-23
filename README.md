@@ -31,3 +31,6 @@ You can clone the repo to your local machine. At VS run the backend with hardcod
 
 >Direct messages and avatar uploader with connected clients notification
 >![](uploader-messaging.gif)
+
+>Search for messages in curent thread directly from API
+>![](search-in-messages.gif)
