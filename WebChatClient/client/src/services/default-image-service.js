@@ -3,7 +3,7 @@ const getDefaultImageUrl = (userName) => {
 };
 
 const defaultimage = (e) => {
-    console.log(e.target.name);
+    
     e.target.src = getDefaultImageUrl(e.target.name);
     
 }

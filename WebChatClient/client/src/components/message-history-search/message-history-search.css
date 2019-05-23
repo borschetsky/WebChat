@@ -1,3 +1,7 @@
+:root{
+    --send-button-hover-color: #2c4862;
+}
+
 div.history-search{
     grid-area: p;
     width: 100%;
@@ -38,6 +42,12 @@ div.history-search button{
     border: none;
     border-radius: 5px;
     color: #f5f5f5;
+    transition: 0.5s;
+}
+div.history-search button:hover{
+    background-color: var(--send-button-hover-color);
+    font-size: 82.5%;
+    transition: 0.8s;
 }
 
 div.history-search img{

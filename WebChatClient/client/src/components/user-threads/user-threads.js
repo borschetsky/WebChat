@@ -5,8 +5,8 @@ import { getDateInfoForThread } from '../../helpers';
 import './user-threads.css';
 
 const UserThreads = (props) => {
-    
-        const {threads, threadId} = props;
+        
+        const {threads, threadId, profile} = props;
         if(threads.length === 0){
             return <h4>Yo still have no threads</h4>;
         };
@@ -20,7 +20,10 @@ const UserThreads = (props) => {
         
         const items = threads.map(thread => {
             const active = thread.id === threadId ? 'active' : '';
-            const lasteMessage = thread.lastMessage ? thread.lastMessage.text : 'No messages';
+            console.log(thread.lastMessage.senderId);
+            console.log("ProfileId:" + profile.id);
+            const youPrefix = thread.lastMessage.senderId === profile.id ? `You: ${thread.lastMessage.text}` : thread.lastMessage.text
+            const lasteMessage = thread.lastMessage ? youPrefix : 'No messages';
             const typingOrLM = thread.oponentVM.isTyping ? 'Typing...' : lasteMessage;
             const { oponentVM } = thread; 
             const imagePath = oponentVM.avatarFileName === null ? getDefaultImageUrl(oponentVM.username) : getUserAvatar(oponentVM.avatarFileName);
@@ -30,7 +33,7 @@ const UserThreads = (props) => {
             const classStatus = isOnline ? 'online' : '';
             return(
                 <li key={thread.id} className={"clearfix " + active} onClick={() => {props.subscribeToThread(thread.id, oponentVM);}}>
-                    <UserThreadsItem 
+                    <UserThreadsItem
                         oponentVM={oponentVM}
                         imagePath={imagePath}
                         classStatus={classStatus}

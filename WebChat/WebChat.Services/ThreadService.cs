@@ -21,6 +21,46 @@ namespace WebChat.Services
             this.mappingService = mappingService;
         }
 
+        public Dictionary<DateTime, List<MessageViewModel>> SearchForMessages(string threadId, string term)
+        {
+            var matchedMessages = ctx.Message.Where(m => m.ThreadId == threadId && m.Text.ToLower().IndexOf(term.ToLower()) > -1);
+            var matchedMessagesTest = (from m in ctx.Message
+                                       join u in ctx.User
+                                       on m.SenderId equals u.Id
+                                       where m.ThreadId == threadId && m.Text.ToLower().IndexOf(term.ToLower()) > -1
+                                       orderby m.CreatedOn
+                                       select new MessageViewModel
+                                       {
+                                           Id = m.Id,
+                                           SenderId = m.SenderId,
+                                           Username = u.Username,
+                                           Text = m.Text,
+                                           ThreadId = m.ThreadId,
+                                           Time = m.CreatedOn
+                                       }).ToList();
+            var resultMessages = new Dictionary<DateTime, List<MessageViewModel>>();
+            if (matchedMessagesTest.Count == 0)
+            {
+                return resultMessages;
+            }
+            foreach (var message in matchedMessagesTest)
+            {
+                var date = message.Time.Date;
+                if (!resultMessages.ContainsKey(date))
+                {
+                    resultMessages.Add(date, new List<MessageViewModel>());
+                    resultMessages[date].Add(message);
+                }
+                else
+                {
+                    resultMessages[date].Add(message);
+                }
+            }
+            return resultMessages;
+            
+
+
+        }
 
         public void AddThread(ThreadViewModel thread)
         {
@@ -113,7 +153,8 @@ namespace WebChat.Services
             var result = new LastMessageViewModel()
             {
                 Text = message.Text,
-                Time = message.CreatedOn
+                Time = message.CreatedOn,
+                SenderId = message.SenderId
             };
 
             return result;

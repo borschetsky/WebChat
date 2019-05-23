@@ -50,6 +50,6 @@ li.clearfix div.clearfix-wrapper div.about p.status{
 li.clearfix div.clearfix-wrapper span{
     justify-self: end;
     align-self: end;
-    padding-right: 6px;
+    padding-right: 5px;
     font-weight: 300;
 }

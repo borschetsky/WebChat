@@ -89,11 +89,15 @@ class Dashboard extends Component  {
         });
 
         this.connection.on('ReciveMessage', (message) => {
-            const { threads} = this.state;
+            const { threads,userProfile} = this.state;
+            console.log(message);
             threads.forEach(t => {
                 if(t.id === message.threadId){
-                    t.lastMessage.text = message.text;
-                    t.lastMessage.time = message.time;
+                    // const youPrefix = (message.senderId === userProfile.id) ? `You: ${message.text}` : message.text;
+                    // console.log(youPrefix);
+                    t.lastMessage = message;
+                    // t.lastMessage.text = message.text;
+                    // t.lastMessage.time = message.time;
                 }
             });
             this.setState({threads});
@@ -264,6 +268,7 @@ class Dashboard extends Component  {
            <MyProfile  handleLogOut={this.handleLogOut} profile={userProfile} handleEditorClose={this.handleEditorClose}/>
             <MessageList 
                 oponentProfile={oponentProfile}
+                userProfile={userProfile}
                 threadId={threadId}
                 username={userName}
                 connection={this.connection}/>

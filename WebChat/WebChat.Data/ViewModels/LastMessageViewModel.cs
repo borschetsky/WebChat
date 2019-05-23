@@ -10,5 +10,7 @@ namespace WebChat.Models.ViewModels
         public string Text { get; set; }
 
         public DateTime Time { get; set; }
+
+        public string SenderId { get; set; }
     }
 }

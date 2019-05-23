@@ -8,6 +8,8 @@ namespace WebChat.Services
 {
     public interface IThreadService
     {
+        Dictionary<DateTime, List<MessageViewModel>> SearchForMessages(string threadId, string term);
+
         ICollection<Thread> GetUserThreads(string userId);
 
         void AddThread(ThreadViewModel thread);

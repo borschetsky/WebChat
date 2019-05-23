@@ -60,7 +60,7 @@ class ThreadList extends React.Component {
         const { subscribeToThread } = this.props; 
         let itemsToDisplay = this.state.search.length > 0 ? 
         <UserSearch users={this.state.users} createThread={this.props.createThread} clearSearch={this.clearSearch}/>
-        : <UserThreads threads={threads}  subscribeToThread={subscribeToThread} threadId={threadId}/>;
+        : <UserThreads threads={threads} subscribeToThread={subscribeToThread} threadId={threadId} profile={this.state.profile}/>;
         if(this.state.isEdit){
             return(
                 <div className="people-list">

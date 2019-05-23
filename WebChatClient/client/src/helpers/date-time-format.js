@@ -16,24 +16,31 @@ const getDateInfoForMessage = (jsonTimeFormat) =>{
     const dateNow = new Date().getDate();
     const messageDate = new Date(jsonTimeFormat).getDate();
     const numberOfDays = dateNow - messageDate;
-    const time = new Date(jsonTimeFormat).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit'});
+    return new Date(jsonTimeFormat).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit'});
+    
+};
+
+const getDateInfoForSeparator = (jsonTimeFormat) => {
+    const dateNow = new Date().getDate();
+    const messageDate = new Date(jsonTimeFormat).getDate();
+    const numberOfDays = dateNow - messageDate;
     const date = new Date(jsonTimeFormat).toLocaleDateString('en-BG', {month: 'short', day: 'numeric'});
     if(numberOfDays > 1 && numberOfDays < 7){
-        return `${numberOfDays} days ago At | ${time}`; 
+        return `${numberOfDays} days ago`; 
     }
     switch(numberOfDays){
         case 0:
-            return `Today At | ${time}`;
+            return `Today`;
         case 1:
-            return `Yesterday At | ${time}`;
+            return `Yesterday`;
         case (numberOfDays > 1 && numberOfDays < 7):
             console.log('Hello');
-            return `${numberOfDays} days ago At | ${time}`;     
+            return `${numberOfDays} days ago`;     
         case 7:
-            return `Week ago At | ${time}`;   
+            return `Week ago`;   
         default:
-            return `${date} at | ${time}`; 
+            return `${date}`; 
     };
-};
 
-export { getDateInfoForThread, getDateInfoForMessage }
+}
+export { getDateInfoForThread, getDateInfoForMessage, getDateInfoForSeparator }

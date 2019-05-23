@@ -46,22 +46,33 @@
   .oponent-profile div.aside{
         grid-area: aside;
         display: grid;
+        
   }
 
   .oponent-profile div.aside div.aside-search{
       display: grid;
       position: relative;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      align-self: center;
+      transition: 1s;
   }
   .oponent-profile div.aside div.aside-search i{
       display: block;
       font-size: 28px;
       color: #435f7a;
       align-self: center;
-      
+      justify-self: center;
       cursor: pointer;
   }
 
   
-  .oponent-profile div.aside div.aside-search i:hover{
-        transform: scale(1.04);
+  .oponent-profile div.aside div.aside-search:hover i{
+        transform: scale(0.95);
+        transition: 1s;
   }
+  .oponent-profile div.aside div.aside-search:hover {
+    background-color: #c6c6c6;
+    transition: 1s;
+}

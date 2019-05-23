@@ -104,7 +104,11 @@
     cursor: pointer;
     background-color:#eff1f4;
     border-right: 5px solid #435f7a;
+    
 
+  }
+  .clearfix.active div.clearfix-wrapper span{
+    padding-right: 0px;
   }
   .list{
       margin: 0;

@@ -23,10 +23,10 @@ namespace WebChat.Controllers
             this.messageService = messageService ?? throw new ArgumentNullException("Message service can not be null");
             this.validator = validator ?? throw new ArgumentNullException("Validator can not be null");
             this.threadService = threadService;
-            ;
+            
         }
         [HttpGet("getmessages/{id}")]
-        public ActionResult<List<MessageViewModel>> GetAllMessages(string id)
+        public ActionResult<Dictionary<DateTime, List<MessageViewModel>>> GetAllMessages(string id)
         {
             if (string.IsNullOrEmpty(id))
             {
@@ -40,11 +40,48 @@ namespace WebChat.Controllers
             {
                 return BadRequest(new { message = "Sorry! But you have no acces to this thread"});
             }
-
+            var dict = new Dictionary<DateTime, List<MessageViewModel>>();
             List<MessageViewModel> msgs = this.threadService.GetThreadMessages(id);
+            foreach (var message in msgs)
+            {
+                var date = message.Time.Date;
+                if (!dict.ContainsKey(date))
+                {
+                    dict.Add(date, new List<MessageViewModel>());
+                    dict[date].Add(message);
+                }
+                else
+                {
+                    dict[date].Add(message);
+                }
+            }
 
-            return msgs;
+            return dict;
         }
+
+        
+        [HttpGet("search")]
+        public ActionResult<Dictionary<DateTime, List<MessageViewModel>>> FindMessages
+            ([FromQuery(Name = "term")] string term, [FromQuery(Name = "threadId")] string threadid)
+        {
+            if (string.IsNullOrEmpty(threadid) || string.IsNullOrEmpty(term))
+            {
+                return BadRequest(new { message = "Thread Id can not be empty or null" });
+            }
+            if (!validator.DoesThreadExist(threadid))
+            {
+                return BadRequest(new { message = "There are no thread with this id" });
+            }
+            if (!validator.DoesUserBelongToCurentThread(threadid, User.Identity.Name))
+            {
+                return BadRequest(new { message = "Sorry! But you have no acces to this thread" });
+            }
+
+            var result = threadService.SearchForMessages(threadid, term);
+
+            return result;
+        }
+
 
         
     }

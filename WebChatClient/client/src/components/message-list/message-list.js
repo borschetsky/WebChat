@@ -2,10 +2,11 @@ import React from 'react'
 import Message from '../message';
 import OponentProfile from '../oponent-profile';
 import MessageHistorySearch from '../message-history-search';
-import { getDateInfoForMessage } from '../../helpers/';//Formating DateTime Today, Yesterday, Up to 6 days ago, Week Ago and if more showing date
+import { getDateInfoForMessage, getDateInfoForSeparator } from '../../helpers/';//Formating DateTime Today, Yesterday, Up to 6 days ago, Week Ago and if more showing date
 import './message-list.css';
 import { withAuth } from '../hoc';
-import { getMessages } from '../../services';
+import { getMessages, authHeader } from '../../services';
+import Axios from 'axios';
 
 class MessageList extends React.Component {
  
@@ -13,9 +14,10 @@ class MessageList extends React.Component {
         threadId: null,
         userProfile: null, 
         oponentProfile: null,
-        messages:[],
+        messages:{},
         isSearch: false,
-        search: ''
+        search: '',
+        searchResult: {}
     };
 
     componentDidMount(){
@@ -24,8 +26,13 @@ class MessageList extends React.Component {
                 return;
             };
             let { messages } = this.state;
-            messages = [...messages, message];
-            this.setState({messages});
+            let messageKey = message.date.slice(0, message.date.length - 6);
+            if(messages.hasOwnProperty(messageKey)){
+                messages[messageKey] = [...messages[messageKey], message];
+            }else{
+                messages[messageKey] = [message];
+            };
+            this.setState({messages: messages});
         });
         this.setState({
             threadId: this.props.threadId, 
@@ -39,7 +46,7 @@ class MessageList extends React.Component {
         this.shouldScrollToBottom = node.scrollTop + node.clientHeight + 100 >= node.scrollHeight;
     }
     
-    componentDidUpdate(prevProps) {
+    componentDidUpdate(prevProps, prevState) {
         if (this.shouldScrollToBottom) {
             const node = this.refs.messages;
             node.scrollTop = node.scrollHeight   
@@ -56,6 +63,13 @@ class MessageList extends React.Component {
         if(prevProps.oponentProfile !== this.props.oponentProfile){
             this.setState({oponentProfile: this.props.oponentProfile})
         }
+        if(prevProps.userProfile !== this.props.userProfile){
+            this.setState({userProfile: this.props.userProfile})
+        }
+        if(prevState.messages !== this.state.messages){
+            this.setState({messages: this.state.messages});
+        }
+
     }
 
     getMessagesForThread = (threadId) => {
@@ -63,6 +77,7 @@ class MessageList extends React.Component {
             this.setState({messages: []});
             getMessages(threadId, token).then(res => {
                 this.setState({messages: res.data});
+                
             }).catch(err => console.log(err));
     };
 
@@ -72,32 +87,68 @@ class MessageList extends React.Component {
     };
     onSearchChange = (search) => {
         this.setState({search});
-    };
-    searchMessages = (messages, search) => {
-        if(search.length === 0){
-            return messages;
+        if(search.length > 0){
+            this.searchMessages(search);
         }
-        return messages.filter(msg => {
-            return msg.text.toLowerCase().indexOf(search.toLowerCase()) > -1
+    };
+    searchMessages = (search) => {
+        const {threadId } = this.state;
+        Axios.get(`https://localhost:44397/api/thread/search?term=${search}&threadid=${threadId}`, {
+            headers: authHeader(this.props.user.token)
+        }  ).then(res => {
+            this.setState({searchResult: res.data})
+            console.log(res.data);
+        });
+        
+    }
+    mapMessages = (messages) => {
+        return Object.keys(messages).map((item, index) => {
+            const dateMessages = messages[item].map(({ username, text, time, id, senderId }) => {
+                var myDate = getDateInfoForMessage(time);
+                console.log("SenderID:" + senderId);
+                return(
+                    <Message key={id} 
+                             username={username} 
+                             text={text} 
+                             time={myDate} 
+                             curentUsername={this.props.username}
+                             senderId={senderId}
+                             profile={this.state.userProfile}
+                             opponentProfile={this.state.oponentProfile} />
+                );
+            });
+            const sepDate = getDateInfoForSeparator(item);
+            return(
+                <React.Fragment key={`${item}${item}`}>
+                    <li key={item} className="message-date-separator">{sepDate}</li>
+                    {dateMessages}
+                </React.Fragment>
+                
+            );
         });
     }
 
     render() {
-        const { messages, oponentProfile, threadId, isSearch, search } = this.state;
+        const { messages, oponentProfile, threadId, isSearch, search, searchResult } = this.state;
         const chooseOpponent = (<div className="join-room">&larr; Chose Opponent</div>);
         const noMessages = (<div className="join-room">You Still have no messages - begin chatting</div>);
-        
-        const messagesMap =  this.searchMessages(messages, search).map(({ username, text, time, id }, index) => {
-            var myDate = getDateInfoForMessage(time);
+        const noMessagesFound = (<div className="join-room">No messages matched your search</div>);
+        // const messagesMap =  this.searchMessages(messages, search).map(({ username, text, time, id }, index) => {
+        //     var myDate = getDateInfoForMessage(time);
             
-            return (
-                <Message key={id} username={username} text={text} time={myDate} curentUsername={this.props.username} />
-            )
-        });
+        //     return (
+        //         <Message key={id} username={username} text={text} time={myDate} curentUsername={this.props.username} />
+        //     )
+        // });
+        const messagesMap = (search.length > 0 && isSearch) ?  this.mapMessages(searchResult) : this.mapMessages(messages);
+        //TODO: add check for messageMap Count if 0 say no such messages
+        //      also implement message schroll uploading https://www.pubnub.com/tutorials/react/chat-message-history-and-infinite-scroll/#scroll-bottom
+        const content = (Object.keys(messages).length < 1 && !isSearch) ? noMessages : messagesMap;
         
-        const content = messages.length < 1 ? noMessages : messagesMap;
         const contentToDisplay = !threadId ? chooseOpponent : content;
-        //
+
+        const contentVsSearchResults = (contentToDisplay.length < 1  && search.length > 0) ? noMessagesFound : contentToDisplay;
+        
         const oponentProfileVsSeach = !isSearch ? 
             <OponentProfile profile={oponentProfile} handleSearchbar={this.handleSearchbar}/>
         : <MessageHistorySearch handleSearchbar={this.handleSearchbar} profile={oponentProfile} onSearchChange={this.onSearchChange}/>
@@ -106,7 +157,7 @@ class MessageList extends React.Component {
             <React.Fragment>
                     {oponentProfileVsSeach}
                     <ul className="message-list" ref="messages">
-                        {contentToDisplay}
+                        {contentVsSearchResults}
                     </ul>
             </React.Fragment>
 

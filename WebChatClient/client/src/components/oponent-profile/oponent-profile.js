@@ -43,7 +43,6 @@ import { getDefaultImageUrl, getUserAvatar, defaultimage } from '../../services'
                 <div className="aside">
                     <div className="aside-search">
                         <i className="material-icons md-32" onClick={() => handleSearchbar()}>search</i>
-                        
                     </div>
                     
                 </div>

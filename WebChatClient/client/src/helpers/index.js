@@ -1,3 +1,3 @@
-import { getDateInfoForThread, getDateInfoForMessage } from './date-time-format';
+import { getDateInfoForThread, getDateInfoForMessage, getDateInfoForSeparator } from './date-time-format';
 
-export { getDateInfoForThread, getDateInfoForMessage };
+export { getDateInfoForThread, getDateInfoForMessage, getDateInfoForSeparator };

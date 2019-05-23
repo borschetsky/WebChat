@@ -23,3 +23,14 @@
     border-right: 2px solid #eff1f4;
     margin-top: 0px;
 }
+
+li.message-date-separator{
+    padding: 20px 0px 20px 0px;
+    display: grid;
+    align-self: center;
+    justify-self: center;
+    text-align: center;
+    font-weight: 400;
+    font-size: 14px;
+    margin: 0 auto;
+}

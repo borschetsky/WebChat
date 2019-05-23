@@ -68,6 +68,8 @@ namespace WebChat.Controllers
             var senderId = User.Identity.Name;
             var reciverId = this.userSercvice.GetOponentIdByTheadId(senderId, model.ThreadId);
             responseModel.Username = model.Username;
+            responseModel.Date = responseModel.Time.Date;
+            responseModel.SenderId = senderId;
             var listOfConnections = new List<string>() { senderId, reciverId};
             
             await hubContext.Clients.Users(listOfConnections).SendAsync("ReciveMessage", responseModel);
