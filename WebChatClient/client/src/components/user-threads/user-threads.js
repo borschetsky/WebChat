@@ -20,8 +20,6 @@ const UserThreads = (props) => {
         
         const items = threads.map(thread => {
             const active = thread.id === threadId ? 'active' : '';
-            console.log(thread.lastMessage.senderId);
-            console.log("ProfileId:" + profile.id);
             const youPrefix = thread.lastMessage.senderId === profile.id ? `You: ${thread.lastMessage.text}` : thread.lastMessage.text
             const lasteMessage = thread.lastMessage ? youPrefix : 'No messages';
             const typingOrLM = thread.oponentVM.isTyping ? 'Typing...' : lasteMessage;

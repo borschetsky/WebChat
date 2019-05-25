@@ -62,24 +62,27 @@ export default class Login extends Component {
                 console.error(err);
                 if(err){
                     const {data} = err.response;
-                for(let key of Object.keys(data)){
-                    switch(key){
-                        case "email":
-                            console.log(data.email);
-                            let formErrors = {...this.state.formErrors};
-                            formErrors.email = data.email;
-                            this.setState({formErrors});
-                        break;
-                        case "password":
-                            let formErrors2 =  {...this.state.formErrors};
-                            console.log(data.password);
-                            formErrors2.password = data.password;
-                            this.setState({formErrors: formErrors2});
-                        break;    
-                        default:
-                        break;
-                    } 
-                }
+                    if(data){
+                        for(let key of Object.keys(data)){
+                            switch(key){
+                                case "email":
+                                    console.log(data.email);
+                                    let formErrors = {...this.state.formErrors};
+                                    formErrors.email = data.email;
+                                    this.setState({formErrors});
+                                break;
+                                case "password":
+                                    let formErrors2 =  {...this.state.formErrors};
+                                    console.log(data.password);
+                                    formErrors2.password = data.password;
+                                    this.setState({formErrors: formErrors2});
+                                break;    
+                                default:
+                                break;
+                            } 
+                        }
+                    }
+               
                 
                 };
                 

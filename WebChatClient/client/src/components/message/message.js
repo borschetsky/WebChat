@@ -9,8 +9,7 @@ function Message(props) {
     const { profile, opponentProfile, senderId, username} = props;
     const imagePath = senderId === profile.id ? getUserAvatar(profile.avatarFileName) : getUserAvatar(opponentProfile.avatarFileName);
     
-    //TODO: integrate images from pre-loaded profiles
-    const imageLink = `https://ui-avatars.com/api/?name=${props.username}&rounded=true&bold=true&size=128`;
+    
     return (
             <li className={ classToDispay }>
                 <img onError={defaultimage} src={imagePath} alt="avatar" height="22" width="22" name={username}/>

@@ -11,18 +11,17 @@ import { getDefaultImageUrl, getUserAvatar, defaultimage } from '../../services'
     componentDidMount(){
         this.setState({
             profile: this.props.profile
-        }, console.log(this.state.profile));
-    }
+        });
+    };
 
     componentDidUpdate(prevProps){
-        
         if(prevProps.profile !== this.props.profile){
             this.setState({profile: this.props.profile})
-        }
-        
-    }
+        };
+    };
  
     render(){
+        
         const { profile } = this.state;
         const { handleSearchbar } = this.props;
         const imagePath = profile.avatarFileName === null ? getDefaultImageUrl(profile.username) : getUserAvatar(profile.avatarFileName);

@@ -8,6 +8,7 @@ import MyProfile from './my-profile';
 import {getProfile, getThreads, createThread, sendMessageToApi } from '../services';
 
 
+
 class Dashboard extends Component  {
 //TODO: use only user profile with props needed
     constructor(props){
@@ -31,6 +32,17 @@ class Dashboard extends Component  {
         this.token = this.props.user.token;
     }
     
+    connect = async (signalRConnection) => {
+        signalRConnection.start().catch(e => {
+            this.sleep(5000);
+            console.log("Reconnecting Socket");
+            this.connect(signalRConnection);
+
+        })
+    }
+    sleep = async (msec) => {
+        return new Promise(resolve => setTimeout(resolve, msec));
+    }
     componentDidMount(){
         const {token} = this.props.user;
         getProfile(token).then(res => {
@@ -39,14 +51,19 @@ class Dashboard extends Component  {
                 userProfile: res.data,
                 userName: res.data.username
             });
-        }).catch(err => console.error(err));
-
-        this.connection.start(() => console.log("started"))
-        .catch(err => {
-            console.log(err)
+        }).catch(err => {
+            console.error(err);
             this.props.history.push("/login");
         });
-
+        // this.connection.start(() => console.log("started"))
+        // .catch(err => {
+        //     console.log(err)
+        //     this.props.history.push("/login");
+        // });
+        this.connect(this.connection);
+        this.connection.onclose((e) => {
+            console.log(e)
+        });
         this.connection.on('ReciveConnectionId', connId => {
             console.log(`CuurentConnectionId: ${connId}`);
         });
@@ -89,15 +106,11 @@ class Dashboard extends Component  {
         });
 
         this.connection.on('ReciveMessage', (message) => {
-            const { threads,userProfile} = this.state;
+            const { threads} = this.state;
             console.log(message);
             threads.forEach(t => {
                 if(t.id === message.threadId){
-                    // const youPrefix = (message.senderId === userProfile.id) ? `You: ${message.text}` : message.text;
-                    // console.log(youPrefix);
                     t.lastMessage = message;
-                    // t.lastMessage.text = message.text;
-                    // t.lastMessage.time = message.time;
                 }
             });
             this.setState({threads});
@@ -184,7 +197,6 @@ class Dashboard extends Component  {
                 this.setState({threads});
 
             };
-            console.log(profile);
         });
 
     };

@@ -6,7 +6,7 @@
 
 /* background of the scrollbar except button or resizer */
 .message-list::-webkit-scrollbar-track {
-    background-color:#fff
+    background-color: white;
 }
 
 /* scrollbar itself */
@@ -22,6 +22,13 @@
 .message-list{
     border-right: 2px solid #eff1f4;
     margin-top: 0px;
+    padding-right: 26px;
+    padding-left: 26px;
+    overflow: hidden;
+}
+.message-list:hover{
+    
+    overflow-y: overlay;
 }
 
 li.message-date-separator{

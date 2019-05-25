@@ -67,7 +67,10 @@ div.edit-profile button{
     border-radius: 5px;
     margin-top: 20px;
     margin-left: 10px;
-    
+}
+
+div.edit-profile button:disabled{
+    background-color: grey;
 }
 
 

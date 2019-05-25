@@ -18,6 +18,7 @@ html, body {
     margin: 0;
     padding: 0;
     font-family: 'Roboto', sans-serif;
+    
     font-weight: 200;
     color: 	#3e5869; 
 }
@@ -174,7 +175,7 @@ html, body {
     justify-content: center;
     align-items: center;
     height: 100%;
-    font-size: 25px;
+    font-size: 34px;
     font-weight: 300;
 }
 

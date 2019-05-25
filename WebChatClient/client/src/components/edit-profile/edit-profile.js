@@ -1,7 +1,6 @@
 import React, { Component } from 'react';
 import './edit-profile.css';
-import { getDefaultImageUrl, getUserAvatar, defaultimage, uploadAvatar, getProfile, authHeader } from '../../services';
-
+import { getDefaultImageUrl, getUserAvatar, defaultimage, uploadAvatar, getProfile, authHeader, updateUsersProfile } from '../../services';
 import { withAuth } from '../hoc';
 import Axios from 'axios';
 //TODO: Add validations
@@ -12,7 +11,8 @@ class EditProfile extends Component{
         username: '',
         email: '',
         avatarFileName: '',
-    }
+        isProfileCnanged: false
+    };
 
     componentDidMount(){
         const { username, email, avatarFileName, id } = this.props.profile;
@@ -27,16 +27,18 @@ class EditProfile extends Component{
                 username,
                 avatarFileName,
                 id
-            })
+            });
         }
         if(prevState.avatarFileName !== this.state.avatarFileName){
             this.setState({avatarFileName: this.state.avatarFileName});
         }
+       
     }
 
     handleChange = (e) => {
         const {name, value } = e.target;    
         this.setState({[name]: value });
+        this.setState({isProfileCnanged: true});
     };
 
     fileSelectedHandler = (e) => {
@@ -55,27 +57,29 @@ class EditProfile extends Component{
         const userObj = {
             id, username, email, avatarFileName
         };
-        
         if(JSON.stringify(userObj) !== JSON.stringify(dbProfile.data)){
-            await Axios.post('https://localhost:44397/api/users/update', 
-                userObj
-            , {
-                headers: authHeader(token)
-            }).then(res => {
+            await updateUsersProfile(token, userObj).then(res => {
                 if(res.status === 200){
-                   
-                }
+                    console.log('Your profile succesfuly updated')
+                };
             });
+        }else{
+            console.log("You have not made any changes!");
         }
     };
 
-    fileUploadHandler = (e) => {
+    fileUploadHandler = () => {
         const { token } = this.props.user;
         var fromData = new FormData();
-        fromData.append('image', this.state.selsectedFile, this.state.selsectedFile.name);
-        uploadAvatar(fromData, token).then(res => {
-            this.setState({avatarFileName: res.data});
-        });
+        if(this.state.selsectedFile){
+            fromData.append('image', this.state.selsectedFile, this.state.selsectedFile.name);
+            uploadAvatar(fromData, token).then(res => {
+                this.setState({avatarFileName: res.data});
+            });
+        }else{
+            console.error("You should select a file to upload")
+        };
+       
     };
 
     render(){
@@ -83,7 +87,7 @@ class EditProfile extends Component{
         //     return (<h5>Loading</h5>);
         // }
         
-        const { avatarFileName, username, email } = this.state;
+        const { avatarFileName, username, email, selsectedFile, isProfileCnanged } = this.state;
 
         const imagePath = !avatarFileName ? getDefaultImageUrl(username) : getUserAvatar(avatarFileName);
         return(
@@ -95,7 +99,7 @@ class EditProfile extends Component{
                 </div>
                 <div className="file-upload">
                     <input type="file" className="upload" onChange={this.fileSelectedHandler}/>
-                    <button onClick={() => this.fileUploadHandler()}>Upload</button>
+                    <button disabled={!selsectedFile ? true : false} onClick={() => this.fileUploadHandler()}>Upload</button>
                 </div>
                 
                 <form className="edit-profile form">
@@ -109,7 +113,7 @@ class EditProfile extends Component{
                     </div>
                 </form>
                 
-                <button onClick={() => {
+                <button disabled={isProfileCnanged ? false : true} onClick={() => {
                     this.props.handleEditorClose();
                     this.onSaveChanges();
                 }}>Save</button>

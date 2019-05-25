@@ -5,8 +5,7 @@ import MessageHistorySearch from '../message-history-search';
 import { getDateInfoForMessage, getDateInfoForSeparator } from '../../helpers/';//Formating DateTime Today, Yesterday, Up to 6 days ago, Week Ago and if more showing date
 import './message-list.css';
 import { withAuth } from '../hoc';
-import { getMessages, authHeader } from '../../services';
-import Axios from 'axios';
+import { getMessages, searchForMessageInThread } from '../../services';
 
 class MessageList extends React.Component {
  
@@ -92,20 +91,23 @@ class MessageList extends React.Component {
         }
     };
     searchMessages = (search) => {
+        const { token } = this.props.user;
         const {threadId } = this.state;
-        Axios.get(`https://localhost:44397/api/thread/search?term=${search}&threadid=${threadId}`, {
-            headers: authHeader(this.props.user.token)
-        }  ).then(res => {
+        const params = {
+            term: search,
+            threadid: threadId
+        };
+
+       searchForMessageInThread(token, params).then(res => {
             this.setState({searchResult: res.data})
-            console.log(res.data);
-        });
+        }).catch(err => console.log(err));
         
     }
     mapMessages = (messages) => {
         return Object.keys(messages).map((item, index) => {
             const dateMessages = messages[item].map(({ username, text, time, id, senderId }) => {
                 var myDate = getDateInfoForMessage(time);
-                console.log("SenderID:" + senderId);
+                
                 return(
                     <Message key={id} 
                              username={username} 
@@ -133,13 +135,7 @@ class MessageList extends React.Component {
         const chooseOpponent = (<div className="join-room">&larr; Chose Opponent</div>);
         const noMessages = (<div className="join-room">You Still have no messages - begin chatting</div>);
         const noMessagesFound = (<div className="join-room">No messages matched your search</div>);
-        // const messagesMap =  this.searchMessages(messages, search).map(({ username, text, time, id }, index) => {
-        //     var myDate = getDateInfoForMessage(time);
-            
-        //     return (
-        //         <Message key={id} username={username} text={text} time={myDate} curentUsername={this.props.username} />
-        //     )
-        // });
+       
         const messagesMap = (search.length > 0 && isSearch) ?  this.mapMessages(searchResult) : this.mapMessages(messages);
         //TODO: add check for messageMap Count if 0 say no such messages
         //      also implement message schroll uploading https://www.pubnub.com/tutorials/react/chat-message-history-and-infinite-scroll/#scroll-bottom

@@ -13,9 +13,6 @@ const getDateInfoForThread = (jsonTimeformat) => {
 };
 
 const getDateInfoForMessage = (jsonTimeFormat) =>{
-    const dateNow = new Date().getDate();
-    const messageDate = new Date(jsonTimeFormat).getDate();
-    const numberOfDays = dateNow - messageDate;
     return new Date(jsonTimeFormat).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit'});
     
 };

@@ -64,4 +64,19 @@ const sendMessageToApi = async (messageViewModel, token) => {
     return await result;
 };
 
-export { getProfile, getMessages, getThreads, createThread, sendMessageToApi, uploadAvatar, searchForUsers, login, register } ;
+const searchForMessageInThread = async (token, params) => {
+    const result = await Axios.get(`${_baseUrl}thread/search`, {
+        headers: authHeader(token),
+        params: params
+    });
+    return await result;
+}
+
+const updateUsersProfile = async (token, user) => {
+    const result = await Axios.post(`${_baseUrl}users/update`, user, {
+        headers: authHeader(token)
+    });
+    return await result;
+};
+
+export { getProfile, getMessages, getThreads, createThread, sendMessageToApi, uploadAvatar, searchForUsers, login, register, searchForMessageInThread, updateUsersProfile } ;
