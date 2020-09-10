@@ -10,37 +10,44 @@ using WebChat.Connection;
 namespace WebChat.Connection.Migrations
 {
     [DbContext(typeof(WebChatContext))]
-    [Migration("20190510165033_Initial")]
-    partial class Initial
+    [Migration("20200910102236_InitialDbCreate")]
+    partial class InitialDbCreate
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "2.2.4-servicing-10062")
+                .HasAnnotation("ProductVersion", "3.1.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128)
                 .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
             modelBuilder.Entity("WebChat.Models.Message", b =>
                 {
                     b.Property<string>("Id")
-                        .ValueGeneratedOnAdd();
+                        .HasColumnType("nvarchar(450)");
 
-                    b.Property<DateTime>("CreatedOn");
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
 
-                    b.Property<DateTime?>("DeletedOn");
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
 
-                    b.Property<DateTime?>("ModifiedOn");
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("SenderId")
-                        .IsRequired();
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
 
-                    b.Property<string>("Text");
+                    b.Property<string>("Text")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ThreadId")
-                        .IsRequired();
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
 
-                    b.Property<bool>("isDeleted");
+                    b.Property<bool>("isDeleted")
+                        .HasColumnType("bit");
 
                     b.HasKey("Id");
 
@@ -54,20 +61,26 @@ namespace WebChat.Connection.Migrations
             modelBuilder.Entity("WebChat.Models.Thread", b =>
                 {
                     b.Property<string>("Id")
-                        .ValueGeneratedOnAdd();
+                        .HasColumnType("nvarchar(450)");
 
-                    b.Property<DateTime>("CreatedOn");
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
 
-                    b.Property<DateTime?>("DeletedOn");
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
 
-                    b.Property<DateTime?>("ModifiedOn");
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
 
-                    b.Property<string>("OponentId");
+                    b.Property<string>("OponentId")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("OwnerId")
-                        .IsRequired();
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
 
-                    b.Property<bool>("isDeleted");
+                    b.Property<bool>("isDeleted")
+                        .HasColumnType("bit");
 
                     b.HasKey("Id");
 
@@ -79,27 +92,35 @@ namespace WebChat.Connection.Migrations
             modelBuilder.Entity("WebChat.Models.User", b =>
                 {
                     b.Property<string>("Id")
-                        .ValueGeneratedOnAdd();
+                        .HasColumnType("nvarchar(450)");
 
-                    b.Property<string>("AvatarFileName");
+                    b.Property<string>("AvatarFileName")
+                        .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime>("CreatedOn");
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
 
-                    b.Property<DateTime?>("DeletedOn");
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Email")
                         .IsRequired()
+                        .HasColumnType("nvarchar(60)")
                         .HasMaxLength(60);
 
-                    b.Property<DateTime?>("ModifiedOn");
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Password")
-                        .IsRequired();
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Username")
+                        .HasColumnType("nvarchar(60)")
                         .HasMaxLength(60);
 
-                    b.Property<bool>("isDeleted");
+                    b.Property<bool>("isDeleted")
+                        .HasColumnType("bit");
 
                     b.HasKey("Id");
 
@@ -111,12 +132,14 @@ namespace WebChat.Connection.Migrations
                     b.HasOne("WebChat.Models.User", "Sender")
                         .WithMany("Messages")
                         .HasForeignKey("SenderId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("WebChat.Models.Thread", "Thread")
                         .WithMany("Messages")
                         .HasForeignKey("ThreadId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("WebChat.Models.Thread", b =>
@@ -124,7 +147,8 @@ namespace WebChat.Connection.Migrations
                     b.HasOne("WebChat.Models.User", "Owner")
                         .WithMany("Threads")
                         .HasForeignKey("OwnerId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

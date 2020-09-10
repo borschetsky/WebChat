@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace WebChat.Connection.Migrations
 {
-    public partial class Initial : Migration
+    public partial class InitialDbCreate : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {

@@ -1,12 +1,9 @@
-﻿using System;
-using System.Threading.Tasks;
-using System.Linq;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
-using WebChat.Hubs.ConnectionMapper;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 using WebChat.Hubs.Interfaces;
-using System.Threading;
 
 namespace WebChat.Hubs
 {

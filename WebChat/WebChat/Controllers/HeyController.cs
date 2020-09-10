@@ -4,16 +4,12 @@ using Microsoft.AspNetCore.SignalR;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
 using System.Threading.Tasks;
 using WebChat.Hubs;
-using WebChat.Hubs.ConnectionMapper;
 using WebChat.Hubs.Interfaces;
-using WebChat.Models;
 using WebChat.Models.ViewModels;
 using WebChat.Services;
 using WebChat.Services.Inerfaces;
-using WebChat.ViewModels;
 
 
 namespace WebChat.Controllers

@@ -1,0 +1,62 @@
+:root{
+    --send-button-hover-color: #2c4862;
+}
+
+div.history-search{
+    grid-area: p;
+    width: 100%;
+    height: 100%;
+    justify-content: center;
+    background: #f5f5f5;
+    display: grid;
+    grid-template-columns: 80px 24px 1fr  90px;
+    grid-template-areas: "savatar sicon sinput cbutton";
+    
+}
+
+div.history-search i{
+    grid-area: sicon;
+    align-self: center;
+    justify-self: start;
+    padding-right: 3px;
+}
+
+div.history-search div.search{
+    grid-area: sinput;
+    display: grid;
+    
+}
+
+div.history-search div.search input{
+    width: 95%;
+    align-self: center;
+    padding-top: 7px;
+    padding-bottom: 7px;
+}
+
+div.history-search button{
+    height: 30px;
+    align-self: center;
+    margin-right: 20px;
+    background-color: #435f7a;
+    border: none;
+    border-radius: 5px;
+    color: #f5f5f5;
+    transition: 0.5s;
+}
+div.history-search button:hover{
+    background-color: var(--send-button-hover-color);
+    font-size: 82.5%;
+    transition: 0.8s;
+}
+
+div.history-search img{
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    align-self: center;
+    justify-self: center;
+    
+    object-fit: cover;
+    grid-area: savatar;
+}

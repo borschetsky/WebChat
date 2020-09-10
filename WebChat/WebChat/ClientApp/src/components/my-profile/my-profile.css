@@ -1,0 +1,67 @@
+.my-profile{
+    grid-area: c;
+    display: grid;
+    grid-template-columns: 110px 1fr 110px;
+    grid-template-areas: "avatar username navbar navbar";
+    border-right: 2px solid #eff1f4;
+    border-bottom: 2px solid #eff1f4;
+    border-left: 2px solid #eff1f4;
+}
+
+.my-profile .avatar{
+    grid-area: avatar;
+    align-self: center;
+    justify-self: center;
+    
+}
+
+.my-profile .my-username{
+    grid-area: username;
+    align-self: center;
+}
+.my-profile .my-username p{
+    font-weight: 400;
+}
+.my-profile .navbar{
+    grid-area: navbar;
+    align-self: center;
+    cursor: pointer;
+}
+.my-profile .navbar:hover{
+    transform: scale(1.04);
+}
+.my-profile.log-out{
+    width: 100%;
+}
+.my-profile .navbar .log-out i{
+    float: left;
+}
+/*Edit button*/
+.my-profile .avatar span.edit{
+    background-color: #435f7a;;
+    position: absolute;
+    border-radius: 10px;
+    padding: 2px;
+    margin: 25px 0 0 35px;
+    display: none;
+    cursor: pointer;
+}
+.my-profile .avatar span.edit i{
+    color: #eff1f4;
+    padding: 2px 2px 0 2px;
+}
+/*Hover to edit apear*/
+.my-profile .avatar:hover span.edit{
+    display: block;
+}
+.my-profile .avatar img{
+    
+    margin: 0;
+    width:  50px;
+    height: 50px;
+    border: 2px solid #2ecc71;
+    border-radius: 50%;
+    object-fit: cover;
+    overflow: hidden;
+    
+}

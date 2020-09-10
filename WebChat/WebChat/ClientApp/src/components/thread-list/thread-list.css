@@ -1,0 +1,117 @@
+.search{
+    grid-area: s;
+}
+/* total width */
+.people-list::-webkit-scrollbar {
+  background-color:#fff;
+  width:16px
+}
+
+/* background of the scrollbar except button or resizer */
+.people-list::-webkit-scrollbar-track {
+  background-color:#fff
+}
+
+/* scrollbar itself */
+.people-list::-webkit-scrollbar-thumb {
+  background-color:#435f7a;
+  border-radius:16px;
+  border:4px solid #fff
+}
+
+/* set button(top and bottom of the scrollbar) */
+.people-list::-webkit-scrollbar-button {display:none}
+
+.people-list{
+    grid-area: u;
+    border-right: 2px solid #eff1f4;
+    border-left: 2px solid #eff1f4;
+    overflow: auto;
+
+}
+
+.people-list .search {
+    padding: 12px 20px 12px 20px;
+    border-bottom: 1px solid #eff1f4;
+  }
+
+  .people-list input {
+    border-radius: 3px;
+    border: 1px solid #eff1f4;    padding: 5;
+    color: grey;
+    /* background: #6a6c75; */
+    width: 90%;
+    font-size: 14px;
+  }
+  .people-list .fa-search {
+    position: relative;
+    left: -25px;
+  }
+  .people-list ul {
+    padding: 0px;
+    /* height: 770px; */
+  }
+  
+  .people-list ul li {
+    padding-bottom: 6px;
+    padding-top: 6px;
+    border-bottom: 1px solid #eff1f4;
+    overflow: hidden;
+    position: relative;
+    
+  }
+  
+  .people-list img {
+    float: left;
+    height: 50px;
+    width: 50px;
+    margin-right: 10px;
+  }
+  
+ 
+  
+  .people-list p.name{
+      margin: 0;
+      font-weight: 500;
+  }
+  .clearfix-wrapper{
+      display: block;
+      width: 88%;
+      position: relative;
+      margin: 0 auto;
+  }
+
+  
+
+  
+  /* .clearfix:after {
+    visibility: hidden;
+    display: block;
+    font-size: 0;
+    content: " ";
+    clear: both;
+    height: 0;
+  } */
+
+  .clearfix:hover{
+      /* transition: all .2s ease-in-out;
+      transform: scale(1.02); */
+      cursor: pointer;
+    background-color:#eff1f4
+    ;      
+  }
+
+  .clearfix.active{
+    cursor: pointer;
+    background-color:#eff1f4;
+    border-right: 5px solid #435f7a;
+    
+
+  }
+  .clearfix.active div.clearfix-wrapper span{
+    padding-right: 0px;
+  }
+  .list{
+      margin: 0;
+  }
+

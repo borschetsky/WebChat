@@ -1,16 +1,12 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using Microsoft.AspNetCore.SignalR;
 using System.Threading.Tasks;
 using WebChat.Handler;
-using System.IO;
-using Microsoft.AspNetCore.Authorization;
-using WebChat.Services;
-using Microsoft.AspNetCore.SignalR;
 using WebChat.Hubs;
 using WebChat.Hubs.Interfaces;
+using WebChat.Services;
 
 namespace WebChat.Controllers
 {

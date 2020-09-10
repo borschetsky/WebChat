@@ -5,9 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using WebChat.Connection;
 using WebChat.Hubs;
-using WebChat.Models;
 using WebChat.Models.ViewModels;
 using WebChat.Services;
 
