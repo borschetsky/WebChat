@@ -3,7 +3,7 @@ import { authHeader } from './';
 
 
 // const _baseUrl = 'https://localhost:44397/api/';
-const _baseUrl = 'https://localhost:54480/api/';
+export const _baseUrl = 'https://localhost:44339/api/';
 
 const register = async (registerObj) => {
     const result = await Axios.post(`${_baseUrl}auth/register`, registerObj);
@@ -29,6 +29,7 @@ const uploadAvatar = async (fromData, token) =>{
     return await result;
 };
 const getProfile = async (token) =>{
+    console.log("getProfile")
     const result = await Axios.get(`${_baseUrl}users/getprofile`, {
         headers: authHeader(token)
     });

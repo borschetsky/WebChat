@@ -18,6 +18,7 @@ using WebChat.Services.Helpers;
 using WebChat.Services.Inerfaces;
 using Microsoft.AspNetCore.SpaServices.ReactDevelopmentServer;
 using Microsoft.AspNetCore.Mvc.Abstractions;
+using System;
 
 namespace WebChat
 {
@@ -33,6 +34,10 @@ namespace WebChat
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+
+            var server = Configuration["DBServer"] ?? "localhost";
+            var port = Configuration["DBPort"] ?? "1433";
+
             this.RegisterAuthentication(services);
             this.RegisterServices(services);
 
@@ -116,6 +121,10 @@ namespace WebChat
             services.AddTransient<IImageHandler, ImageHandler>();
             services.AddTransient<AvatarWriter.Interface.IAvatarWriter,
                                   AvatarWriter.AvatarWriter>();
+
+            var test = Environment.GetEnvironmentVariable("HELLO");
+            
+
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -130,7 +139,7 @@ namespace WebChat
             else
             {
                 // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-                //app.UseHsts();
+                app.UseHsts();
             }
             app.UseCors(builder => builder
             
@@ -139,9 +148,8 @@ namespace WebChat
             .AllowCredentials()
             );
 
-            //app.UseHttpsRedirection();
+            app.UseHttpsRedirection();
             app.UseStaticFiles();
-            
             app.UseAuthentication();
             app.UseRouting();
             app.UseSwagger();
@@ -149,6 +157,9 @@ namespace WebChat
             {
                 c.SwaggerEndpoint("/swagger/v1/swagger.json", "my API v.1");
             });
+
+            app.UseAuthorization();
+
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllerRoute(
@@ -160,7 +171,7 @@ namespace WebChat
 
             app.UseSpaStaticFiles();
             app.UseSpa(spa => {
-                spa.Options.SourcePath = "ClientApp";
+                spa.Options.SourcePath = "ClientApp/build";
                 if (env.IsDevelopment())
                 {
                     //spa.UseProxyToSpaDevelopmentServer("http://localhost:3000");

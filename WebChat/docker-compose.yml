@@ -1,0 +1,19 @@
+﻿version: '3'
+services: 
+  ms-sql-server:
+    image: mcr.microsoft.com/mssql/server:2017-latest-ubuntu
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "Z@kr3vsk0g087v"
+      MSSQL_PID: Express
+    ports:
+     - '1443:1443'
+  webchat-api:
+    build: 
+      context: .
+      dockerfile: WebChat/Dockerfile
+    ports:
+      - '8080:80'
+      - '8081:443'
+    depends_on:
+        - ms-sql-server

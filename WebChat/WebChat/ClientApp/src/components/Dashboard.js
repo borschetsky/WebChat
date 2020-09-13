@@ -6,7 +6,7 @@ import SendMessageForm from './send-message-form';
 import ThreadList from '../components/thread-list';
 import MyProfile from './my-profile';
 import {getProfile, getThreads, createThread, sendMessageToApi } from '../services';
-
+import { _baseUrl } from '../services/api-service';
 
 
 class Dashboard extends Component  {
@@ -26,25 +26,26 @@ class Dashboard extends Component  {
             hubConnection: null,
             isEdit: false
         };
-        this.connection = new signalR.HubConnectionBuilder().withUrl("https://localhost:44397/chat", {
+        this.connection = new signalR.HubConnectionBuilder().withUrl("https://localhost:44339/chat", {
             accessTokenFactory: () => this.props.user.token
         }).build();
         this.token = this.props.user.token;
     }
     
-    connect = async (signalRConnection) => {
-        signalRConnection.start().catch(e => {
-            this.sleep(5000);
-            console.log("Reconnecting Socket");
-            this.connect(signalRConnection);
+    // connect = async (signalRConnection) => {
+    //     signalRConnection.start().catch(e => {
+    //         this.sleep(5000);
+    //         console.log("Reconnecting Socket");
+    //         this.connect(signalRConnection);
 
-        })
-    }
-    sleep = async (msec) => {
-        return new Promise(resolve => setTimeout(resolve, msec));
-    }
+    //     })
+    // }
+    // sleep = async (msec) => {
+    //     return new Promise(resolve => setTimeout(resolve, msec));
+    // }
     componentDidMount(){
         const {token} = this.props.user;
+        console.log("Debug")
         getProfile(token).then(res => {
             console.log(res.data);
             this.setState({
@@ -55,12 +56,12 @@ class Dashboard extends Component  {
             console.error(err);
             this.props.history.push("/login");
         });
-        // this.connection.start(() => console.log("started"))
-        // .catch(err => {
-        //     console.log(err)
-        //     this.props.history.push("/login");
-        // });
-        this.connect(this.connection);
+        this.connection.start(() => console.log("started"))
+        .catch(err => {
+            console.log(err)
+            this.props.history.push("/login");
+        });
+        // this.connect(this.connection);
         this.connection.onclose((e) => {
             console.log(e)
         });
