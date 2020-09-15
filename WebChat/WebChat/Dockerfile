@@ -5,12 +5,14 @@ WORKDIR /app
 EXPOSE 80
 EXPOSE 443
 
-RUN apt-get update -yq 
-RUN apt-get install curl gnupg -yq 
-RUN curl -sL https://deb.nodesource.com/setup_13.x | bash -
+RUN curl -sL https://deb.nodesource.com/setup_14.x | bash -
 RUN apt-get install -y nodejs
 
+
 FROM mcr.microsoft.com/dotnet/core/sdk:3.1-buster AS build
+RUN curl -sL https://deb.nodesource.com/setup_14.x |  bash -
+RUN apt-get install -y nodejs
+
 WORKDIR /src
 COPY ["WebChat/WebChat.csproj", "WebChat/"]
 COPY ["WebChat.AvatarWriter/WebChat.AvatarWriter.csproj", "WebChat.AvatarWriter/"]
