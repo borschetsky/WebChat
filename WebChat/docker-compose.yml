@@ -1,13 +1,21 @@
-﻿version: '3'
-services: 
+﻿version: '3.7'
+services:
+  react-app:
+    build:
+      context: .
+      dockerfile: WebChat/ClientApp/Dockerfile
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./WebChat/ClientApp:/app
   ms-sql-server:
     image: mcr.microsoft.com/mssql/server:2017-latest-ubuntu
     environment:
       ACCEPT_EULA: "Y"
-      SA_PASSWORD: "Z@kr3vsk0g087v"
+      SA_PASSWORD: "a80a7cac-3775-41bd-a997-16b300780655"
       MSSQL_PID: Express
     ports:
-     - '1443:1443'
+     - '1433:1433'
   webchat-api:
     build: 
       context: .
@@ -15,5 +23,14 @@ services:
     ports:
       - '8080:80'
       - '8081:443'
-    depends_on:
-        - ms-sql-server
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=https://+:443;http://+:80
+      - ASPNETCORE_Kestrel__Certificates__Default__Password=8175
+      - ASPNETCORE_Kestrel__Certificates__Default__Path=/https/aspnetapp.pfx
+      - ASPNETCORE_HTTPS_PORT=8081"
+    volumes:
+      - ~/.aspnet/https:/https:ro
+      - /path/on/host:/wwwroot/path/in/container
+    # depends_on:
+      # - ms-sql-server

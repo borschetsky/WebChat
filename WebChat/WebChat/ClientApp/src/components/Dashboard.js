@@ -26,7 +26,7 @@ class Dashboard extends Component  {
             hubConnection: null,
             isEdit: false
         };
-        this.connection = new signalR.HubConnectionBuilder().withUrl("https://localhost:44339/chat", {
+        this.connection = new signalR.HubConnectionBuilder().withUrl("https://localhost:8081/chat", {
             accessTokenFactory: () => this.props.user.token
         }).build();
         this.token = this.props.user.token;

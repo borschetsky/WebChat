@@ -19,6 +19,7 @@ using WebChat.Services.Inerfaces;
 using Microsoft.AspNetCore.SpaServices.ReactDevelopmentServer;
 using Microsoft.AspNetCore.Mvc.Abstractions;
 using System;
+using WebChat.Seed;
 
 namespace WebChat
 {
@@ -130,6 +131,7 @@ namespace WebChat
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env)
         {
+            //PrepDB.PrepPopulation(app);
             app.UseRouting();
 
             if (env.IsDevelopment())
@@ -171,11 +173,11 @@ namespace WebChat
 
             app.UseSpaStaticFiles();
             app.UseSpa(spa => {
-                spa.Options.SourcePath = "ClientApp/build";
+                spa.Options.SourcePath = "ClientApp";
                 if (env.IsDevelopment())
                 {
-                    //spa.UseProxyToSpaDevelopmentServer("http://localhost:3000");
-                    spa.UseReactDevelopmentServer(npmScript: "start");
+                    spa.UseProxyToSpaDevelopmentServer("http://react-app:3000");
+                    //spa.UseReactDevelopmentServer(npmScript: "start");
                 }
             });
             //app.UseSignalR(routes => 
