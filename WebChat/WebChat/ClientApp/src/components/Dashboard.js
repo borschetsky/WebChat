@@ -7,7 +7,7 @@ import ThreadList from '../components/thread-list';
 import MyProfile from './my-profile';
 import {getProfile, getThreads, createThread, sendMessageToApi } from '../services';
 import { _baseUrl } from '../services/api-service';
-
+import Config from '../config';
 
 class Dashboard extends Component  {
 //TODO: use only user profile with props needed
@@ -26,7 +26,7 @@ class Dashboard extends Component  {
             hubConnection: null,
             isEdit: false
         };
-        this.connection = new signalR.HubConnectionBuilder().withUrl("https://localhost:8081/chat", {
+        this.connection = new signalR.HubConnectionBuilder().withUrl(`${Config.network.api}${Config.network.wss}`, {
             accessTokenFactory: () => this.props.user.token
         }).build();
         this.token = this.props.user.token;
