@@ -5,9 +5,9 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
-import PresenceAvatar from './PresenceAvatar';
-import AppearanceControls from './AppearanceControls';
-import MockDisclosure from './MockDisclosure';
+import PresenceAvatar from '@/components/PresenceAvatar';
+import AppearanceControls from '@/features/settings/AppearanceControls';
+import MockDisclosure from '@/features/settings/MockDisclosure';
 
 /**
  * Profile and settings drawer.

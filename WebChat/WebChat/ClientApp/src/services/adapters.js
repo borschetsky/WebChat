@@ -7,8 +7,8 @@
 // Keeping the mapping in one place means a backend change is a change to this file plus
 // the removal of one mock, rather than a hunt through components.
 
-import { avatarColor } from '../theme';
-import { getDateInfoForThread, getDateInfoForMessage } from '../helpers';
+import { avatarColor } from '@/theme/tokens';
+import { getDateInfoForThread, getDateInfoForMessage } from '@/lib/date-time-format';
 import {
   mockThreadUnread,
   mockThreadIsGroup,

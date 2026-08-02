@@ -2,7 +2,7 @@ import React from 'react';
 import { List, ListItem, ListItemIcon, ListItemText, Switch, Typography } from '@mui/material';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import DensitySmallIcon from '@mui/icons-material/DensitySmall';
-import { useThemeMode } from '../../theme-mode';
+import { useThemeMode } from '@/theme/ThemeModeProvider';
 
 /**
  * The "Appearance" block of the settings drawer: dark mode and compact density.

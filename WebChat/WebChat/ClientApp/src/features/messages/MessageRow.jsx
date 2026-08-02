@@ -5,8 +5,8 @@ import AddReactionIcon from '@mui/icons-material/AddReaction';
 import DescriptionIcon from '@mui/icons-material/Description';
 import DownloadIcon from '@mui/icons-material/Download';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
-import PresenceAvatar from './PresenceAvatar';
-import { densityTokens } from '../../theme';
+import PresenceAvatar from '@/components/PresenceAvatar';
+import { densityTokens } from '@/theme/tokens';
 
 export default function MessageRow({ message: m, grouped, density, onReact, onReply, receiptLabel, showReceipt }) {
   const d = densityTokens(density);

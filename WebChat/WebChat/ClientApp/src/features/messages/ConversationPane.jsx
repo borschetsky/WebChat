@@ -7,11 +7,11 @@ import CloseIcon from '@mui/icons-material/Close';
 import ManageSearchIcon from '@mui/icons-material/ManageSearch';
 import ForumIcon from '@mui/icons-material/Forum';
 import AddIcon from '@mui/icons-material/Add';
-import PresenceAvatar from './PresenceAvatar';
-import MessageRow from './MessageRow';
-import Composer from './Composer';
-import { PRESENCE, densityTokens } from '../../theme';
-import { getDateInfoForSeparator } from '../../helpers';
+import PresenceAvatar from '@/components/PresenceAvatar';
+import MessageRow from '@/features/messages/MessageRow';
+import Composer from '@/features/composer/Composer';
+import { PRESENCE, densityTokens } from '@/theme/tokens';
+import { getDateInfoForSeparator } from '@/lib/date-time-format';
 
 const presenceLine = (thread) => {
   if (!thread) return '';

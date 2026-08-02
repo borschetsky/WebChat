@@ -1,6 +1,8 @@
 import Axios from "axios";
-import { authHeader } from './';
-import Config from "../config";
+// Import the module directly, not the barrel: services/index.js imports this file, so
+// going through it makes the dependency circular.
+import authHeader from './auth-header';
+import Config from "@/config";
 
 
 // const _baseUrl = 'https://localhost:44397/api/';

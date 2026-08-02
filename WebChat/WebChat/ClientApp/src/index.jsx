@@ -3,8 +3,8 @@ import { createRoot } from 'react-dom/client';
 import CssBaseline from '@mui/material/CssBaseline';
 import './index.css';
 
-import App from './components/App';
-import { ThemeModeProvider } from './theme-mode';
+import App from '@/app/App';
+import { ThemeModeProvider } from '@/theme/ThemeModeProvider';
 
 // ThemeModeProvider owns light/dark and comfortable/compact, persists them to localStorage
 // and supplies the MUI theme. CssBaseline is global now that every routed screen is a

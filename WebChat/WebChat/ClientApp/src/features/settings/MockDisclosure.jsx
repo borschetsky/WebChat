@@ -2,7 +2,7 @@ import React from 'react';
 import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Chip, Stack, Typography } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ScienceIcon from '@mui/icons-material/Science';
-import { MOCK_FEATURES } from '../../services/chat-service';
+import { MOCK_FEATURES } from '@/services/chat-service';
 
 const LABELS = {
   reactions: 'Reactions',

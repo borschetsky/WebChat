@@ -1,20 +1,20 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Snackbar } from '@mui/material';
-import AppShell, { useIsMobile } from './AppShell';
-import ThreadList from './ThreadList';
-import ConversationPane from './ConversationPane';
-import SettingsDrawer from './SettingsDrawer';
-import ComposeDialog from './ComposeDialog';
-import { useThemeMode } from '../../theme-mode';
-import { useChatConnection } from '../../hooks/useChatConnection';
-import { avatarColor } from '../../theme';
-import { uploadAvatar } from '../../services';
+import AppShell, { useIsMobile } from '@/app/AppShell';
+import ThreadList from '@/features/threads/ThreadList';
+import ConversationPane from '@/features/messages/ConversationPane';
+import SettingsDrawer from '@/features/settings/SettingsDrawer';
+import ComposeDialog from '@/features/threads/ComposeDialog';
+import { useThemeMode } from '@/theme/ThemeModeProvider';
+import { useChatConnection } from '@/features/realtime/useChatConnection';
+import { avatarColor } from '@/theme/tokens';
+import { uploadAvatar } from '@/services';
 import {
   loadThreads, loadMessages, searchInThread, searchDirectory, startThreadWith,
   sendMessage, loadProfile, saveProfile,
   toggleReaction, markThreadRead, markAllThreadsRead, readReceiptFor, noteIncomingMessage,
-} from '../../services/chat-service';
-import { toLiveMessage } from '../../services/adapters';
+} from '@/services/chat-service';
+import { toLiveMessage } from '@/services/adapters';
 
 const TYPING_IDLE_MS = 3000;
 

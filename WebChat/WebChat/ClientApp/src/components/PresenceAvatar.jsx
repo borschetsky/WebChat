@@ -1,7 +1,7 @@
 import React from 'react';
 import { Avatar, Badge } from '@mui/material';
-import { PRESENCE, initials } from '../../theme';
-import { getUserAvatar } from '../../services';
+import { PRESENCE, initials } from '@/theme/tokens';
+import { getUserAvatar } from '@/services';
 
 // Ported from the handoff. One extension: the prototype only ever rendered initials
 // because its fixtures had no images, but real users can have an uploaded avatar - so

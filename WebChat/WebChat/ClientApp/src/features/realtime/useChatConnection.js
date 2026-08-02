@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import * as signalR from '@microsoft/signalr';
-import Config from '../config';
+import Config from '@/config';
 
 /**
  * Owns the SignalR hub connection.

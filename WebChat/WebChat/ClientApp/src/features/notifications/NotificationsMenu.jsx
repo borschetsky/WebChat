@@ -2,7 +2,7 @@ import React from 'react';
 import { Box, Button, Divider, List, ListItemButton, Popover, Stack, Typography } from '@mui/material';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import NotificationsOffIcon from '@mui/icons-material/NotificationsOff';
-import PresenceAvatar from './PresenceAvatar';
+import PresenceAvatar from '@/components/PresenceAvatar';
 
 /**
  * The bell's popover.

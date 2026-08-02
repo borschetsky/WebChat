@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { ThemeProvider } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import { buildTheme } from './theme';
+import { buildTheme } from '@/theme/tokens';
 
 // Appearance state for the redesign: light/dark and comfortable/compact.
 //

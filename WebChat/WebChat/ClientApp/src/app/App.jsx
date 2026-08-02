@@ -1,8 +1,8 @@
 import React, { useCallback, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import AuthScreen from './auth/AuthScreen';
-import ChatApp from './chat/ChatApp';
-import { login, register } from '../services';
+import AuthScreen from '@/features/auth/AuthScreen';
+import ChatApp from '@/app/ChatApp';
+import { login, register } from '@/services';
 
 const STORAGE_KEY = 'user-data';
 

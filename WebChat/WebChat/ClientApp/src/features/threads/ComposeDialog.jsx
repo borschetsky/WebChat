@@ -5,7 +5,7 @@ import {
 } from '@mui/material';
 import PersonSearchIcon from '@mui/icons-material/PersonSearch';
 import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
-import PresenceAvatar from './PresenceAvatar';
+import PresenceAvatar from '@/components/PresenceAvatar';
 
 /**
  * New-conversation dialog. Unlike the handoff, which filtered a local fixture array, this

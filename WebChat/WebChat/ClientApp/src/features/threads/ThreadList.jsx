@@ -11,9 +11,9 @@ import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
 import ForumIcon from '@mui/icons-material/Forum';
 import SearchOffIcon from '@mui/icons-material/SearchOff';
-import PresenceAvatar from './PresenceAvatar';
-import NotificationsMenu from './NotificationsMenu';
-import { densityTokens } from '../../theme';
+import PresenceAvatar from '@/components/PresenceAvatar';
+import NotificationsMenu from '@/features/notifications/NotificationsMenu';
+import { densityTokens } from '@/theme/tokens';
 
 const TABS = [['all', 'All'], ['unread', 'Unread'], ['groups', 'Groups']];
 

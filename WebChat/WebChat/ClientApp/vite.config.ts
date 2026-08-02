@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { fileURLToPath, URL } from 'node:url';
 
 // Where the ASP.NET API is listening. Matches the launchSettings.json profiles.
 // Override with VITE_API_PROXY_TARGET if you run Kestrel on a different port.
@@ -8,6 +9,11 @@ const apiTarget = process.env.VITE_API_PROXY_TARGET || 'https://localhost:7199';
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
   server: {
     // The ASP.NET host proxies to this port via UseProxyToSpaDevelopmentServer,
     // and docker-compose publishes it. Keep it at 3000.
@@ -19,17 +25,8 @@ export default defineConfig({
     // Same-origin API access when browsing the dev server directly. secure:false
     // accepts the ASP.NET developer certificate, which is self-signed.
     proxy: {
-      '/api': {
-        target: apiTarget,
-        changeOrigin: true,
-        secure: false,
-      },
-      '/chat': {
-        target: apiTarget,
-        changeOrigin: true,
-        secure: false,
-        ws: true,
-      },
+      '/api': { target: apiTarget, changeOrigin: true, secure: false },
+      '/chat': { target: apiTarget, changeOrigin: true, secure: false, ws: true },
     },
   },
   build: {
