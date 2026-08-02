@@ -8,7 +8,10 @@ import { withAuth } from '../hoc';
 import { getMessages, searchForMessageInThread } from '../../services';
 
 class MessageList extends React.Component {
- 
+
+    // String refs (ref="messages") are removed in React 19; createRef is the replacement.
+    messagesRef = React.createRef();
+
     state ={
         threadId: null,
         userProfile: null, 
@@ -40,15 +43,22 @@ class MessageList extends React.Component {
         });
     }
 
-    componentWillUpdate() {
-        const node = this.refs.messages;
-        this.shouldScrollToBottom = node.scrollTop + node.clientHeight + 100 >= node.scrollHeight;
+    // componentWillUpdate is removed in React 19. getSnapshotBeforeUpdate is its replacement
+    // and is the canonical way to read scroll position just before the DOM is mutated.
+    getSnapshotBeforeUpdate() {
+        const node = this.messagesRef.current;
+        if (!node) {
+            return null;
+        }
+        return { shouldScrollToBottom: node.scrollTop + node.clientHeight + 100 >= node.scrollHeight };
     }
-    
-    componentDidUpdate(prevProps, prevState) {
-        if (this.shouldScrollToBottom) {
-            const node = this.refs.messages;
-            node.scrollTop = node.scrollHeight   
+
+    componentDidUpdate(prevProps, prevState, snapshot) {
+        if (snapshot && snapshot.shouldScrollToBottom) {
+            const node = this.messagesRef.current;
+            if (node) {
+                node.scrollTop = node.scrollHeight;
+            }
         }
         if(prevProps.threadId !== this.props.threadId){
            
@@ -152,7 +162,7 @@ class MessageList extends React.Component {
         return (
             <React.Fragment>
                     {oponentProfileVsSeach}
-                    <ul className="message-list" ref="messages">
+                    <ul className="message-list" ref={this.messagesRef}>
                         {contentVsSearchResults}
                     </ul>
             </React.Fragment>

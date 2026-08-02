@@ -1,12 +1,11 @@
 import React, {Component } from 'react';
 import { withAuth } from './hoc';
-import * as signalR from '@aspnet/signalr';
+import * as signalR from '@microsoft/signalr';
 import MessageList from './message-list';
 import SendMessageForm from './send-message-form';
 import ThreadList from '../components/thread-list';
 import MyProfile from './my-profile';
 import {getProfile, getThreads, createThread, sendMessageToApi } from '../services';
-import { _baseUrl } from '../services/api-service';
 import Config from '../config';
 
 class Dashboard extends Component  {

@@ -1,10 +1,11 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Threading.Tasks;
@@ -16,15 +17,13 @@ using WebChat.Hubs.Interfaces;
 using WebChat.Services;
 using WebChat.Services.Helpers;
 using WebChat.Services.Inerfaces;
-using Microsoft.AspNetCore.SpaServices.ReactDevelopmentServer;
-using Microsoft.AspNetCore.Mvc.Abstractions;
-using System;
-using WebChat.Seed;
 
 namespace WebChat
 {
     public class Startup
     {
+        private const string CorsPolicyName = "WebChatCors";
+
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
@@ -35,33 +34,39 @@ namespace WebChat
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-
-            var server = Configuration["DBServer"] ?? "localhost";
-            var port = Configuration["DBPort"] ?? "1433";
-
             this.RegisterAuthentication(services);
             this.RegisterServices(services);
 
-            services.AddCors();
+            services.AddCors(options =>
+            {
+                // A policy with no origins allows nothing, so the origins have to come from
+                // configuration. Credentials are required because SignalR sends the auth cookie/token.
+                var allowedOrigins = Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+                                     ?? new[] { "http://localhost:3000", "https://localhost:3000" };
+
+                options.AddPolicy(CorsPolicyName, policy => policy
+                    .WithOrigins(allowedOrigins)
+                    .AllowAnyMethod()
+                    .AllowAnyHeader()
+                    .AllowCredentials());
+            });
+
             services.AddControllers().AddNewtonsoftJson();
             services.AddSwaggerGen();
             services.AddRazorPages();
 
-            services.AddSpaStaticFiles( configuration => {
-                configuration.RootPath = "ClientApp/build";
+            services.AddSpaStaticFiles(configuration =>
+            {
+                // Vite's default build output directory (CRA used "build").
+                configuration.RootPath = "ClientApp/dist";
             });
-            //services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_3_0)
-            //    .AddJsonOptions(option =>
-            //        {
-            //            option.SerializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
-            //            option.SerializerSettings.Converters.Add(new StringEnumConverter());
-            //        }
-            //    );
-            services.AddDbContext<WebChatContext>(options => 
+
+            services.AddDbContext<WebChatContext>(options =>
             {
                 var connectionString = Configuration.GetConnectionString("DefaultConnection");
-                //options.UseSqlite(connectionString);
-                options.UseSqlServer(connectionString);
+                // Retry on transient faults - the containerised SQL Server drops connections
+                // while it is starting, and Azure SQL throttles.
+                options.UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure());
             });
 
             services.AddSignalR();
@@ -69,8 +74,8 @@ namespace WebChat
 
         private void RegisterAuthentication(IServiceCollection services)
         {
-            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).
-                AddJwtBearer(options => 
+            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(options =>
                 {
                     options.TokenValidationParameters = new TokenValidationParameters
                     {
@@ -99,7 +104,6 @@ namespace WebChat
                         }
                     };
                 });
-            
         }
 
         private void RegisterServices(IServiceCollection services)
@@ -109,7 +113,6 @@ namespace WebChat
                     new AuthService(
                         Configuration.GetValue<string>("JWTSecretKey"),
                         Configuration.GetValue<int>("JWTLifespan")
-                        
                         )
                 );
             services.AddSingleton<IUserIdProvider, NameUserIdProvider>();
@@ -122,18 +125,11 @@ namespace WebChat
             services.AddTransient<IImageHandler, ImageHandler>();
             services.AddTransient<AvatarWriter.Interface.IAvatarWriter,
                                   AvatarWriter.AvatarWriter>();
-
-            var test = Environment.GetEnvironmentVariable("HELLO");
-            
-
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
-            //PrepDB.PrepPopulation(app);
-            app.UseRouting();
-
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
@@ -143,23 +139,20 @@ namespace WebChat
                 // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
             }
-            app.UseCors(builder => builder
-            
-            .AllowAnyMethod()
-            .AllowAnyHeader()
-            .AllowCredentials()
-            );
 
             app.UseHttpsRedirection();
             app.UseStaticFiles();
-            app.UseAuthentication();
-            app.UseRouting();
+            app.UseSpaStaticFiles();
+
             app.UseSwagger();
             app.UseSwaggerUI(c =>
             {
                 c.SwaggerEndpoint("/swagger/v1/swagger.json", "my API v.1");
             });
 
+            app.UseRouting();
+            app.UseCors(CorsPolicyName);
+            app.UseAuthentication();
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
@@ -171,22 +164,17 @@ namespace WebChat
                 endpoints.MapHub<ChatHub>("/chat");
             });
 
-            app.UseSpaStaticFiles();
-            app.UseSpa(spa => {
+            app.UseSpa(spa =>
+            {
                 spa.Options.SourcePath = "ClientApp";
                 if (env.IsDevelopment())
                 {
-                    spa.UseProxyToSpaDevelopmentServer("http://react-app:3000");
-                    //spa.UseReactDevelopmentServer(npmScript: "start");
+                    // Overridable so the same image works both in docker compose (react-app)
+                    // and when running the SPA on the host.
+                    var devServer = Configuration.GetValue<string>("SpaDevServerUrl") ?? "http://localhost:3000";
+                    spa.UseProxyToSpaDevelopmentServer(devServer);
                 }
             });
-            //app.UseSignalR(routes => 
-            //{
-            //    routes.MapHub<ChatHub>("/chat");
-            //});
-
-            
-
         }
     }
 }

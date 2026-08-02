@@ -61,7 +61,8 @@ export default class Login extends Component {
             }).catch(err => {
                 console.error(err);
                 if(err){
-                    const {data} = err.response;
+                    // err.response is absent on network failures, so this must be guarded.
+                    const data = err.response && err.response.data;
                     if(data){
                         for(let key of Object.keys(data)){
                             switch(key){

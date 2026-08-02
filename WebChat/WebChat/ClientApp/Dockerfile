@@ -1,20 +1,18 @@
-# pull official base image
-FROM node:13.12.0-alpine
+# Vite dev server for the WebChat SPA.
+# Vite 6 supports Node ^18 || ^20 || >=22; the old react-scripts 3.x Node 16 pin is gone.
+FROM node:22-alpine
 
-# set working directory
 WORKDIR /app
 
-# add `/app/node_modules/.bin` to $PATH
-ENV PATH /app/node_modules/.bin:$PATH
+# Install dependencies first so this layer is cached across source edits.
+COPY WebChat/ClientApp/package.json WebChat/ClientApp/package-lock.json ./
+RUN npm ci --no-audit --no-fund
 
-# install app dependencies
-COPY WebChat/ClientApp/package.json ./
-COPY WebChat/ClientApp/package-lock.json ./
-RUN npm install --silent
-RUN npm install react-scripts@3.4.1 -g --silent
+# Application source. Only ClientApp is needed - the .NET solution is irrelevant here.
+COPY WebChat/ClientApp/ ./
 
-# add app
-COPY . ./
+EXPOSE 3000
 
-# start app
-CMD ["npm", "start"]
+# vite.config.js sets host:true and strictPort:3000, so the API container can reach
+# this by service name.
+CMD ["npm", "run", "dev"]
