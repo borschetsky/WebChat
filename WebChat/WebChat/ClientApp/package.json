@@ -12,11 +12,11 @@
     "axios": "^1.19.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-router-dom": "^6.30.4"
+    "react-router-dom": "^7.18.2"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.7.0",
-    "vite": "^6.4.3"
+    "@vitejs/plugin-react": "^6.0.5",
+    "vite": "^8.2.0"
   },
   "scripts": {
     "dev": "vite",
