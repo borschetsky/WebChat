@@ -65,8 +65,15 @@ points at); the CRA dev server is on `http://localhost:3000`.
   before the host starts: it creates the database if missing and applies pending migrations,
   retrying while SQL Server comes up. Turn it off with `Database:AutoMigrate = false` and
   use `dotnet ef database update` instead.
-- **The client is React 18 built with Vite.** JSX must live in `.jsx` files — Vite does not
-  transform JSX in `.js`. Build output is `ClientApp/dist`, which `AddSpaStaticFiles` points at.
+- **The client is React 18 + MUI v9, built with Vite.** JSX must live in `.jsx` files — Vite
+  does not transform JSX in `.js`. Build output is `ClientApp/dist`, which `AddSpaStaticFiles`
+  points at.
+- **UI components talk to `services/chat-service.js`, never to `api-service` or `mocks`
+  directly.** That seam is what keeps mocked features indistinguishable from real ones;
+  seven features are mocked because the API cannot back them — the settings drawer lists
+  them, and `mocks.js` names the endpoint each would need.
+- **Design tokens come from the handoff and are final** (`src/theme.js`). Prefer an existing
+  token over a new value.
 - **Vite is pinned to 6.x because the host runs Node 18.** Vite 8 needs Node ≥ 20.19; once
   Node is upgraded it should be a straight version bump.
 - Secrets are currently committed in `appsettings.json` and `docker-compose.yml`. Do not
