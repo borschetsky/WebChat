@@ -25,7 +25,7 @@ export default function PresenceAvatar({
       src={src}
       alt={name}
       onClick={onClick}
-      imgProps={{ onError: () => setBroken(true) }}
+      slotProps={{ img: { onError: () => setBroken(true) } }}
       sx={{
         width: size,
         height: size,

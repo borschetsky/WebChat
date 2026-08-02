@@ -14,7 +14,7 @@ export default function MessageRow({ message: m, grouped, density, onReact, onRe
   return (
     <Stack
       direction="row"
-      gap={1.5}
+      spacing={1.5}
       sx={{
         px: 3,
         py: grouped ? d.groupPadY : d.msgPadY,
@@ -35,14 +35,14 @@ export default function MessageRow({ message: m, grouped, density, onReact, onRe
 
       <Box sx={{ flex: 1, minWidth: 0 }}>
         {!grouped && (
-          <Stack direction="row" alignItems="baseline" gap={1} sx={{ mb: 0.25 }}>
+          <Stack direction="row" alignItems="baseline" spacing={1} sx={{ mb: 0.25 }}>
             <Typography sx={{ fontSize: 14, fontWeight: 500, color: m.own ? 'primary.main' : 'text.primary' }}>{m.author}</Typography>
             <Typography sx={{ fontSize: 11, color: 'text.disabled' }}>{m.time}</Typography>
           </Stack>
         )}
 
         {m.quote && (
-          <Stack direction="row" gap={1} alignItems="center" sx={{ my: 0.5, px: 1.25, py: 0.5, borderLeft: 3, borderColor: 'primary.main', bgcolor: 'background.quote', borderRadius: '0 6px 6px 0', maxWidth: 520 }}>
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ my: 0.5, px: 1.25, py: 0.5, borderLeft: 3, borderColor: 'primary.main', bgcolor: 'background.quote', borderRadius: '0 6px 6px 0', maxWidth: 520 }}>
             <Typography sx={{ fontSize: 12, fontWeight: 500, color: 'primary.main', whiteSpace: 'nowrap' }}>{m.quote.author}</Typography>
             <Typography noWrap sx={{ fontSize: 12, color: 'text.secondary' }}>{m.quote.text}</Typography>
           </Stack>
@@ -53,7 +53,7 @@ export default function MessageRow({ message: m, grouped, density, onReact, onRe
         </Typography>
 
         {m.attachment && (
-          <Stack direction="row" alignItems="center" gap={1.25} sx={{ mt: 1, p: 1.25, px: 1.75, border: 1, borderColor: 'divider', borderRadius: 2.5, display: 'inline-flex' }}>
+          <Stack direction="row" alignItems="center" spacing={1.25} sx={{ mt: 1, p: 1.25, px: 1.75, border: 1, borderColor: 'divider', borderRadius: 2.5, display: 'inline-flex' }}>
             <DescriptionIcon color="primary" />
             <Box>
               <Typography sx={{ fontSize: 13, fontWeight: 500 }}>{m.attachment.name}</Typography>
@@ -64,7 +64,7 @@ export default function MessageRow({ message: m, grouped, density, onReact, onRe
         )}
 
         {m.reactions?.length > 0 && (
-          <Stack direction="row" flexWrap="wrap" gap={0.75} sx={{ mt: 0.9 }}>
+          <Stack direction="row" flexWrap="wrap" spacing={0.75} sx={{ mt: 0.9 }}>
             {m.reactions.map((r) => (
               <Chip
                 key={r.emoji}
@@ -92,7 +92,7 @@ export default function MessageRow({ message: m, grouped, density, onReact, onRe
         )}
 
         {showReceipt && receiptLabel && (
-          <Stack direction="row" alignItems="center" gap={0.5} sx={{ mt: 0.75 }}>
+          <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mt: 0.75 }}>
             <DoneAllIcon sx={{ fontSize: 15, color: 'primary.main' }} />
             <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>{receiptLabel}</Typography>
           </Stack>

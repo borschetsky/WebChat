@@ -26,7 +26,7 @@ export default function Composer({
   return (
     <Box sx={{ p: 2, pt: 1.5, bgcolor: 'background.paper', borderTop: 1, borderColor: 'divider' }}>
       {replyTo && (
-        <Stack direction="row" alignItems="center" gap={1.25} sx={{ mb: 1.25, px: 1.5, py: 1, borderLeft: 3, borderColor: 'primary.main', bgcolor: 'background.quote', borderRadius: '0 8px 8px 0' }}>
+        <Stack direction="row" alignItems="center" spacing={1.25} sx={{ mb: 1.25, px: 1.5, py: 1, borderLeft: 3, borderColor: 'primary.main', bgcolor: 'background.quote', borderRadius: '0 8px 8px 0' }}>
           <ReplyIcon fontSize="small" color="primary" />
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography sx={{ fontSize: 12, fontWeight: 500, color: 'primary.main' }}>Replying to {replyTo.author}</Typography>
@@ -40,7 +40,7 @@ export default function Composer({
         <Chip sx={{ mb: 1.25 }} icon={<AttachFileIcon />} label={attachment.name} onDelete={onRemoveAttach} />
       )}
 
-      <Stack direction="row" alignItems="flex-end" gap={1}>
+      <Stack direction="row" alignItems="flex-end" spacing={1}>
         {/* Real file picker. The file is not uploaded - see mocks.js - but choosing one is genuine. */}
         <input
           ref={fileRef}
@@ -53,7 +53,7 @@ export default function Composer({
         <Stack
           direction="row"
           alignItems="center"
-          gap={1}
+          spacing={1}
           sx={{ flex: 1, minHeight: 44, pl: 2, pr: 1, borderRadius: 22, bgcolor: 'background.field', border: 1, borderColor: ready ? 'primary.main' : 'transparent' }}
         >
           <InputBase

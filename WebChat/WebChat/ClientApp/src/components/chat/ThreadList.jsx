@@ -41,7 +41,7 @@ export default function ThreadList({
 
   return (
     <Stack sx={{ height: '100%', minWidth: 0 }}>
-      <Stack direction="row" alignItems="center" gap={1} sx={{ p: 1.5, pl: 2, borderBottom: 1, borderColor: 'divider' }}>
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ p: 1.5, pl: 2, borderBottom: 1, borderColor: 'divider' }}>
         <PresenceAvatar
           name={profile?.name ?? ''}
           color={profile?.color}
@@ -63,14 +63,14 @@ export default function ThreadList({
       </Stack>
 
       <Box sx={{ px: 1.5, pt: 1.25, pb: 0.75 }}>
-        <Stack direction="row" alignItems="center" gap={1.25} sx={{ height: 44, px: 1.75, borderRadius: 22, bgcolor: 'background.field' }}>
+        <Stack direction="row" alignItems="center" spacing={1.25} sx={{ height: 44, px: 1.75, borderRadius: 22, bgcolor: 'background.field' }}>
           <SearchIcon fontSize="small" sx={{ color: 'text.secondary' }} />
           <InputBase value={query} onChange={(e) => onQuery(e.target.value)} placeholder="Search people and messages" sx={{ flex: 1, fontSize: 14 }} />
           {query && <IconButton size="small" onClick={() => onQuery('')}><CloseIcon fontSize="inherit" /></IconButton>}
         </Stack>
       </Box>
 
-      <Stack direction="row" gap={1} sx={{ px: 1.5, pb: 1.25 }}>
+      <Stack direction="row" spacing={1} sx={{ px: 1.5, pb: 1.25 }}>
         {TABS.map(([k, label]) => (
           <Chip
             key={k}
@@ -85,9 +85,9 @@ export default function ThreadList({
 
       <Box sx={{ flex: 1, overflowY: 'auto', pb: 1.5 }}>
         {loading && (
-          <Stack gap={2.25} sx={{ px: 2, py: 1 }}>
+          <Stack spacing={2.25} sx={{ px: 2, py: 1 }}>
             {[...Array(5)].map((_, i) => (
-              <Stack key={i} direction="row" gap={1.5} alignItems="center">
+              <Stack key={i} direction="row" spacing={1.5} alignItems="center">
                 <Skeleton variant="circular" width={40} height={40} />
                 <Box sx={{ flex: 1 }}>
                   <Skeleton width="45%" height={12} />
@@ -116,11 +116,11 @@ export default function ThreadList({
                   showPresence={!t.group}
                 />
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Stack direction="row" alignItems="baseline" gap={1}>
+                  <Stack direction="row" alignItems="baseline" spacing={1}>
                     <Typography noWrap sx={{ flex: 1, fontSize: d.nameSize, fontWeight: t.unread ? 600 : 400 }}>{t.name}</Typography>
                     <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>{t.time}</Typography>
                   </Stack>
-                  <Stack direction="row" alignItems="center" gap={1}>
+                  <Stack direction="row" alignItems="center" spacing={1}>
                     <Typography noWrap sx={{ flex: 1, fontSize: 13, color: t.unread ? 'text.primary' : 'text.secondary', fontStyle: t.isTyping ? 'italic' : 'normal' }}>
                       {t.isTyping ? 'typing…' : t.preview}
                     </Typography>
@@ -143,7 +143,7 @@ export default function ThreadList({
           const showAction = !query && !filterEmpty;
 
           return (
-            <Stack alignItems="center" textAlign="center" gap={1.25} sx={{ px: 4, py: 7 }}>
+            <Stack alignItems="center" textAlign="center" spacing={1.25} sx={{ px: 4, py: 7 }}>
               <Avatar sx={{ width: 64, height: 64, bgcolor: 'background.field', color: 'text.secondary' }}>
                 {query ? <SearchOffIcon /> : <ForumIcon />}
               </Avatar>

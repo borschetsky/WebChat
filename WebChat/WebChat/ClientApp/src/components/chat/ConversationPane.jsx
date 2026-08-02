@@ -37,7 +37,7 @@ export default function ConversationPane({
 
   if (!thread) {
     return (
-      <Stack flex={1} alignItems="center" justifyContent="center" gap={1.75} textAlign="center" sx={{ p: 5 }}>
+      <Stack flex={1} alignItems="center" justifyContent="center" spacing={1.75} textAlign="center" sx={{ p: 5 }}>
         <ForumIcon sx={{ fontSize: 56, color: 'text.secondary' }} />
         <Typography sx={{ fontSize: 20, fontWeight: 500 }}>No conversation selected</Typography>
         <Typography sx={{ fontSize: 14, color: 'text.secondary', maxWidth: 320 }}>Pick a thread on the left, or start a new one.</Typography>
@@ -48,7 +48,7 @@ export default function ConversationPane({
 
   return (
     <>
-      <Stack direction="row" alignItems="center" gap={1.5} sx={{ p: 1.25, px: 2, bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider' }}>
+      <Stack direction="row" alignItems="center" spacing={1.5} sx={{ p: 1.25, px: 2, bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider' }}>
         {isMobile && <IconButton onClick={onBack}><ArrowBackIcon /></IconButton>}
         <PresenceAvatar name={thread.name} color={thread.color} avatarFileName={thread.avatarFileName} size={38} showPresence={false} />
         <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -62,8 +62,8 @@ export default function ConversationPane({
       </Stack>
 
       {searchOpen && (
-        <Stack direction="row" alignItems="center" gap={1.25} sx={{ p: 1.25, px: 2, bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider' }}>
-          <Stack direction="row" alignItems="center" gap={1.25} sx={{ flex: 1, height: 40, px: 1.75, borderRadius: 20, bgcolor: 'background.field' }}>
+        <Stack direction="row" alignItems="center" spacing={1.25} sx={{ p: 1.25, px: 2, bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider' }}>
+          <Stack direction="row" alignItems="center" spacing={1.25} sx={{ flex: 1, height: 40, px: 1.75, borderRadius: 20, bgcolor: 'background.field' }}>
             <ManageSearchIcon fontSize="small" sx={{ color: 'text.secondary' }} />
             <InputBase autoFocus value={searchQuery} onChange={(e) => onSearchQuery(e.target.value)} placeholder="Find in this conversation" sx={{ flex: 1, fontSize: 14 }} />
           </Stack>
@@ -77,7 +77,7 @@ export default function ConversationPane({
       <Box sx={{ flex: 1, overflowY: 'auto', py: 2 }}>
         {loading ? (
           [...Array(5)].map((_, i) => (
-            <Stack key={i} direction="row" gap={1.5} sx={{ px: 3, py: 1.5 }}>
+            <Stack key={i} direction="row" spacing={1.5} sx={{ px: 3, py: 1.5 }}>
               <Skeleton variant="circular" width={36} height={36} />
               <Box sx={{ flex: 1 }}><Skeleton width={120} /><Skeleton width="60%" /></Box>
             </Stack>
@@ -110,7 +110,7 @@ export default function ConversationPane({
         )}
 
         {typing && (
-          <Stack direction="row" alignItems="center" gap={1.5} sx={{ px: 3, py: 1 }}>
+          <Stack direction="row" alignItems="center" spacing={1.5} sx={{ px: 3, py: 1 }}>
             <PresenceAvatar name={thread.name} color={thread.color} avatarFileName={thread.avatarFileName} size={d.avatar} showPresence={false} />
             <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>{thread.name.split(' ')[0]} is typing…</Typography>
           </Stack>

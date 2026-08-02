@@ -26,7 +26,7 @@ export default function MockDisclosure() {
   return (
     <Accordion disableGutters elevation={0} sx={{ mt: 2.5, border: 1, borderColor: 'divider', borderRadius: 2, '&:before': { display: 'none' } }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-        <Stack direction="row" alignItems="center" gap={1}>
+        <Stack direction="row" alignItems="center" spacing={1}>
           <ScienceIcon fontSize="small" sx={{ color: 'warning.main' }} />
           <Typography sx={{ fontSize: 14 }}>Not backed by the server</Typography>
           <Chip size="small" label={MOCK_FEATURES.length} sx={{ height: 20 }} />
@@ -36,7 +36,7 @@ export default function MockDisclosure() {
         <Alert severity="info" icon={false} sx={{ fontSize: 12, mb: 1.5, py: 0.5 }}>
           These behave in the UI but are not persisted. They reset when you reload.
         </Alert>
-        <Stack gap={1.25}>
+        <Stack spacing={1.25}>
           {MOCK_FEATURES.map((f) => (
             <Box key={f.key}>
               <Typography sx={{ fontSize: 13, fontWeight: 500 }}>{LABELS[f.key] ?? f.key}</Typography>

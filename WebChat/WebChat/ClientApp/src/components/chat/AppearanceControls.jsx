@@ -31,8 +31,7 @@ export default function AppearanceControls() {
           <ListItemText
             primary="Dark mode"
             secondary={followsSystem ? 'Following system' : null}
-            primaryTypographyProps={{ fontSize: 14 }}
-            secondaryTypographyProps={{ fontSize: 12 }}
+            slotProps={{ primary: { fontSize: 14 }, secondary: { fontSize: 12 } }}
           />
         </ListItem>
 
@@ -50,8 +49,7 @@ export default function AppearanceControls() {
           <ListItemText
             primary="Compact density"
             secondary="Tighter rows and smaller avatars"
-            primaryTypographyProps={{ fontSize: 14 }}
-            secondaryTypographyProps={{ fontSize: 12 }}
+            slotProps={{ primary: { fontSize: 14 }, secondary: { fontSize: 12 } }}
           />
         </ListItem>
       </List>

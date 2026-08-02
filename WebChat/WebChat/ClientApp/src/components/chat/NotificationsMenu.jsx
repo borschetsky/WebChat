@@ -34,7 +34,7 @@ export default function NotificationsMenu({ anchorEl, onClose, threads, onSelect
       <Divider />
 
       {unread.length === 0 ? (
-        <Stack alignItems="center" gap={1} sx={{ px: 3, py: 4, textAlign: 'center' }}>
+        <Stack alignItems="center" spacing={1} sx={{ px: 3, py: 4, textAlign: 'center' }}>
           <NotificationsOffIcon sx={{ fontSize: 34, color: 'text.disabled' }} />
           <Typography sx={{ fontSize: 14 }}>You are all caught up</Typography>
           <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
