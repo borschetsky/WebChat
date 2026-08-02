@@ -12,15 +12,32 @@ import AddIcon from '@mui/icons-material/Add';
 import ForumIcon from '@mui/icons-material/Forum';
 import SearchOffIcon from '@mui/icons-material/SearchOff';
 import PresenceAvatar from './PresenceAvatar';
-import { densityTokens, initials } from '../../theme';
+import NotificationsMenu from './NotificationsMenu';
+import { densityTokens } from '../../theme';
 
 const TABS = [['all', 'All'], ['unread', 'Unread'], ['groups', 'Groups']];
 
+// Empty-state copy per filter. "Groups" is not a missing-results case - the server has no
+// concept of a group thread at all - so it says so rather than implying none matched.
+const EMPTY = {
+  groups: {
+    title: 'Group conversations are not available yet',
+    body: 'A thread currently has exactly one other participant. Groups need server support before they can appear here.',
+    action: false,
+  },
+  unread: {
+    title: 'Nothing unread',
+    body: 'Messages that arrive while you are in another conversation will be counted here.',
+    action: false,
+  },
+};
+
 export default function ThreadList({
-  threads, activeId, query, tab, density, loading, unreadTotal, profile,
+  threads, allThreads, activeId, query, tab, density, loading, unreadTotal, profile,
   onQuery, onTab, onSelect, onCompose, onSettings, onMarkAllRead,
 }) {
   const d = densityTokens(density);
+  const [bell, setBell] = React.useState(null);
 
   return (
     <Stack sx={{ height: '100%', minWidth: 0 }}>
@@ -39,7 +56,7 @@ export default function ThreadList({
           <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>● Active</Typography>
         </Box>
         <IconButton onClick={onCompose} title="New conversation"><EditSquareIcon fontSize="small" /></IconButton>
-        <IconButton onClick={onMarkAllRead} title="Notifications">
+        <IconButton onClick={(e) => setBell(e.currentTarget)} title="Notifications">
           <Badge color="error" badgeContent={unreadTotal}><NotificationsIcon fontSize="small" /></Badge>
         </IconButton>
         <IconButton onClick={onSettings} title="Settings"><SettingsIcon fontSize="small" /></IconButton>
@@ -115,24 +132,41 @@ export default function ThreadList({
           </List>
         )}
 
-        {!loading && threads.length === 0 && (
-          <Stack alignItems="center" textAlign="center" gap={1.25} sx={{ px: 4, py: 7 }}>
-            <Avatar sx={{ width: 64, height: 64, bgcolor: 'background.field', color: 'text.secondary' }}>
-              {query ? <SearchOffIcon /> : <ForumIcon />}
-            </Avatar>
-            <Typography sx={{ fontSize: 16, fontWeight: 500 }}>{query ? 'No results' : 'No conversations yet'}</Typography>
-            <Typography sx={{ fontSize: 13, color: 'text.secondary', maxWidth: 230 }}>
-              {query
-                ? `Nothing matches “${query}”. Try a name or a phrase from a message.`
-                : 'Start a thread with a teammate and it will show up here.'}
-            </Typography>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={onCompose} sx={{ mt: 1, borderRadius: 20 }}>
-              Start a conversation
-            </Button>
-          </Stack>
-        )}
+        {!loading && threads.length === 0 && (() => {
+          const filterEmpty = !query && EMPTY[tab];
+          const title = query ? 'No results' : filterEmpty ? filterEmpty.title : 'No conversations yet';
+          const body = query
+            ? `Nothing matches “${query}”. Try a name or a phrase from a message.`
+            : filterEmpty
+              ? filterEmpty.body
+              : 'Start a thread with a teammate and it will show up here.';
+          const showAction = !query && !filterEmpty;
+
+          return (
+            <Stack alignItems="center" textAlign="center" gap={1.25} sx={{ px: 4, py: 7 }}>
+              <Avatar sx={{ width: 64, height: 64, bgcolor: 'background.field', color: 'text.secondary' }}>
+                {query ? <SearchOffIcon /> : <ForumIcon />}
+              </Avatar>
+              <Typography sx={{ fontSize: 16, fontWeight: 500 }}>{title}</Typography>
+              <Typography sx={{ fontSize: 13, color: 'text.secondary', maxWidth: 240 }}>{body}</Typography>
+              {showAction && (
+                <Button variant="contained" startIcon={<AddIcon />} onClick={onCompose} sx={{ mt: 1, borderRadius: 20 }}>
+                  Start a conversation
+                </Button>
+              )}
+            </Stack>
+          );
+        })()}
       </Box>
       <Divider />
+
+      <NotificationsMenu
+        anchorEl={bell}
+        onClose={() => setBell(null)}
+        threads={allThreads ?? threads}
+        onSelect={onSelect}
+        onMarkAllRead={onMarkAllRead}
+      />
     </Stack>
   );
 }

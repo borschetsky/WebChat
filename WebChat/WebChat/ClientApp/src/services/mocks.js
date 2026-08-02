@@ -98,9 +98,14 @@ export const mockMarkAllRead = () => { unread.clear(); };
 // ---------------------------------------------------------------------------
 // Read receipts
 // MOCK BECAUSE: nothing tracks whether the opponent has read a message.
+//
+// Gated on presence rather than returned unconditionally. The design shows "Read by …"
+// under the last own message, but claiming someone read it while they are visibly offline
+// is the most actively misleading thing this mock layer could do - it contradicts the
+// presence dot two rows above. Online is at least consistent with what the user can see.
 // ---------------------------------------------------------------------------
 export const mockReadReceipt = (thread) => {
-  if (!thread) return null;
+  if (!thread || thread.presence !== 'online') return null;
   return { read: true, label: `Read by ${thread.name?.split(' ')[0] ?? 'them'}` };
 };
 

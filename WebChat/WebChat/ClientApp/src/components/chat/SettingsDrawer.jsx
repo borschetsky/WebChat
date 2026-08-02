@@ -7,6 +7,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import PresenceAvatar from './PresenceAvatar';
 import AppearanceControls from './AppearanceControls';
+import MockDisclosure from './MockDisclosure';
 
 /**
  * Profile and settings drawer.
@@ -98,6 +99,8 @@ export default function SettingsDrawer({
             ))}
           </>
         )}
+
+        <MockDisclosure />
 
         <Button fullWidth variant="outlined" color="error" startIcon={<LogoutIcon />} onClick={onLogout} sx={{ mt: 3 }}>
           Log out

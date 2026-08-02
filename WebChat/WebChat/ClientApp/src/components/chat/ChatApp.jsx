@@ -12,7 +12,7 @@ import { uploadAvatar } from '../../services';
 import {
   loadThreads, loadMessages, searchInThread, searchDirectory, startThreadWith,
   sendMessage, loadProfile, saveProfile,
-  toggleReaction, markThreadRead, markAllThreadsRead, readReceiptFor,
+  toggleReaction, markThreadRead, markAllThreadsRead, readReceiptFor, noteIncomingMessage,
 } from '../../services/chat-service';
 import { toLiveMessage } from '../../services/adapters';
 
@@ -86,12 +86,20 @@ export default function ChatApp({ user, onSignOut }) {
   const handlers = useMemo(() => ({
     ReciveMessage: (payload) => {
       const incoming = toLiveMessage(payload, user.id);
+      const isActive = incoming.threadId === activeIdRef.current;
+
+      // MOCK: unread has no server-side watermark, but the trigger is a real hub event -
+      // a message that arrived while you were looking elsewhere. Session-scoped.
+      const unread = !isActive && !incoming.own ? noteIncomingMessage(incoming.threadId) : undefined;
+
       patchThread((t) => t.id === incoming.threadId, {
         preview: incoming.text,
         time: incoming.time,
         isTyping: false,
+        ...(unread === undefined ? {} : { unread }),
       });
-      if (incoming.threadId === activeIdRef.current) {
+
+      if (isActive) {
         // The hub echoes to the sender too, so the REST response and this event can be the
         // same message - dedupe on id rather than showing it twice.
         setMessages((ms) => (ms.some((m) => m.id === incoming.id) ? ms : [...ms, incoming]));
@@ -283,6 +291,7 @@ export default function ChatApp({ user, onSignOut }) {
         sidebar={
           <ThreadList
             threads={visibleThreads}
+            allThreads={threads}
             activeId={activeId}
             query={query}
             tab={tab}
