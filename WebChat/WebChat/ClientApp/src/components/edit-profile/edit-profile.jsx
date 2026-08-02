@@ -1,8 +1,7 @@
 import React, { Component } from 'react';
 import './edit-profile.css';
-import { getDefaultImageUrl, getUserAvatar, defaultimage, uploadAvatar, getProfile, authHeader, updateUsersProfile } from '../../services';
+import { getDefaultImageUrl, getUserAvatar, defaultimage, uploadAvatar, getProfile, updateUsersProfile } from '../../services';
 import { withAuth } from '../hoc';
-import Axios from 'axios';
 //TODO: Add validations
 class EditProfile extends Component{
     state = {

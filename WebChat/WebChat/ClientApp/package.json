@@ -2,25 +2,23 @@
   "name": "client",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "dependencies": {
-    "@aspnet/signalr": "^1.1.4",
-    "@material-ui/core": "^3.9.4",
-    "@material-ui/icons": "^3.0.2",
-    "axios": "^0.18.1",
-    "react": "^16.13.1",
-    "react-dom": "^16.13.1",
-    "react-router-dom": "^5.2.0",
-    "react-scripts": "3.0.0",
-    "sudo": "^1.0.3"
+    "@microsoft/signalr": "^10.0.0",
+    "axios": "^1.19.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^5.3.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.7.0",
+    "vite": "^6.4.3"
   },
   "scripts": {
-    "start": "./node_modules/.bin/react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
-  },
-  "eslintConfig": {
-    "extends": "react-app"
+    "dev": "vite",
+    "start": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "browserslist": {
     "production": [
