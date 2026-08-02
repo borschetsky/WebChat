@@ -1,17 +1,18 @@
 import React from 'react';
 import {
-  Avatar, Badge, Box, Button, Chip, Divider, IconButton, InputBase,
+  Badge, Box, Button, Chip, Divider, IconButton,
   List, ListItemButton, Skeleton, Stack, Typography,
 } from '@mui/material';
 import EditSquareIcon from '@mui/icons-material/EditSquare';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import SettingsIcon from '@mui/icons-material/Settings';
 import SearchIcon from '@mui/icons-material/Search';
-import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
 import ForumIcon from '@mui/icons-material/Forum';
 import SearchOffIcon from '@mui/icons-material/SearchOff';
 import PresenceAvatar from '@/components/PresenceAvatar';
+import EmptyState from '@/components/EmptyState';
+import SearchField from '@/components/SearchField';
 import NotificationsMenu from '@/features/notifications/NotificationsMenu';
 import { densityTokens } from '@/theme/tokens';
 
@@ -63,11 +64,13 @@ export default function ThreadList({
       </Stack>
 
       <Box sx={{ px: 1.5, pt: 1.25, pb: 0.75 }}>
-        <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', height: 44, px: 1.75, borderRadius: 22, bgcolor: 'background.field' }}>
-          <SearchIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-          <InputBase value={query} onChange={(e) => onQuery(e.target.value)} placeholder="Search people and messages" sx={{ flex: 1, fontSize: 14 }} />
-          {query && <IconButton size="small" onClick={() => onQuery('')}><CloseIcon fontSize="inherit" /></IconButton>}
-        </Stack>
+        <SearchField
+          value={query}
+          onChange={onQuery}
+          placeholder="Search people and messages"
+          label="Search people and messages"
+          icon={<SearchIcon fontSize="small" sx={{ color: 'text.secondary' }} />}
+        />
       </Box>
 
       <Stack direction="row" spacing={1} sx={{ px: 1.5, pb: 1.25 }}>
@@ -143,18 +146,17 @@ export default function ThreadList({
           const showAction = !query && !filterEmpty;
 
           return (
-            <Stack spacing={1.25} sx={{ alignItems: 'center', textAlign: 'center', px: 4, py: 7 }}>
-              <Avatar sx={{ width: 64, height: 64, bgcolor: 'background.field', color: 'text.secondary' }}>
-                {query ? <SearchOffIcon /> : <ForumIcon />}
-              </Avatar>
-              <Typography sx={{ fontSize: 16, fontWeight: 500 }}>{title}</Typography>
-              <Typography sx={{ fontSize: 13, color: 'text.secondary', maxWidth: 240 }}>{body}</Typography>
-              {showAction && (
+            <EmptyState
+              dense
+              icon={query ? <SearchOffIcon /> : <ForumIcon />}
+              title={title}
+              body={body}
+              action={showAction && (
                 <Button variant="contained" startIcon={<AddIcon />} onClick={onCompose} sx={{ mt: 1, borderRadius: 20 }}>
                   Start a conversation
                 </Button>
               )}
-            </Stack>
+            />
           );
         })()}
       </Box>

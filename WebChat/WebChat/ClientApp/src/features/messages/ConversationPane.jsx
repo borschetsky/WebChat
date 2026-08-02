@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Box, Button, IconButton, InputBase, Skeleton, Stack, Typography } from '@mui/material';
+import { Box, Button, IconButton, Skeleton, Stack, Typography } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SearchIcon from '@mui/icons-material/Search';
 import InfoIcon from '@mui/icons-material/Info';
@@ -11,7 +11,9 @@ import PresenceAvatar from '@/components/PresenceAvatar';
 import MessageRow from '@/features/messages/MessageRow';
 import Composer from '@/features/composer/Composer';
 import { PRESENCE, densityTokens } from '@/theme/tokens';
-import { getDateInfoForSeparator } from '@/lib/date-time-format';
+import EmptyState from '@/components/EmptyState';
+import SearchField from '@/components/SearchField';
+import DaySeparator from './components/DaySeparator';
 
 const presenceLine = (thread) => {
   if (!thread) return '';
@@ -37,11 +39,18 @@ export default function ConversationPane({
 
   if (!thread) {
     return (
-      <Stack spacing={1.75} sx={{ alignItems: 'center', justifyContent: 'center', textAlign: 'center', flex: 1, p: 5 }}>
-        <ForumIcon sx={{ fontSize: 56, color: 'text.secondary' }} />
-        <Typography sx={{ fontSize: 20, fontWeight: 500 }}>No conversation selected</Typography>
-        <Typography sx={{ fontSize: 14, color: 'text.secondary', maxWidth: 320 }}>Pick a thread on the left, or start a new one.</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={onCompose} sx={{ borderRadius: 20 }}>New conversation</Button>
+      <Stack sx={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <EmptyState
+          icon={<ForumIcon sx={{ fontSize: 32 }} />}
+          title="No conversation selected"
+          body="Pick a thread on the left, or start a new one."
+          width={320}
+          action={
+            <Button variant="contained" startIcon={<AddIcon />} onClick={onCompose} sx={{ mt: 1, borderRadius: 20 }}>
+              New conversation
+            </Button>
+          }
+        />
       </Stack>
     );
   }
@@ -63,14 +72,21 @@ export default function ConversationPane({
 
       {searchOpen && (
         <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', p: 1.25, px: 2, bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider' }}>
-          <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', flex: 1, height: 40, px: 1.75, borderRadius: 20, bgcolor: 'background.field' }}>
-            <ManageSearchIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-            <InputBase autoFocus value={searchQuery} onChange={(e) => onSearchQuery(e.target.value)} placeholder="Find in this conversation" sx={{ flex: 1, fontSize: 14 }} />
-          </Stack>
-          <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+          <SearchField
+            value={searchQuery}
+            onChange={onSearchQuery}
+            placeholder="Find in this conversation"
+            label="Find in this conversation"
+            icon={<ManageSearchIcon fontSize="small" sx={{ color: 'text.secondary' }} />}
+            height={40}
+            autoFocus
+          />
+          <Typography sx={{ fontSize: 13, color: 'text.secondary' }} aria-live="polite">
             {searchQuery.trim() ? `${searchCount} of ${totalCount}` : `${totalCount} messages`}
           </Typography>
-          <IconButton size="small" onClick={onToggleSearch}><CloseIcon fontSize="inherit" /></IconButton>
+          <IconButton size="small" aria-label="Close search" onClick={onToggleSearch}>
+            <CloseIcon fontSize="inherit" />
+          </IconButton>
         </Stack>
       )}
 
@@ -88,13 +104,7 @@ export default function ConversationPane({
             const grouped = !!prev && prev.authorId === m.authorId && !m.quote && !m.startsDay && !searchQuery.trim();
             return (
               <React.Fragment key={m.id}>
-                {m.startsDay && m.dayKey && (
-                  <Stack sx={{ alignItems: 'center', py: 1.5 }}>
-                    <Typography sx={{ fontSize: 11, px: 1.5, py: 0.4, borderRadius: 10, bgcolor: 'background.field', color: 'text.secondary' }}>
-                      {getDateInfoForSeparator(m.dayKey)}
-                    </Typography>
-                  </Stack>
-                )}
+                {m.startsDay && m.dayKey && <DaySeparator dayKey={m.dayKey} />}
                 <MessageRow
                   message={m}
                   density={density}
@@ -103,6 +113,7 @@ export default function ConversationPane({
                   onReply={onReply}
                   showReceipt={!!receipt && m.id === receipt.messageId}
                   receiptLabel={receipt?.label}
+                  highlight={searchQuery}
                 />
               </React.Fragment>
             );
