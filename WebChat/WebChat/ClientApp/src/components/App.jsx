@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { BrowserRouter, Switch, Route, Redirect, useHistory } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import AuthScreen from './auth/AuthScreen';
 import ChatApp from './chat/ChatApp';
 import { login, register } from '../services';
@@ -14,8 +14,8 @@ const readUser = () => {
   }
 };
 
-function Routes() {
-  const history = useHistory();
+function AppRoutes() {
+  const navigate = useNavigate();
   const [user, setUser] = useState(readUser);
   const [busy, setBusy] = useState(false);
 
@@ -25,51 +25,59 @@ function Routes() {
       const res = await fn(payload);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(res.data));
       setUser(res.data);
-      history.push('/dashboard');
+      navigate('/dashboard', { replace: true });
     } finally {
       setBusy(false);
     }
-  }, [history]);
+  }, [navigate]);
 
   const signOut = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
     setUser(null);
-    history.push('/login');
-  }, [history]);
+    navigate('/login', { replace: true });
+  }, [navigate]);
 
   return (
-    <Switch>
-      <Route path="/login">
-        {user ? <Redirect to="/dashboard" /> : (
-          <AuthScreen mode="login" busy={busy}
+    <Routes>
+      <Route
+        path="/login"
+        element={user ? <Navigate to="/dashboard" replace /> : (
+          <AuthScreen
+            mode="login"
+            busy={busy}
             onSubmit={(p) => authenticate(login, p)}
-            onSwitch={() => history.push('/register')} />
+            onSwitch={() => navigate('/register')}
+          />
         )}
-      </Route>
+      />
 
-      <Route path="/register">
-        {user ? <Redirect to="/dashboard" /> : (
-          <AuthScreen mode="register" busy={busy}
+      <Route
+        path="/register"
+        element={user ? <Navigate to="/dashboard" replace /> : (
+          <AuthScreen
+            mode="register"
+            busy={busy}
             onSubmit={(p) => authenticate(register, p)}
-            onSwitch={() => history.push('/login')} />
+            onSwitch={() => navigate('/login')}
+          />
         )}
-      </Route>
+      />
 
-      <Route path="/dashboard">
-        {user ? <ChatApp user={user} onSignOut={signOut} /> : <Redirect to="/login" />}
-      </Route>
+      <Route
+        path="/dashboard"
+        element={user ? <ChatApp user={user} onSignOut={signOut} /> : <Navigate to="/login" replace />}
+      />
 
-      <Route path="/">
-        <Redirect to={user ? '/dashboard' : '/login'} />
-      </Route>
-    </Switch>
+      {/* v6 matches paths exactly, so the catch-all has to be "*" rather than "/". */}
+      <Route path="*" element={<Navigate to={user ? '/dashboard' : '/login'} replace />} />
+    </Routes>
   );
 }
 
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes />
+      <AppRoutes />
     </BrowserRouter>
   );
 }
