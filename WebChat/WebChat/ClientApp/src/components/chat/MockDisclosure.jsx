@@ -26,7 +26,7 @@ export default function MockDisclosure() {
   return (
     <Accordion disableGutters elevation={0} sx={{ mt: 2.5, border: 1, borderColor: 'divider', borderRadius: 2, '&:before': { display: 'none' } }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-        <Stack direction="row" alignItems="center" spacing={1}>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
           <ScienceIcon fontSize="small" sx={{ color: 'warning.main' }} />
           <Typography sx={{ fontSize: 14 }}>Not backed by the server</Typography>
           <Chip size="small" label={MOCK_FEATURES.length} sx={{ height: 20 }} />

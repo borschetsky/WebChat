@@ -50,13 +50,13 @@ export default function SettingsDrawer({
 
   return (
     <Drawer anchor="right" open={open} onClose={onClose} slotProps={{ paper: { sx: { width: fullWidth ? '100%' : 360 } } }}>
-      <Stack direction="row" alignItems="center" spacing={1.5} sx={{ p: 1.75, borderBottom: 1, borderColor: 'divider' }}>
+      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', p: 1.75, borderBottom: 1, borderColor: 'divider' }}>
         <Typography sx={{ flex: 1, fontSize: 16, fontWeight: 500 }}>Profile &amp; settings</Typography>
         <IconButton onClick={onClose}><CloseIcon /></IconButton>
       </Stack>
 
       <Box sx={{ flex: 1, overflowY: 'auto', px: 2, py: 2.5 }}>
-        <Stack alignItems="center" spacing={1} sx={{ pb: 2.5 }}>
+        <Stack spacing={1} sx={{ alignItems: 'center', pb: 2.5 }}>
           <Box sx={{ position: 'relative' }}>
             <PresenceAvatar name={profile?.name ?? ''} color={profile?.color} avatarFileName={profile?.avatarFileName} size={76} showPresence={false} />
             <IconButton
@@ -89,7 +89,7 @@ export default function SettingsDrawer({
               {threadName ? `Members in ${threadName}` : 'Members'}
             </Typography>
             {members.map((p) => (
-              <Stack key={p.id ?? p.name} direction="row" alignItems="center" spacing={1.5} sx={{ px: 1, py: 1.1 }}>
+              <Stack key={p.id ?? p.name} direction="row" spacing={1.5} sx={{ alignItems: 'center', px: 1, py: 1.1 }}>
                 <PresenceAvatar name={p.name} color={p.color} avatarFileName={p.avatarFileName} size={34} presence={p.presence} />
                 <Box>
                   <Typography sx={{ fontSize: 14 }}>{p.name}</Typography>

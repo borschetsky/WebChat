@@ -42,7 +42,7 @@ export default function AuthScreen({ mode, onSubmit, onSwitch, busy }) {
   return (
     <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', bgcolor: 'background.default', p: 3 }}>
       <Paper elevation={0} component="form" onSubmit={submit} sx={{ width: 420, maxWidth: '100%', p: 4.5, borderRadius: 4, border: 1, borderColor: 'divider' }}>
-        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 3.5 }}>
+        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mb: 3.5 }}>
           <Avatar variant="rounded" sx={{ width: 44, height: 44, bgcolor: 'primary.main', color: 'primary.contrastText', borderRadius: 3 }}>
             <ForumIcon />
           </Avatar>

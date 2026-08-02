@@ -50,7 +50,7 @@ export default function ComposeDialog({ open, onClose, onStart, onSearch, fullSc
       </DialogTitle>
 
       <DialogContent sx={{ pt: 1.5 }}>
-        <Stack direction="row" alignItems="center" spacing={1.25} sx={{ height: 44, px: 1.75, borderRadius: 22, bgcolor: 'background.field', mb: 1 }}>
+        <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', height: 44, px: 1.75, borderRadius: 22, bgcolor: 'background.field', mb: 1 }}>
           <PersonSearchIcon fontSize="small" sx={{ color: 'text.secondary' }} />
           <InputBase autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search directory" sx={{ flex: 1, fontSize: 14 }} />
           {loading && <CircularProgress size={16} />}

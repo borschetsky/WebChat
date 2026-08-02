@@ -23,7 +23,7 @@ export default function NotificationsMenu({ anchorEl, onClose, threads, onSelect
       anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
       slotProps={{ paper: { sx: { width: 320, borderRadius: 3 } } }}
     >
-      <Stack direction="row" alignItems="center" sx={{ px: 2, py: 1.5 }}>
+      <Stack direction="row" sx={{ alignItems: 'center', px: 2, py: 1.5 }}>
         <Typography sx={{ flex: 1, fontSize: 15, fontWeight: 500 }}>Notifications</Typography>
         {unread.length > 0 && (
           <Button size="small" startIcon={<DoneAllIcon />} onClick={() => { onMarkAllRead(); onClose(); }}>
@@ -34,7 +34,7 @@ export default function NotificationsMenu({ anchorEl, onClose, threads, onSelect
       <Divider />
 
       {unread.length === 0 ? (
-        <Stack alignItems="center" spacing={1} sx={{ px: 3, py: 4, textAlign: 'center' }}>
+        <Stack spacing={1} sx={{ alignItems: 'center', px: 3, py: 4, textAlign: 'center' }}>
           <NotificationsOffIcon sx={{ fontSize: 34, color: 'text.disabled' }} />
           <Typography sx={{ fontSize: 14 }}>You are all caught up</Typography>
           <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Avatar, Badge, Box } from '@mui/material';
+import { Avatar, Badge } from '@mui/material';
 import { PRESENCE, initials } from '../../theme';
 import { getUserAvatar } from '../../services';
 
@@ -42,24 +42,27 @@ export default function PresenceAvatar({
 
   if (!showPresence || !presence || presence === 'group') return avatar;
 
+  // The v9 slot API, matching the updated handoff: the dot is the Badge's own badge slot
+  // rather than a child element, so Badge handles positioning and overlap itself.
   return (
     <Badge
       overlap="circular"
+      variant="dot"
       anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      badgeContent={
-        <Box
-          component="span"
-          sx={{
+      slotProps={{
+        badge: {
+          sx: {
             width: 12,
             height: 12,
+            minWidth: 12,
+            p: 0,
             borderRadius: '50%',
             bgcolor: PRESENCE[presence] ?? PRESENCE.offline,
             // Ring in the surface colour so the dot reads as cut out of the avatar.
-            border: '2px solid',
-            borderColor: 'background.paper',
-          }}
-        />
-      }
+            boxShadow: (t) => `0 0 0 2px ${t.palette.background.paper}`,
+          },
+        },
+      }}
     >
       {avatar}
     </Badge>
