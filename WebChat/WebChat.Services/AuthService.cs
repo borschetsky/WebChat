@@ -59,7 +59,7 @@ namespace WebChat.Services
 
         public string HashPassword(string password)
         {
-            return Crypto.HashPassword(password);
+            return PasswordHasher.HashPassword(password);
         }
 
         public bool isPasswordUniq(string email)
@@ -69,7 +69,7 @@ namespace WebChat.Services
 
         public bool VerifyPassword(string actualPassword, string hashedPassword)
         {
-            return Crypto.VerifyHashedPassword(hashedPassword, actualPassword);
+            return PasswordHasher.VerifyHashedPassword(hashedPassword, actualPassword);
         }
 
         
