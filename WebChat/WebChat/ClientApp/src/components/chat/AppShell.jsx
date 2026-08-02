@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Paper, ScopedCssBaseline, Stack, useMediaQuery } from '@mui/material';
+import { Box, Paper, Stack, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 
 /**
@@ -16,9 +16,8 @@ export const useIsMobile = () => {
  * sidebar and a flexible conversation pane. On mobile it becomes one pane at a
  * time, driven by `pane`.
  *
- * ScopedCssBaseline, not the global CssBaseline: the legacy screens still depend on
- * their own stylesheets until Phase 5 removes them, and a global reset now would break
- * them mid-migration. Swapping to global CssBaseline is a one-line change once they go.
+ * The reset is the global CssBaseline mounted in index.jsx - safe now that every routed
+ * screen is a redesigned one.
  */
 export default function AppShell({ sidebar, children, pane = 'list' }) {
   const isMobile = useIsMobile();
@@ -26,11 +25,10 @@ export default function AppShell({ sidebar, children, pane = 'list' }) {
   const showMain = !isMobile || pane === 'chat';
 
   return (
-    <ScopedCssBaseline
+    <Box
       sx={{
         height: '100vh',
         bgcolor: 'background.default',
-        // The reset element itself is the scroll/paint root, so it carries the padding.
         p: { xs: 0, md: 2.5 },
       }}
     >
@@ -63,6 +61,6 @@ export default function AppShell({ sidebar, children, pane = 'list' }) {
           <Stack sx={{ flex: 1, minWidth: 0, bgcolor: 'background.chat' }}>{children}</Stack>
         )}
       </Paper>
-    </ScopedCssBaseline>
+    </Box>
   );
 }

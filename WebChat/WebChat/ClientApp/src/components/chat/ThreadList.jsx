@@ -1,0 +1,138 @@
+import React from 'react';
+import {
+  Avatar, Badge, Box, Button, Chip, Divider, IconButton, InputBase,
+  List, ListItemButton, Skeleton, Stack, Typography,
+} from '@mui/material';
+import EditSquareIcon from '@mui/icons-material/EditSquare';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import SettingsIcon from '@mui/icons-material/Settings';
+import SearchIcon from '@mui/icons-material/Search';
+import CloseIcon from '@mui/icons-material/Close';
+import AddIcon from '@mui/icons-material/Add';
+import ForumIcon from '@mui/icons-material/Forum';
+import SearchOffIcon from '@mui/icons-material/SearchOff';
+import PresenceAvatar from './PresenceAvatar';
+import { densityTokens, initials } from '../../theme';
+
+const TABS = [['all', 'All'], ['unread', 'Unread'], ['groups', 'Groups']];
+
+export default function ThreadList({
+  threads, activeId, query, tab, density, loading, unreadTotal, profile,
+  onQuery, onTab, onSelect, onCompose, onSettings, onMarkAllRead,
+}) {
+  const d = densityTokens(density);
+
+  return (
+    <Stack sx={{ height: '100%', minWidth: 0 }}>
+      <Stack direction="row" alignItems="center" gap={1} sx={{ p: 1.5, pl: 2, borderBottom: 1, borderColor: 'divider' }}>
+        <PresenceAvatar
+          name={profile?.name ?? ''}
+          color={profile?.color}
+          avatarFileName={profile?.avatarFileName}
+          size={38}
+          presence="online"
+          showPresence={false}
+          onClick={onSettings}
+        />
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography noWrap sx={{ fontSize: 15, fontWeight: 500, lineHeight: 1.2 }}>{profile?.name ?? ' '}</Typography>
+          <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>● Active</Typography>
+        </Box>
+        <IconButton onClick={onCompose} title="New conversation"><EditSquareIcon fontSize="small" /></IconButton>
+        <IconButton onClick={onMarkAllRead} title="Notifications">
+          <Badge color="error" badgeContent={unreadTotal}><NotificationsIcon fontSize="small" /></Badge>
+        </IconButton>
+        <IconButton onClick={onSettings} title="Settings"><SettingsIcon fontSize="small" /></IconButton>
+      </Stack>
+
+      <Box sx={{ px: 1.5, pt: 1.25, pb: 0.75 }}>
+        <Stack direction="row" alignItems="center" gap={1.25} sx={{ height: 44, px: 1.75, borderRadius: 22, bgcolor: 'background.field' }}>
+          <SearchIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+          <InputBase value={query} onChange={(e) => onQuery(e.target.value)} placeholder="Search people and messages" sx={{ flex: 1, fontSize: 14 }} />
+          {query && <IconButton size="small" onClick={() => onQuery('')}><CloseIcon fontSize="inherit" /></IconButton>}
+        </Stack>
+      </Box>
+
+      <Stack direction="row" gap={1} sx={{ px: 1.5, pb: 1.25 }}>
+        {TABS.map(([k, label]) => (
+          <Chip
+            key={k}
+            label={label}
+            size="small"
+            onClick={() => onTab(k)}
+            variant={tab === k ? 'filled' : 'outlined'}
+            sx={tab === k ? { bgcolor: 'background.selected', color: 'primary.main', borderColor: 'primary.main', border: 1 } : undefined}
+          />
+        ))}
+      </Stack>
+
+      <Box sx={{ flex: 1, overflowY: 'auto', pb: 1.5 }}>
+        {loading && (
+          <Stack gap={2.25} sx={{ px: 2, py: 1 }}>
+            {[...Array(5)].map((_, i) => (
+              <Stack key={i} direction="row" gap={1.5} alignItems="center">
+                <Skeleton variant="circular" width={40} height={40} />
+                <Box sx={{ flex: 1 }}>
+                  <Skeleton width="45%" height={12} />
+                  <Skeleton width="75%" height={12} />
+                </Box>
+              </Stack>
+            ))}
+          </Stack>
+        )}
+
+        {!loading && threads.length > 0 && (
+          <List disablePadding sx={{ px: 1 }}>
+            {threads.map((t) => (
+              <ListItemButton
+                key={t.id}
+                selected={t.id === activeId}
+                onClick={() => onSelect(t.id)}
+                sx={{ gap: 1.5, py: d.rowPadY, px: 2, mb: 0.25, '&.Mui-selected': { bgcolor: 'background.selected' } }}
+              >
+                <PresenceAvatar
+                  name={t.name}
+                  color={t.color}
+                  avatarFileName={t.avatarFileName}
+                  size={d.avatar}
+                  presence={t.presence}
+                  showPresence={!t.group}
+                />
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Stack direction="row" alignItems="baseline" gap={1}>
+                    <Typography noWrap sx={{ flex: 1, fontSize: d.nameSize, fontWeight: t.unread ? 600 : 400 }}>{t.name}</Typography>
+                    <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>{t.time}</Typography>
+                  </Stack>
+                  <Stack direction="row" alignItems="center" gap={1}>
+                    <Typography noWrap sx={{ flex: 1, fontSize: 13, color: t.unread ? 'text.primary' : 'text.secondary', fontStyle: t.isTyping ? 'italic' : 'normal' }}>
+                      {t.isTyping ? 'typing…' : t.preview}
+                    </Typography>
+                    {t.unread > 0 && <Badge color="primary" badgeContent={t.unread} sx={{ mr: 1.5 }} />}
+                  </Stack>
+                </Box>
+              </ListItemButton>
+            ))}
+          </List>
+        )}
+
+        {!loading && threads.length === 0 && (
+          <Stack alignItems="center" textAlign="center" gap={1.25} sx={{ px: 4, py: 7 }}>
+            <Avatar sx={{ width: 64, height: 64, bgcolor: 'background.field', color: 'text.secondary' }}>
+              {query ? <SearchOffIcon /> : <ForumIcon />}
+            </Avatar>
+            <Typography sx={{ fontSize: 16, fontWeight: 500 }}>{query ? 'No results' : 'No conversations yet'}</Typography>
+            <Typography sx={{ fontSize: 13, color: 'text.secondary', maxWidth: 230 }}>
+              {query
+                ? `Nothing matches “${query}”. Try a name or a phrase from a message.`
+                : 'Start a thread with a teammate and it will show up here.'}
+            </Typography>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={onCompose} sx={{ mt: 1, borderRadius: 20 }}>
+              Start a conversation
+            </Button>
+          </Stack>
+        )}
+      </Box>
+      <Divider />
+    </Stack>
+  );
+}
