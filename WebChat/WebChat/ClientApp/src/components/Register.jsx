@@ -88,7 +88,12 @@ class Register extends Component {
                 }
         }).catch(err => {
             console.error(err);
-            const {data} = err.response;
+            // A network failure (API down, DNS, CORS) has no response at all, so
+            // destructuring it unguarded turned every outage into a crash.
+            const data = err.response && err.response.data;
+            if (!data) {
+                return;
+            }
             for(let key of Object.keys(data)){
                 switch(key){
                     case "email":
