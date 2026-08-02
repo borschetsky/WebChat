@@ -1,4 +1,3 @@
-﻿version: '3.7'
 services:
   react-app:
     build:
@@ -8,29 +7,40 @@ services:
       - '3000:3000'
     volumes:
       - ./WebChat/ClientApp:/app
+      # Anonymous volume keeps the image's node_modules from being masked by the
+      # bind mount above - without it the dev server has no dependencies to run.
+      - /app/node_modules
   ms-sql-server:
-    image: mcr.microsoft.com/mssql/server:2017-latest-ubuntu
+    image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
       ACCEPT_EULA: "Y"
-      SA_PASSWORD: "a80a7cac-3775-41bd-a997-16b300780655"
+      MSSQL_SA_PASSWORD: "a80a7cac-3775-41bd-a997-16b300780655"
       MSSQL_PID: Express
     ports:
      - '1433:1433'
   webchat-api:
-    build: 
+    build:
       context: .
       dockerfile: WebChat/Dockerfile
     ports:
-      - '8080:80'
-      - '8081:443'
+      - '8080:8080'
+      - '8081:8443'
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=https://+:443;http://+:80
+      # .NET 8+ containers run as non-root, so Kestrel binds unprivileged ports.
+      - ASPNETCORE_URLS=https://+:8443;http://+:8080
       - ASPNETCORE_Kestrel__Certificates__Default__Password=8175
       - ASPNETCORE_Kestrel__Certificates__Default__Path=/https/aspnetapp.pfx
-      - ASPNETCORE_HTTPS_PORT=8081"
+      - ASPNETCORE_HTTPS_PORT=8081
+      - SpaDevServerUrl=http://react-app:3000
+      - Cors__AllowedOrigins__0=http://localhost:3000
+      - Cors__AllowedOrigins__1=https://localhost:8081
     volumes:
       - ~/.aspnet/https:/https:ro
-      - /path/on/host:/wwwroot/path/in/container
-    # depends_on:
-      # - ms-sql-server
+      - webchat-avatars:/src/wwwroot/images
+    depends_on:
+      - ms-sql-server
+      - react-app
+
+volumes:
+  webchat-avatars:

@@ -1,18 +1,15 @@
 #See https://aka.ms/containerfastmode to understand how Visual Studio uses this Dockerfile to build your images for faster debugging.
 
-FROM mcr.microsoft.com/dotnet/core/aspnet:3.1-buster-slim AS base
-WORKDIR /app
-EXPOSE 80
-EXPOSE 443
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
+WORKDIR /src
+# The .NET 8+ images run as the non-root "app" user, so the ports must be >1024.
+EXPOSE 8080
+EXPOSE 8443
+# Avatar uploads are written to <cwd>/wwwroot/images; empty folders are not published,
+# so the directory has to exist and be writable by the non-root user.
+RUN mkdir -p /src/wwwroot/images && chown -R app:app /src
 
-RUN curl -sL https://deb.nodesource.com/setup_14.x | bash -
-RUN apt-get install -y nodejs
-
-
-FROM mcr.microsoft.com/dotnet/core/sdk:3.1-buster AS build
-RUN curl -sL https://deb.nodesource.com/setup_14.x |  bash -
-RUN apt-get install -y nodejs
-
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY ["WebChat/WebChat.csproj", "WebChat/"]
 COPY ["WebChat.AvatarWriter/WebChat.AvatarWriter.csproj", "WebChat.AvatarWriter/"]
@@ -30,5 +27,6 @@ RUN dotnet publish "WebChat.csproj" -c Release -o /app/publish
 
 FROM base AS final
 WORKDIR /src
-COPY --from=publish /app/publish .
+COPY --from=publish --chown=app:app /app/publish .
+USER app
 ENTRYPOINT ["dotnet", "WebChat.dll"]
