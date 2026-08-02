@@ -1,32 +1,39 @@
-import { getDefaultImageUrl, defaultimage}  from './default-image-service';
+// Barrel for the raw API layer.
+//
+// UI components should import from ./chat-service instead - it composes these with the
+// adapters and the mock layer. The only direct consumers left are getUserAvatar (image
+// URLs) and uploadAvatar (multipart, which chat-service does not wrap).
+//
+// default-image-service was dropped with the legacy screens: PresenceAvatar falls back to
+// generated initials rather than fetching a placeholder from ui-avatars.com.
 import getUserAvatar from './avatar-image-service';
 import authHeader from './auth-header';
-import { getProfile, 
-         getMessages, 
-         getThreads, 
-         createThread, 
-         sendMessageToApi, 
-         uploadAvatar, 
-         searchForUsers, 
-         login, 
-         register, 
-         searchForMessageInThread, 
-         updateUsersProfile } from './api-service';
-
-export {
-    getDefaultImageUrl, 
-    getUserAvatar, 
-    defaultimage, 
-    authHeader, 
-    getProfile, 
+import {
+    getProfile,
     getMessages,
-    getThreads, 
-    createThread, 
-    sendMessageToApi, 
-    uploadAvatar, 
+    getThreads,
+    createThread,
+    sendMessageToApi,
+    uploadAvatar,
     searchForUsers,
     login,
     register,
     searchForMessageInThread,
-    updateUsersProfile
+    updateUsersProfile,
+} from './api-service';
+
+export {
+    getUserAvatar,
+    authHeader,
+    getProfile,
+    getMessages,
+    getThreads,
+    createThread,
+    sendMessageToApi,
+    uploadAvatar,
+    searchForUsers,
+    login,
+    register,
+    searchForMessageInThread,
+    updateUsersProfile,
 };
