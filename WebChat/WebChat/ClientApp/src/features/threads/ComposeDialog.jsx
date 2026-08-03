@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
-  InputBase, List, ListItemButton, Stack, Typography,
+  Box, Button, Dialog, DialogActions, DialogContent, DialogTitle,
+  List, ListItemButton, Typography,
 } from '@mui/material';
 import PersonSearchIcon from '@mui/icons-material/PersonSearch';
 import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
 import PresenceAvatar from '@/components/PresenceAvatar';
+import SearchField from '@/components/SearchField';
 
 /**
  * New-conversation dialog. Unlike the handoff, which filtered a local fixture array, this
@@ -50,11 +51,15 @@ export default function ComposeDialog({ open, onClose, onStart, onSearch, fullSc
       </DialogTitle>
 
       <DialogContent sx={{ pt: 1.5 }}>
-        <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', height: 44, px: 1.75, borderRadius: 22, bgcolor: 'background.field', mb: 1 }}>
-          <PersonSearchIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-          <InputBase autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search directory" sx={{ flex: 1, fontSize: 14 }} />
-          {loading && <CircularProgress size={16} />}
-        </Stack>
+        <SearchField
+          value={q}
+          onChange={setQ}
+          placeholder="Search directory"
+          label="Search the directory for someone to message"
+          icon={<PersonSearchIcon fontSize="small" sx={{ color: 'text.secondary' }} />}
+          loading={loading}
+          autoFocus
+        />
 
         <List disablePadding>
           {people.map((p) => (

@@ -58,7 +58,11 @@ export default function ConversationPane({
   return (
     <>
       <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', p: 1.25, px: 2, bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider' }}>
-        {isMobile && <IconButton onClick={onBack}><ArrowBackIcon /></IconButton>}
+        {isMobile && (
+          <IconButton onClick={onBack} aria-label="Back to conversations">
+            <ArrowBackIcon />
+          </IconButton>
+        )}
         <PresenceAvatar name={thread.name} color={thread.color} avatarFileName={thread.avatarFileName} size={38} showPresence={false} />
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography noWrap sx={{ fontSize: 16, fontWeight: 500 }}>{thread.name}</Typography>
@@ -66,8 +70,18 @@ export default function ConversationPane({
             {presenceLine(thread)}
           </Typography>
         </Box>
-        <IconButton color={searchOpen ? 'primary' : 'default'} onClick={onToggleSearch} title="Find in conversation"><SearchIcon /></IconButton>
-        <IconButton onClick={onOpenSettings} title="Details"><InfoIcon /></IconButton>
+        <IconButton
+          color={searchOpen ? 'primary' : 'default'}
+          onClick={onToggleSearch}
+          aria-label="Find in conversation"
+          aria-expanded={searchOpen}
+          title="Find in conversation"
+        >
+          <SearchIcon />
+        </IconButton>
+        <IconButton onClick={onOpenSettings} aria-label="Conversation details" title="Details">
+          <InfoIcon />
+        </IconButton>
       </Stack>
 
       {searchOpen && (
@@ -90,7 +104,14 @@ export default function ConversationPane({
         </Stack>
       )}
 
-      <Box sx={{ flex: 1, overflowY: 'auto', py: 2 }}>
+      {/* role=log + polite live region: new messages are announced without stealing focus. */}
+      <Box
+        sx={{ flex: 1, overflowY: 'auto', py: 2 }}
+        role="log"
+        aria-label={`Conversation with ${thread.name}`}
+        aria-live="polite"
+        aria-busy={loading}
+      >
         {loading ? (
           [...Array(5)].map((_, i) => (
             <Stack key={i} direction="row" spacing={1.5} sx={{ px: 3, py: 1.5 }}>

@@ -56,11 +56,20 @@ export default function ThreadList({
           <Typography noWrap sx={{ fontSize: 15, fontWeight: 500, lineHeight: 1.2 }}>{profile?.name ?? ' '}</Typography>
           <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>● Active</Typography>
         </Box>
-        <IconButton onClick={onCompose} title="New conversation"><EditSquareIcon fontSize="small" /></IconButton>
-        <IconButton onClick={(e) => setBell(e.currentTarget)} title="Notifications">
+        <IconButton onClick={onCompose} aria-label="New conversation" title="New conversation">
+          <EditSquareIcon fontSize="small" />
+        </IconButton>
+        <IconButton
+          onClick={(e) => setBell(e.currentTarget)}
+          aria-label={unreadTotal > 0 ? `Notifications, ${unreadTotal} unread` : 'Notifications'}
+          aria-haspopup="true"
+          title="Notifications"
+        >
           <Badge color="error" badgeContent={unreadTotal}><NotificationsIcon fontSize="small" /></Badge>
         </IconButton>
-        <IconButton onClick={onSettings} title="Settings"><SettingsIcon fontSize="small" /></IconButton>
+        <IconButton onClick={onSettings} aria-label="Profile and settings" title="Settings">
+          <SettingsIcon fontSize="small" />
+        </IconButton>
       </Stack>
 
       <Box sx={{ px: 1.5, pt: 1.25, pb: 0.75 }}>
@@ -73,22 +82,25 @@ export default function ThreadList({
         />
       </Box>
 
-      <Stack direction="row" spacing={1} sx={{ px: 1.5, pb: 1.25 }}>
+      {/* Mutually exclusive filters, so they are a radiogroup rather than loose buttons. */}
+      <Stack direction="row" spacing={1} sx={{ px: 1.5, pb: 1.25 }} role="radiogroup" aria-label="Filter conversations">
         {TABS.map(([k, label]) => (
           <Chip
             key={k}
             label={label}
             size="small"
             onClick={() => onTab(k)}
+            role="radio"
+            aria-checked={tab === k}
             variant={tab === k ? 'filled' : 'outlined'}
             sx={tab === k ? { bgcolor: 'background.selected', color: 'primary.main', borderColor: 'primary.main', border: 1 } : undefined}
           />
         ))}
       </Stack>
 
-      <Box sx={{ flex: 1, overflowY: 'auto', pb: 1.5 }}>
+      <Box sx={{ flex: 1, overflowY: 'auto', pb: 1.5 }} aria-busy={loading}>
         {loading && (
-          <Stack spacing={2.25} sx={{ px: 2, py: 1 }}>
+          <Stack spacing={2.25} sx={{ px: 2, py: 1 }} aria-label="Loading conversations">
             {[...Array(5)].map((_, i) => (
               <Stack key={i} direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
                 <Skeleton variant="circular" width={40} height={40} />

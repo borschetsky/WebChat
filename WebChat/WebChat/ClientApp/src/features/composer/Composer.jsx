@@ -32,7 +32,9 @@ export default function Composer({
             <Typography sx={{ fontSize: 12, fontWeight: 500, color: 'primary.main' }}>Replying to {replyTo.author}</Typography>
             <Typography noWrap sx={{ fontSize: 12, color: 'text.secondary' }}>{replyTo.text}</Typography>
           </Box>
-          <IconButton size="small" onClick={onCancelReply}><CloseIcon fontSize="inherit" /></IconButton>
+          <IconButton size="small" onClick={onCancelReply} aria-label="Cancel reply">
+            <CloseIcon fontSize="inherit" />
+          </IconButton>
         </Stack>
       )}
 
@@ -48,7 +50,9 @@ export default function Composer({
           hidden
           onChange={(e) => { const f = e.target.files?.[0]; if (f) onAttach(f); e.target.value = ''; }}
         />
-        <IconButton onClick={() => fileRef.current?.click()} title="Attach" disabled={disabled}><AttachFileIcon /></IconButton>
+        <IconButton onClick={() => fileRef.current?.click()} aria-label="Attach a file" title="Attach" disabled={disabled}>
+          <AttachFileIcon />
+        </IconButton>
 
         <Stack
           direction="row"
@@ -63,13 +67,23 @@ export default function Composer({
             onChange={handleChange}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend(); } }}
             placeholder={placeholder}
+            inputProps={{ 'aria-label': placeholder }}
             sx={{ flex: 1, fontSize: 15 }}
           />
-          <IconButton onClick={(e) => setAnchor(e.currentTarget)} title="Emoji" disabled={disabled}><MoodIcon /></IconButton>
+          <IconButton
+            onClick={(e) => setAnchor(e.currentTarget)}
+            aria-label="Insert emoji"
+            aria-haspopup="true"
+            title="Emoji"
+            disabled={disabled}
+          >
+            <MoodIcon />
+          </IconButton>
         </Stack>
 
         <IconButton
           onClick={onSend}
+          aria-label="Send message"
           title="Send"
           disabled={disabled || !ready}
           sx={{

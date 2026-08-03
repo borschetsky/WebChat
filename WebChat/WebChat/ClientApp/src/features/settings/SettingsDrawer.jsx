@@ -52,7 +52,7 @@ export default function SettingsDrawer({
     <Drawer anchor="right" open={open} onClose={onClose} slotProps={{ paper: { sx: { width: fullWidth ? '100%' : 360 } } }}>
       <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', p: 1.75, borderBottom: 1, borderColor: 'divider' }}>
         <Typography sx={{ flex: 1, fontSize: 16, fontWeight: 500 }}>Profile &amp; settings</Typography>
-        <IconButton onClick={onClose}><CloseIcon /></IconButton>
+        <IconButton onClick={onClose} aria-label="Close settings"><CloseIcon /></IconButton>
       </Stack>
 
       <Box sx={{ flex: 1, overflowY: 'auto', px: 2, py: 2.5 }}>
@@ -62,6 +62,7 @@ export default function SettingsDrawer({
             <IconButton
               component="label"
               size="small"
+              aria-label="Change profile photo"
               sx={{ position: 'absolute', right: -4, bottom: -4, bgcolor: 'background.paper', border: 1, borderColor: 'divider', '&:hover': { bgcolor: 'background.field' } }}
             >
               <PhotoCameraIcon fontSize="inherit" />
