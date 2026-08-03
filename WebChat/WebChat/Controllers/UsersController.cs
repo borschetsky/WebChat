@@ -37,8 +37,17 @@ namespace WebChat.Controllers
         public ActionResult<ProfileViewModel> GetProfile()
         {
             var currentUserId = this.User.Identity.Name;
+            var profile = this.userService.GetUserProfile(currentUserId);
 
-            return this.userService.GetUserProfile(currentUserId);
+            // The token verified, but its user is gone - typically a session held across a
+            // database rebuild. 401 tells the client to sign in again; anything else leaves it
+            // retrying with a token that can never work.
+            if (profile == null)
+            {
+                return Unauthorized(new { message = "This session refers to a user that no longer exists. Please sign in again." });
+            }
+
+            return profile;
         }
 
         [HttpPost("update")]

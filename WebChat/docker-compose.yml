@@ -10,14 +10,24 @@ services:
       # Anonymous volume keeps the image's node_modules from being masked by the
       # bind mount above - without it the dev server has no dependencies to run.
       - /app/node_modules
-  ms-sql-server:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+  postgres:
+    # Replaces SQL Server: Postgres runs comfortably in a fraction of the memory, which is
+    # what decides the droplet size this deploys onto. SQL Server needs ~2 GB to start at all.
+    image: postgres:18-alpine
     environment:
-      ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: "a80a7cac-3775-41bd-a997-16b300780655"
-      MSSQL_PID: Express
+      POSTGRES_DB: WebChat
+      POSTGRES_USER: webchat
+      POSTGRES_PASSWORD: a80a7cac-3775-41bd-a997-16b300780655
     ports:
-     - '1433:1433'
+      - '5432:5432'
+    volumes:
+      - webchat-db:/var/lib/postgresql/data
+    # The API retries while the database starts, but a healthcheck keeps the log quiet.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U webchat -d WebChat"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
   webchat-api:
     build:
       context: .
@@ -39,8 +49,11 @@ services:
       - ~/.aspnet/https:/https:ro
       - webchat-avatars:/src/wwwroot/images
     depends_on:
-      - ms-sql-server
-      - react-app
+      postgres:
+        condition: service_healthy
+      react-app:
+        condition: service_started
 
 volumes:
   webchat-avatars:
+  webchat-db:

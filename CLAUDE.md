@@ -42,7 +42,7 @@ cd WebChat
 dotnet ef migrations list -p WebChat.Connection -s WebChat/WebChat.csproj
 ```
 
-Full stack (API + SQL Server + CRA dev server):
+Full stack (API + PostgreSQL + client dev server):
 
 ```bash
 cd WebChat
@@ -59,11 +59,15 @@ points at); the CRA dev server is on `http://localhost:3000`.
 - **Serialization is Newtonsoft.Json on purpose.** Some endpoints return
   `Dictionary<DateTime, …>` and the client parses those keys as dates; System.Text.Json
   formats non-string dictionary keys differently and would break the UI.
-- **Connection strings need `TrustServerCertificate=True`** against the containerised SQL
-  Server, because `Microsoft.Data.SqlClient` defaults `Encrypt` to true.
+- **The database is PostgreSQL** (Npgsql), moved off SQL Server because SQL Server needs
+  ~2 GB of RAM just to start, which tripled the DigitalOcean droplet size it deploys onto.
+- **Every stored `DateTime` must be UTC.** Postgres columns are `timestamp with time zone`,
+  and Npgsql *throws* when handed a value whose `Kind` is `Local` or `Unspecified` — so
+  `DateTime.Now` fails at insert time rather than merely being wrong. Use `DateTime.UtcNow`;
+  see the note on `BaseEntity`.
 - **The database bootstraps itself.** `PrepDB.MigrateDatabaseAsync` runs in `Program.Main`
   before the host starts: it creates the database if missing and applies pending migrations,
-  retrying while SQL Server comes up. Turn it off with `Database:AutoMigrate = false` and
+  retrying while the server comes up. Turn it off with `Database:AutoMigrate = false` and
   use `dotnet ef database update` instead.
 - **The client is React 18 + MUI v9, built with Vite.** JSX must live in `.jsx` files — Vite
   does not transform JSX in `.js`. Build output is `ClientApp/dist`, which `AddSpaStaticFiles`

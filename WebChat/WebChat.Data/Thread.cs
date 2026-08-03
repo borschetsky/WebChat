@@ -11,7 +11,7 @@ namespace WebChat.Models
     {
         public Thread()
         {
-            CreatedOn = DateTime.Now;
+            CreatedOn = DateTime.UtcNow;
             Messages = new HashSet<Message>();
         }
 
