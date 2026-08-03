@@ -23,14 +23,21 @@ const writeStoredUser = (user: SessionUser | null) => {
   }
 };
 
-interface AuthState {
+export interface AuthState {
   user: SessionUser | null;
   /** True while a sign-in or sign-up request is in flight. */
   busy: boolean;
 }
 
+/**
+ * Starts signed out. The stored session is injected as preloadedState when the store is
+ * created, rather than read here - evaluating localStorage at module scope captures it
+ * once for the lifetime of the module, so a second store could never be given a different
+ * session. That made the slice untestable and is the kind of hidden coupling that only
+ * shows up later.
+ */
 const initialState: AuthState = {
-  user: readStoredUser(),
+  user: null,
   busy: false,
 };
 
