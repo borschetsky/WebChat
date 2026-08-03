@@ -23,57 +23,46 @@ namespace WebChat.AvatarWriter
     {
         private readonly IAmazonS3 client;
         private readonly R2Options options;
+        private readonly IAvatarImageProcessor processor;
 
-        public R2AvatarWriter(IAmazonS3 client, R2Options options)
+        public R2AvatarWriter(IAmazonS3 client, R2Options options, IAvatarImageProcessor processor)
         {
             this.client = client;
             this.options = options;
+            this.processor = processor;
         }
 
-        public async Task<string> UploadImage(IFormFile file)
+        public async Task<AvatarUploadResult> UploadImage(IFormFile file)
         {
-            // Buffered once and reused for both the format check and the upload. The local
-            // writer reads the stream twice; avatars are small enough that either is fine, but
-            // there is no reason to pay for a second read here.
-            using var buffer = new MemoryStream();
-            await file.CopyToAsync(buffer);
-            var bytes = buffer.ToArray();
-
-            var format = WriteHelper.GetImageFormat(bytes);
-            if (format == WriteHelper.ImageFormat.unknown)
+            // Validation, downscaling, EXIF stripping and the choice of extension and
+            // content type all live in the processor, shared with the local-disk writer.
+            var image = await processor.Process(file);
+            if (!image.Ok)
             {
-                return "Invalid image file";
+                return AvatarUploadResult.Failed(image.Error);
             }
 
-            // The extension comes from the sniffed magic bytes, never from file.FileName. The
-            // uploader controls that name, and an attacker-chosen extension on a file served
-            // from our own origin is a stored-XSS vector - a payload crafted to satisfy both
-            // an image header and an HTML parser would otherwise be saved as ".html".
-            var fileName = $"{Guid.NewGuid()}.{ExtensionFor(format)}";
+            var fileName = $"{Guid.NewGuid()}.{image.Extension}";
 
             try
             {
-                buffer.Position = 0;
+                using var body = new MemoryStream(image.Bytes);
                 await client.PutObjectAsync(new PutObjectRequest
                 {
                     BucketName = options.Bucket,
                     Key = fileName,
-                    InputStream = buffer,
-                    ContentType = ContentTypeFor(format),
+                    InputStream = body,
+                    ContentType = image.ContentType,
                     // R2 rejects the streaming-checksum trailer the v4 SDK adds by default.
                     DisablePayloadSigning = true,
                 });
             }
             catch (Exception e)
             {
-                // Matches the local writer's contract. It is a poor one - the caller stores
-                // whatever comes back as the user's avatar filename, so a failure is persisted
-                // as an error string - but changing it means changing ImageHandler and
-                // AvatarsController too, which is outside this change.
-                return e.Message;
+                return AvatarUploadResult.Failed(e.Message);
             }
 
-            return fileName;
+            return AvatarUploadResult.Stored(fileName);
         }
 
         public string GetReadUrl(string fileName) =>
@@ -84,25 +73,5 @@ namespace WebChat.AvatarWriter
                 Verb = HttpVerb.GET,
                 Expires = DateTime.UtcNow.AddMinutes(options.UrlLifetimeMinutes),
             });
-
-        private static string ExtensionFor(WriteHelper.ImageFormat format) => format switch
-        {
-            WriteHelper.ImageFormat.jpeg => "jpg",
-            WriteHelper.ImageFormat.png => "png",
-            WriteHelper.ImageFormat.gif => "gif",
-            WriteHelper.ImageFormat.bmp => "bmp",
-            WriteHelper.ImageFormat.tiff => "tiff",
-            _ => "bin",
-        };
-
-        private static string ContentTypeFor(WriteHelper.ImageFormat format) => format switch
-        {
-            WriteHelper.ImageFormat.jpeg => "image/jpeg",
-            WriteHelper.ImageFormat.png => "image/png",
-            WriteHelper.ImageFormat.gif => "image/gif",
-            WriteHelper.ImageFormat.bmp => "image/bmp",
-            WriteHelper.ImageFormat.tiff => "image/tiff",
-            _ => "application/octet-stream",
-        };
     }
 }

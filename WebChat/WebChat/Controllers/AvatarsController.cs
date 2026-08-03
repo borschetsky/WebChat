@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using System.IO;
 using System.Threading.Tasks;
 using WebChat.AvatarWriter.Interface;
 using WebChat.Handler;
@@ -34,14 +35,39 @@ namespace WebChat.Controllers
         [HttpPost("upload")]
         public async Task<IActionResult> UploadImage()
         {
-            var file = HttpContext.Request.Form.Files[0];
-            var avatarFilename = await imageHandler.UploadImage(file);
-            var objectResult = avatarFilename as ObjectResult;
-            var value = objectResult.Value.ToString();
-            this.userService.AddAvatar(value, User.Identity.Name);
-            
-            await this.hubContext.Clients.All.SendAsync("ReciveAvatar", new { body = avatarFilename, uploaderId = User.Identity.Name} );
-            return avatarFilename;
+            IFormCollection form;
+            try
+            {
+                form = HttpContext.Request.Form;
+            }
+            catch (InvalidDataException e)
+            {
+                // The multipart parser enforces Avatars:MaxUploadBytes and throws once the
+                // body exceeds it. Reading Form is what triggers that, so it has to be caught
+                // here or the client gets a 500 and a stack trace instead of the reason.
+                return BadRequest(new { file = e.Message });
+            }
+
+            if (form.Files.Count == 0)
+            {
+                return BadRequest(new { file = "No file was uploaded" });
+            }
+
+            var result = await imageHandler.UploadImage(form.Files[0]);
+
+            // A rejection must not reach the database. This used to persist whatever came
+            // back - so a refused upload set the user's avatar to the string "Invalid image
+            // file", and the client then requested that as a filename.
+            if (!result.Ok)
+            {
+                return BadRequest(new { file = result.Error });
+            }
+
+            this.userService.AddAvatar(result.FileName, User.Identity.Name);
+
+            await this.hubContext.Clients.All.SendAsync("ReciveAvatar", new { body = result.FileName, uploaderId = User.Identity.Name });
+
+            return Ok(result.FileName);
         }
 
         /// <summary>

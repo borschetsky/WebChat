@@ -3,6 +3,7 @@ using Amazon.S3;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -138,6 +139,17 @@ namespace WebChat
         /// </summary>
         private void AddAvatarStorage(IServiceCollection services)
         {
+            var avatars = new AvatarWriter.AvatarOptions();
+            Configuration.GetSection(AvatarWriter.AvatarOptions.SectionName).Bind(avatars);
+            services.AddSingleton(avatars);
+            services.AddTransient<AvatarWriter.Interface.IAvatarImageProcessor,
+                                  AvatarWriter.AvatarImageProcessor>();
+
+            // Reject oversized uploads at the multipart parser rather than after buffering
+            // them. The default limit is 128 MB, so without this the processor's own check
+            // only fires once the whole body is already in memory.
+            services.Configure<FormOptions>(o => o.MultipartBodyLengthLimit = avatars.MaxUploadBytes);
+
             var r2 = new AvatarWriter.R2Options();
             Configuration.GetSection(AvatarWriter.R2Options.SectionName).Bind(r2);
 
