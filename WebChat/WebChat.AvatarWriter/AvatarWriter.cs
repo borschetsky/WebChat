@@ -1,59 +1,53 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using WebChat.AvatarWriter.Helper;
 using WebChat.AvatarWriter.Interface;
 
 namespace WebChat.AvatarWriter
 {
+    /// <summary>
+    /// Writes avatars to wwwroot/images, where the static-file middleware serves them.
+    /// Used when no R2 credentials are configured - see Startup.AddAvatarStorage.
+    /// </summary>
     public class AvatarWriter : IAvatarWriter
     {
-        public async Task<string> UploadImage(IFormFile file)
-        {
-            if (CheckIfImageFile(file))
-            {
-                return await WriteFile(file);
-            }
+        private readonly IAvatarImageProcessor processor;
 
-            return "Invalid image file";
+        public AvatarWriter(IAvatarImageProcessor processor)
+        {
+            this.processor = processor;
         }
 
-      
-        private bool CheckIfImageFile(IFormFile file)
+        public async Task<AvatarUploadResult> UploadImage(IFormFile file)
         {
-            byte[] fileBytes;
-            using (var ms = new MemoryStream())
+            // Validation, downscaling, EXIF stripping and the choice of extension all live in
+            // the processor, so this path and the R2 one cannot diverge on any of them.
+            var image = await processor.Process(file);
+            if (!image.Ok)
             {
-                file.CopyTo(ms);
-                fileBytes = ms.ToArray();
+                return AvatarUploadResult.Failed(image.Error);
             }
 
-            return WriteHelper.GetImageFormat(fileBytes) != WriteHelper.ImageFormat.unknown;
-        }
-
-        
-        public async Task<string> WriteFile(IFormFile file)
-        {
-            string fileName;
-            
             try
             {
-                var extension = "." + file.FileName.Split('.')[file.FileName.Split('.').Length - 1];
-                fileName = Guid.NewGuid().ToString() + extension; //Create a new Name for the file due to security reasons.
-                var path = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/images", fileName);
+                var fileName = $"{Guid.NewGuid()}.{image.Extension}";
+                var directory = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images");
 
-                using (var bits = new FileStream(path, FileMode.Create))
-                {
-                    await file.CopyToAsync(bits);
-                }
+                // wwwroot/images is not in source control, so outside Docker (where compose
+                // mounts a volume over it) it does not exist and FileMode.Create throws
+                // DirectoryNotFoundException. That was caught below and returned as the
+                // filename, which the caller then stored as the user's avatar.
+                Directory.CreateDirectory(directory);
+
+                await File.WriteAllBytesAsync(Path.Combine(directory, fileName), image.Bytes);
+
+                return AvatarUploadResult.Stored(fileName);
             }
             catch (Exception e)
             {
-                return e.Message;
+                return AvatarUploadResult.Failed(e.Message);
             }
-
-            return fileName;
         }
     }
 }

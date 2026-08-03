@@ -74,6 +74,11 @@ points at); the CRA dev server is on `http://localhost:3000`.
   them, and `mocks.js` names the endpoint each would need.
 - **Design tokens come from the handoff and are final** (`src/theme.js`). Prefer an existing
   token over a new value.
+- **After upgrading a client dependency across a major, restart the Vite dev server with
+  `--force`.** Vite pre-bundles dependencies into `node_modules/.vite/deps` and a running
+  dev server keeps serving the old bundle, producing errors like *"does not provide an
+  export named 'Navigate'"* even though the installed package is correct and the production
+  build is fine.
 - **Vite is pinned to 6.x because the host runs Node 18.** Vite 8 needs Node ≥ 20.19; once
   Node is upgraded it should be a straight version bump.
 - Secrets are currently committed in `appsettings.json` and `docker-compose.yml`. Do not

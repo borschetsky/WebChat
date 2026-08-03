@@ -72,6 +72,8 @@ docs: add context note for the Vite migration
 - Explain **why** in the body, not what — the diff already shows what.
 - One logical change per commit. Split unrelated work rather than bundling it.
 - Never write `WIP`, `Some message`, `fixes`, or a bare filename as a subject.
+- **No AI co-author trailer.** The repo owner is the sole author — see the
+  **`commit-authorship`** skill.
 
 ## Procedure
 

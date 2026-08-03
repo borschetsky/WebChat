@@ -1,6 +1,6 @@
 ---
 name: ctx
-description: Capture a durable context note for any exploration or change made to this repo. Use whenever you finish investigating an area of the codebase, complete a non-trivial change (upgrade, refactor, new feature, bug fix), or discover something about the system that is not obvious from the code itself. Also use when the user says "write a ctx", "log this", "capture context", or asks what was learned/changed previously.
+description: Capture a durable context note for any exploration or change made to this repo. Use after EVERY completed implementation - a phase, feature, upgrade, refactor or bug fix - and whenever you finish investigating an area of the codebase. Also use when the user says "write a ctx", "log this", "capture context", or asks what was learned/changed previously.
 ---
 
 # ctx — repo context notes
@@ -12,15 +12,43 @@ re-deriving it. Code and git history already record *what* changed — a ctx not
 
 ## When to write one
 
-Write a note when any of these happen:
+**Default: after every completed implementation.** Finishing a phase, feature, upgrade,
+refactor or non-trivial bug fix is itself the trigger — do not wait to be asked, and do
+not batch several pieces of work into one note at the end.
+
+Also write one when:
 
 - You explored a subsystem and now understand something non-obvious about it.
-- You completed an upgrade, migration, refactor, feature, or bug fix.
 - You hit a constraint, footgun, or breaking change that cost real time to diagnose.
 - You made a judgment call that a reviewer might otherwise reverse without knowing why.
 
 Do **not** write one for trivial edits (typo, formatting, a one-line rename), or to
 restate something the code or `git log` already says plainly.
+
+## Delegate it — do not block on it
+
+Writing the note is independent of the next task, so hand it to the **`ctx-writer`**
+subagent (`.claude/agents/ctx-writer.md`) and let it run in the background while you carry
+on:
+
+```
+Agent(subagent_type: "ctx-writer", prompt: "<what was done, what was verified,
+      what was decided and why, what is still unverified>")
+```
+
+Give it the facts — it corroborates them against the repo but does not investigate from
+scratch, so a thin prompt produces a thin note. Include file paths, the decisions and the
+alternatives rejected, and anything you could **not** verify.
+
+Two rules for the caller:
+
+- **You own the commit.** The agent writes files; it does not commit. Include the note in
+  your own commit, or commit it separately as `docs: …`.
+- **Do not wait on it** before starting the next piece of work — that is the entire reason
+  it is a separate agent.
+
+Write the note inline yourself only when the work is small enough that delegating costs
+more than doing it.
 
 ## Procedure
 
