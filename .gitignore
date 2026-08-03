@@ -328,3 +328,8 @@ ASALocalRun/
 
 # MFractors (Xamarin productivity tool) working folder 
 .mfractor/
+
+# Local credentials. appsettings.Secrets.json is loaded optionally by Program.cs and holds
+# real keys (currently Cloudflare R2); appsettings.Secrets.example.json is the committed
+# template. Never commit the former.
+appsettings.Secrets.json

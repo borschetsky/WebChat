@@ -23,3 +23,5 @@
 **/values.dev.yaml
 LICENSE
 README.md
+# Local credentials - must never reach an image. See appsettings.Secrets.example.json.
+**/appsettings.Secrets.json
