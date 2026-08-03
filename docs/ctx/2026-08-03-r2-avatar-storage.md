@@ -3,8 +3,9 @@
 - **Date:** 2026-08-03
 - **Type:** change
 - **Scope:** `WebChat/WebChat.AvatarWriter/*`, `WebChat/WebChat/Controllers/AvatarsController.cs`,
-  `WebChat/WebChat/Startup.cs`, `WebChat/WebChat/appsettings.json`
-- **Status:** done (storage layer + read path verified; upload path not driven through the UI)
+  `WebChat/WebChat/Startup.cs`, `WebChat/WebChat/Program.cs`, `WebChat/WebChat/appsettings.json`,
+  `WebChat/WebChat/ClientApp/vite.config.ts`
+- **Status:** done — upload path now driven through the UI end to end (see 2026-08-03 update)
 
 ## Context
 Avatars were written to `Directory.GetCurrentDirectory()/wwwroot/images`
@@ -123,8 +124,6 @@ already URL-shaped correctly for the new redirect endpoint.
   read redirect were exercised end to end.
 
 ## Known issues / follow-ups
-- Upload-via-UI is the one remaining gap before calling this feature fully exercised (see
-  Verified above).
 - **Incidental, unrelated finding from this session's diagnosis work:** `GET /api/threads` and
   `GET /api/Thread` both fall through MVC routing to the SPA dev-server proxy (500/502 when
   Vite isn't running). `ThreadController` is routed `api/[controller]`
@@ -134,3 +133,141 @@ already URL-shaped correctly for the new redirect endpoint.
   pre-existing (confirmed present as far back as commit `f5bf97a`) and unrelated to the R2
   change; noted here because it cost time during diagnosis and will likely confuse the next
   person too.
+- Superseded by the 2026-08-03 update below: upload-via-UI is no longer a gap, a genuine
+  data-corruption bug was found and fixed, and the R2 credentials moved out of user secrets.
+
+## Update — 2026-08-03
+
+Three follow-on commits on the same branch, in order: `676d787` (image processing + size
+limit), `9f28cde` (dev-proxy fix), `fc94594` (credentials file). Together they close the
+"upload path not driven through the UI" gap the original note left open — a real upload
+through the React client was confirmed end to end.
+
+### 1. Image processing and a 5 MB upload cap (`676d787`)
+
+**Why.** The first real avatar uploaded through the UI was 2.8 MB straight off a phone,
+stored as-is. At that size R2's 10 GB free tier holds ~3,500 avatars instead of ~200,000,
+and a 20-row thread list pulls tens of megabytes — for images the client renders at 34–40 px
+(`AvatarOptions.cs:19`, citing `densityTokens` in the client theme).
+
+New `AvatarImageProcessor` + `IAvatarImageProcessor` (`WebChat/WebChat.AvatarWriter/AvatarImageProcessor.cs`,
+`Interface/IAvatarImageProcessor.cs`) plus an `AvatarImage` result type and `AvatarOptions`
+(`WebChat/WebChat.AvatarWriter/AvatarOptions.cs`, bound from config section `"Avatars"`,
+`AvatarOptions.cs:9`). Called from both `AvatarWriter` and `R2AvatarWriter`
+(`WebChat/WebChat.AvatarWriter/AvatarWriter.cs`, `R2AvatarWriter.cs`) so the two paths cannot
+drift on limits or output format. Measured (commit message and note both cite the same run):
+a 4000x3000 JPEG of 839 kB became 256x192 at 17,615 bytes — a 48x reduction.
+
+**Three distinct limits, each guarding a different failure mode:**
+- `MaxUploadBytes` (5 MB default, `AvatarOptions.cs:16`) enforced by the ASP.NET multipart
+  parser via `services.Configure<FormOptions>(o => o.MultipartBodyLengthLimit = avatars.MaxUploadBytes)`
+  in `Startup.AddAvatarStorage` (`WebChat/WebChat/Startup.cs:151`), so an oversized body is
+  rejected before being buffered rather than after.
+- `MaxSourceMegapixels` (50 default, `AvatarOptions.cs:30`) checked via `Image.IdentifyAsync`
+  (`AvatarImageProcessor.cs:62`) — header only, before any pixel data is decoded. This is the
+  decompression-bomb guard: such a file is small on disk (so the byte cap misses it) and
+  enormous once decoded.
+- Output format: PNG in → PNG out (transparency survives, `AvatarImageProcessor.cs:76,101-104`);
+  everything else → JPEG at `JpegQuality` (82 default, `AvatarOptions.cs:32`,
+  `AvatarImageProcessor.cs:107`). Animated GIFs lose animation, an accepted trade at 40 px.
+
+**Re-encoding is a security property, not just a size one.** The stored bytes are bytes this
+process produced, so EXIF is discarded (`image.Metadata.ExifProfile/IptcProfile/XmpProfile`
+set to `null`, `AvatarImageProcessor.cs:96-98`, plus `x.AutoOrient()` applied first,
+`AvatarImageProcessor.cs:82`, so portrait photos are not rotated) and any polyglot payload
+crafted to parse as both an image and something executable is destroyed. Not independently
+re-verified in this pass beyond confirming the code exists as described — the EXIF-stripping
+claim was not proven by an actual EXIF-bearing test image, per the original work's own
+admission.
+
+**`SixLabors.ImageSharp` is pinned to `3.1.12`**, confirmed at
+`WebChat/WebChat.AvatarWriter/WebChat.AvatarWriter.csproj:14`. Deliberate: 4.0 requires a paid
+Six Labors licence key at build time; 3.1.x is the last version usable under the free Split
+Licence for a project this size. A future "just upgrade ImageSharp" pass will break the build
+without one.
+
+### 2. Data-corruption bug fixed in the same commit
+
+`IAvatarWriter.UploadImage` used to return a bare `string` carrying both the filename and any
+error text; `AvatarsController` persisted whatever came back, so a rejected upload set
+`User.AvatarFileName` to literal text like `"Invalid image file"` and still returned HTTP 200.
+Fixed with a new `AvatarUploadResult` type (`Ok`/`FileName`/`Error`,
+`WebChat/WebChat.AvatarWriter/Interface/IAvatarWriter.cs:20-35`, doc comment at lines 11-19
+recording the bug). `ImageHandler.UploadImage` now returns it directly instead of wrapping in
+an `ObjectResult` the controller unwrapped with `.ToString()`
+(`WebChat/WebChat/Handler/ImageHandler.cs:21-25`). `AvatarsController.UploadImage`
+(`WebChat/WebChat/Controllers/AvatarsController.cs:36-71`) persists only on `result.Ok`
+(lines 61-66) and returns 400 with `result.Error` otherwise (line 63). Reading
+`HttpContext.Request.Form` is wrapped in try/catch for `InvalidDataException`
+(`AvatarsController.cs:38-49`), because the multipart limit throws from there and initially
+surfaced as a 500 with a full stack trace.
+
+Client side needed no change: `uploadAvatar` uses Axios, which throws on 400, so
+`ChatApp.handleUploadAvatar` already shows a failure message — previously a rejected upload
+returned 200 and the UI reported success while storing a broken filename. (Not independently
+re-verified this pass; taken from the commit message, which is consistent with the code
+change above.)
+
+**Verified (per commit message, live bucket + LocalDB):** valid 4000x3000 upload → 200 +
+17,615 bytes at 256x192; 6 MB upload → 400 "Multipart body length limit 5242880 exceeded.";
+non-image → 400 "Invalid image file"; user row held only the successful filename afterward.
+Not re-run in this pass; taken on the strength of the commit message plus the code matching
+its description exactly.
+
+### 3. Vite dev-server proxy gap (`9f28cde`)
+
+`getUserAvatar` (`WebChat/WebChat/ClientApp/src/services/avatar-image-service.ts:7`) builds a
+relative `/images/{fileName}`, but `vite.config.ts` proxied only `/api` and `/chat`. Browsing
+`http://localhost:3000`, an avatar request therefore hit Vite's SPA fallback and returned
+`index.html` to an `<img>` tag: HTTP 200, `Content-Type: text/html`, a broken avatar, and
+nothing in any log to explain it. Browsing the ASP.NET host directly was unaffected, which is
+why it went unnoticed. Pre-existing — avatars were served at the same relative path from
+`wwwroot/images` before R2 — but the R2 work made it visible.
+
+Fix, confirmed at `WebChat/WebChat/ClientApp/vite.config.ts:37`: adds
+`'/images': { target: apiTarget, changeOrigin: true, secure: false }` to the proxy table,
+with no `followRedirects` option set (the comment at lines 30-36 explains why: the API's 302
+carries an absolute R2 `Location`, and http-proxy's default is to pass a redirect through
+rather than follow it, so the browser follows it to R2 exactly as in production and image
+bytes never travel through the dev proxy). Verified per commit message: `/images/{name}` on
+`:3000` returns 302, following it yields 200 `image/jpeg`.
+
+### 4. Credentials moved to a gitignored file (`fc94594`)
+
+Moved from `dotnet user-secrets` to `WebChat/WebChat/appsettings.Secrets.json` (gitignored),
+with `appsettings.Secrets.example.json` committed as the template — confirmed present at
+`WebChat/WebChat/appsettings.Secrets.example.json`. Rationale per commit message: user secrets
+work but are invisible — nothing in the tree says where keys come from or what shape they
+take.
+
+Three things confirmed in code:
+- **Provider order.** `Program.cs:25-50` adds `appsettings.Secrets.json` via
+  `ConfigureAppConfiguration`, then explicitly removes it from the end of `config.Sources` and
+  re-inserts it immediately ahead of the first `EnvironmentVariablesConfigurationSource`
+  (`Program.cs:36-49`), so a deployed instance's env vars always outrank a stray file.
+- **Publish.** `WebChat/WebChat/WebChat.csproj:25` — `<Content Update="appsettings.Secrets.json" CopyToPublishDirectory="Never" />` — stops the Web SDK's `appsettings.*.json` glob from packaging real keys.
+- **Docker.** `**/appsettings.Secrets.json` added to both `WebChat/.dockerignore:27` and
+  `WebChat/WebChat/.dockerignore:27`, plus `.gitignore:335`.
+
+`optional: true` (`Program.cs:29`) keeps a fresh clone runnable. Verified per commit message,
+both directions, with user secrets cleared so the file was the only source: an upload landed
+in R2 (17,615 bytes, nothing in `wwwroot/images`); with the file moved aside, the same upload
+fell back to `wwwroot/images` and no object appeared in the bucket. Not re-run in this pass.
+
+### Status now
+
+The original note's "upload path not yet driven through the UI" gap is closed — per the
+`676d787` commit message, a real upload was confirmed end to end (object in R2 at 17,615
+bytes, DB row correct). The three commits above were verified by the agent doing the work,
+each documented in its own commit message with concrete request/response evidence; this
+update pass corroborated the code changes and citations against the repo but did not re-run
+the upload/R2/proxy checks itself.
+
+Remaining known gaps (from the `676d787`/`fc94594` commit context, not independently
+verified beyond reading the code — no code exists yet to address either):
+- Replacing an avatar orphans the previous R2 object; nothing in `R2AvatarWriter.cs` or
+  `AvatarsController.cs` deletes the old one on a new upload. Negligible at ~17 kB each but it
+  accumulates.
+- No .NET test project exists in the solution (confirmed: `WebChat.sln` lists six projects,
+  none a test project) — all backend verification across this body of work was curl/console
+  tools, not committed tests.
