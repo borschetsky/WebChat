@@ -2,8 +2,8 @@
 
 - **Date:** 2026-08-03
 - **Type:** change
-- **Scope:** `WebChat/WebChat/ClientApp` — `app/`, `features/`, `services/`
-- **Status:** Phases 2–5 done; 6 outstanding
+- **Scope:** `WebChat/WebChat/ClientApp` — `app/`, `features/`, `services/`, `theme/`, `test/`
+- **Status:** done — Phases 2–6 complete (Phase 6 was the last of the planned 0–6 phases)
 
 ## Context
 
@@ -303,3 +303,121 @@ the Phase 4 update.
   most threads never cross the 200-message threshold in practice.
 - The live-hub manual round trip flagged in the Phase 4 update is still outstanding and still
   the biggest real-world risk in the stack — nothing in Phase 5 touched or reduced it.
+
+## Update — 2026-08-03: Phase 6 (final)
+
+### Context
+
+Phase 6 (`15b8246`, "cover slices, adapters, date formatting and MUI drift") closes out the
+7-phase (0-6) refactor with the first real test coverage of the client: 5 tests in 2 files
+(`src/test/smoke.test.tsx`, `src/test/rerender.test.tsx`) become 56 tests in 6 files. Four
+new suites, each aimed at a bug class this project actually hit rather than at coverage for
+its own sake.
+
+### What changed
+
+- **`src/app/store.test.ts`** (18 tests) — reducer/selector coverage for all four slices.
+  The load-bearing case is `store.test.ts:89-99`, `'leaves every other slice reference
+  identical while typing'`: dispatching `draftChanged` must change only `state.composer`,
+  or the memoized message rows from Phase 5 would re-render on every keystroke — this test
+  is the automated proof of the Phase 5 rerender guarantee at the reducer level. Also covers
+  the Phase-4 authSlice hydration regression directly (`store.test.ts:117-131`, `'hydrates
+  per store, not once per module'`) and that `File` objects never enter the store
+  (`store.test.ts:69-83`, via the module-level `Map` + `registerDraftFile`/`takeDraftFile`
+  from the Phase 2/3 composer design).
+- **`src/services/adapters.test.ts`** (18 tests) — the DTO -> view-model seam. Pins the
+  backend's misspelled `oponentVM` field (`adapters.test.ts:16`), the `"No messages"` string
+  sentinel the backend returns instead of an empty last message (`:43-48`), null
+  opponent/null lastMessage survival (`:50-55`), a stable deterministic avatar colour
+  (`:57-60`), out-of-order day-key sorting in `toMessageList` — object key order is not
+  guaranteed for arbitrary string keys, so the adapter must sort rather than trust insertion
+  order (`:95-113`) — `startsDay` tagging only the first message of each day (`:115-118`),
+  `toLiveMessage` never tagging a day since a hub message has no day context (`:126-130`),
+  and `currentUserId()` degrading to `null` rather than throwing on malformed `localStorage`
+  (`:147-155`).
+- **`src/lib/date-time-format.test.ts`** (15 tests) — regression suite for a real bug in the
+  pre-refactor implementation: it compared `new Date().getDate()` with `new Date(iso)
+  .getDate()`, i.e. day-of-month rather than a date. On the 3rd of a month, anything from the
+  previous month gave `3 - 31 = -28`, matched no switch branch, and returned `undefined` — a
+  blank timestamp in the thread list for every message older than two days. The test clock is
+  fixed to `new Date(2026, 7, 3, 12, 0, 0)` specifically because the 3rd is where it bit
+  (`date-time-format.test.ts:19`, `:35-41`). Also covers the 2-6 day range that the original's
+  `case (numberOfDays > 1 && numberOfDays < 7)` — a boolean compared against a number inside a
+  `switch` on a number — could never match (`:69-76`).
+- **`src/test/mui-drift.test.tsx`** (10 tests) — guards the MUI v9 API-drift bug class that
+  cost the most time in this project: `Stack gap` (the redesign), then
+  `alignItems`/`justifyContent`/`textAlign`/`flexWrap`/`flex`, then
+  `primaryTypographyProps`/`imgProps`, then `ErrorOutline` (Phase 3, noted in this file's
+  Phase 3 section above). v9's `Stack` accepts no system props. The first draft of this test
+  asserted the wrong thing, per its own comment (`mui-drift.test.tsx:8-16`): React 19 forwards
+  **both** unknown props to the DOM as lowercase attributes — `gap="2"` and
+  `alignitems="center"` both appear in the markup (`:38-39`). The only asymmetry is
+  diagnostics — React warns for the camelCase one and says nothing about `gap` — which is why
+  `gap` survived review while `alignItems` announced itself in the console. The committed test
+  asserts the real failure mode instead: `getComputedStyle` shows the styles are simply not
+  applied (`:32-33`), while both props land as junk DOM attributes anyway. The suite also pins
+  the handoff theme tokens — custom palette background slots, the `custom` bag, `densityTokens`,
+  `initials`, `avatarColor`, `PRESENCE` (`:55-75`) — and covers `PresenceAvatar` fallback-to-
+  initials / uploaded-image / presence-dot opt-out behaviour, including that `presence="group"`
+  opts out of the dot without a second prop (`:99-101`).
+- **`src/theme/theme.d.ts`** — **new**, a MUI module augmentation declaring the handoff's
+  extra `TypeBackground` slots (`chat`, `field`, `quote`, `selected`, `skeleton`) and the
+  top-level `custom` bag on `Theme`/`ThemeOptions` (`theme.d.ts:12-37`). Its own comment states
+  why `theme/tokens.js` was deliberately left as JS during the TypeScript conversion: without
+  this augmentation, every `theme.custom.*` and `palette.background.chat` read is a type error.
+  Those reads were previously untyped across the whole app; a future MUI major renaming a slot
+  now fails `tsc` instead of silently rendering wrong.
+
+### Decisions and trade-offs
+
+- **Assert the actual failure mode, not the first hypothesis.** The `mui-drift` test's first
+  draft would have asserted that `gap` and `alignItems` behave differently on the DOM (one
+  present, one absent) — which is false under React 19. Corrected to assert what actually
+  breaks the UI (computed styles unaffected) rather than a DOM-attribute difference that does
+  not exist. Worth remembering next time a "React should warn about this" assumption is used
+  as a test oracle.
+- **Fixed system clock via `vi.setSystemTime`, pinned to the exact day the bug reproduced
+  on** (`date-time-format.test.ts:19`) rather than a relative `new Date()` — makes the
+  regression reproducible instead of only failing on the 3rd of whichever month CI happens to
+  run on.
+- **Theme augmentation lives in a separate `.d.ts`, not inline in `tokens.js`.** Keeps
+  `tokens.js` as plain JS (unchanged from Phase 3's stated reason) while still typing every
+  consumer of `theme.custom`/`palette.background.*` app-wide.
+
+### Verified
+
+- `npx vitest run` → **6 files, 56 tests passing** (matches the summary and the commit
+  message).
+- `npx tsc --noEmit` → clean, no output.
+- `npx vite build` → clean, **1082 modules transformed**, `dist/assets/index-*.js` **825.54 kB
+  raw / 260.34 kB gzip** (exact match to the reported figures). The build still emits the
+  chunk-size warning above 500 kB — no code splitting yet, unchanged from the Phase 5 note's
+  flagged follow-up.
+- Read all four new test files and `theme.d.ts` in full; confirmed the specific line-level
+  claims above (cross-slice isolation assertion, hydration-per-store test, `oponentVM`/`"No
+  messages"` fixtures, the fixed-clock month-boundary case, the dead-switch-branch loop, and
+  the `getComputedStyle`/`getAttribute` pair in `mui-drift.test.tsx`).
+- `package.json` scripts confirmed: `test` -> `vitest run`, `test:watch` -> `vitest`,
+  `typecheck` -> `tsc --noEmit`. Stack versions confirmed from `package.json`: vitest
+  `^4.1.10`, jsdom `^30.0.1`, `@testing-library/react` `^16.3.2`.
+
+**Not verified: anything in a real browser this session.** The SignalR realtime path has
+still not been round-tripped against a live hub since the Phase 4 middleware rewrite (needs
+two browser windows signed in as different users) — this has now carried unresolved across
+Phases 4, 5 and 6. `src/features/realtime` has no dedicated hub-semantics test; the signalr
+module is only mocked (never exercised for real) across the whole suite.
+
+### Known issues / follow-ups
+
+This closes the planned 0-6 phase list. Outstanding items carried forward, none introduced by
+Phase 6:
+
+- **Live-hub manual round trip** (two browser sessions, one signs in/sends/types/goes
+  offline) — flagged since the Phase 4 update, still the single biggest unverified risk in the
+  stack.
+- **Bundle size / code splitting** — 260 kB gzip, `react-virtuoso` is most of the Phase 5
+  increase; a dynamic `import()` was considered and deliberately deferred, not done here
+  either.
+- `api-service` is still untyped JS (flagged since the original Phase 3 note) — outside this
+  phase's scope, since Phase 6 tested the seam (`adapters.ts`) rather than the HTTP layer
+  beneath it.
