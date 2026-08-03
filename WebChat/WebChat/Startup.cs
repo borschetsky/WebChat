@@ -1,3 +1,5 @@
+using Amazon.Runtime;
+using Amazon.S3;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -123,8 +125,48 @@ namespace WebChat
             services.AddTransient<IValidator, Validator>();
             services.AddSingleton(typeof(IConnectionMapping<string>), typeof(ConnectionMapping<string>));
             services.AddTransient<IImageHandler, ImageHandler>();
-            services.AddTransient<AvatarWriter.Interface.IAvatarWriter,
-                                  AvatarWriter.AvatarWriter>();
+            AddAvatarStorage(services);
+        }
+
+        /// <summary>
+        /// Avatars go to Cloudflare R2 when credentials are present, and to wwwroot/images
+        /// otherwise. The fallback is deliberate: a developer cloning this repo has no R2 keys,
+        /// and the app should still run rather than fail on the first upload.
+        ///
+        /// Credentials must come from user secrets or environment variables - only the bucket
+        /// name and URL lifetime belong in appsettings.json.
+        /// </summary>
+        private void AddAvatarStorage(IServiceCollection services)
+        {
+            var r2 = new AvatarWriter.R2Options();
+            Configuration.GetSection(AvatarWriter.R2Options.SectionName).Bind(r2);
+
+            if (!r2.IsConfigured)
+            {
+                services.AddTransient<AvatarWriter.Interface.IAvatarWriter,
+                                      AvatarWriter.AvatarWriter>();
+                services.AddSingleton<AvatarWriter.Interface.IAvatarUrlProvider,
+                                      AvatarWriter.LocalAvatarUrlProvider>();
+                return;
+            }
+
+            services.AddSingleton(r2);
+            services.AddSingleton<IAmazonS3>(_ => new AmazonS3Client(
+                new BasicAWSCredentials(r2.AccessKeyId, r2.SecretAccessKey),
+                new AmazonS3Config
+                {
+                    ServiceURL = r2.ServiceUrl,
+                    // R2 has a single global region and addresses buckets by path, not by
+                    // subdomain. Both differ from S3's defaults and both are required.
+                    AuthenticationRegion = "auto",
+                    ForcePathStyle = true,
+                }));
+
+            services.AddTransient<AvatarWriter.R2AvatarWriter>();
+            services.AddTransient<AvatarWriter.Interface.IAvatarWriter>(
+                sp => sp.GetRequiredService<AvatarWriter.R2AvatarWriter>());
+            services.AddTransient<AvatarWriter.Interface.IAvatarUrlProvider>(
+                sp => sp.GetRequiredService<AvatarWriter.R2AvatarWriter>());
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

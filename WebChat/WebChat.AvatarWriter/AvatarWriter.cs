@@ -22,6 +22,11 @@ namespace WebChat.AvatarWriter
       
         private bool CheckIfImageFile(IFormFile file)
         {
+            return DetectFormat(file) != WriteHelper.ImageFormat.unknown;
+        }
+
+        private static WriteHelper.ImageFormat DetectFormat(IFormFile file)
+        {
             byte[] fileBytes;
             using (var ms = new MemoryStream())
             {
@@ -29,8 +34,18 @@ namespace WebChat.AvatarWriter
                 fileBytes = ms.ToArray();
             }
 
-            return WriteHelper.GetImageFormat(fileBytes) != WriteHelper.ImageFormat.unknown;
+            return WriteHelper.GetImageFormat(fileBytes);
         }
+
+        private static string ExtensionFor(WriteHelper.ImageFormat format) => format switch
+        {
+            WriteHelper.ImageFormat.jpeg => "jpg",
+            WriteHelper.ImageFormat.png => "png",
+            WriteHelper.ImageFormat.gif => "gif",
+            WriteHelper.ImageFormat.bmp => "bmp",
+            WriteHelper.ImageFormat.tiff => "tiff",
+            _ => "bin",
+        };
 
         
         public async Task<string> WriteFile(IFormFile file)
@@ -39,11 +54,21 @@ namespace WebChat.AvatarWriter
             
             try
             {
-                var extension = "." + file.FileName.Split('.')[file.FileName.Split('.').Length - 1];
-                fileName = Guid.NewGuid().ToString() + extension; //Create a new Name for the file due to security reasons.
-                var path = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/images", fileName);
+                // Extension from the sniffed format, not from file.FileName. The uploader
+                // controls that name, and these files are served straight off our own origin
+                // by the static-file middleware, so an attacker-chosen ".html" on content that
+                // also parses as an image is a stored-XSS vector.
+                fileName = Guid.NewGuid() + "." + ExtensionFor(DetectFormat(file));
 
-                using (var bits = new FileStream(path, FileMode.Create))
+                var directory = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images");
+
+                // wwwroot/images is not in source control, so outside Docker (where compose
+                // mounts a volume over it) it does not exist and FileMode.Create throws
+                // DirectoryNotFoundException. That was caught below and returned as the
+                // filename, which the caller then stored as the user's avatar.
+                Directory.CreateDirectory(directory);
+
+                using (var bits = new FileStream(Path.Combine(directory, fileName), FileMode.Create))
                 {
                     await file.CopyToAsync(bits);
                 }
