@@ -26,7 +26,7 @@ export default function ConversationPane({
   searchOpen, searchQuery, searchCount, totalCount,
   typing, receipt,
   onBack, onToggleSearch, onSearchQuery, onOpenSettings,
-  onSend, onTyping, onReact, onReply,
+  onSend, onTyping, onReact, onReply, onRetry,
   onCompose,
 }) {
   const d = densityTokens(density);
@@ -132,6 +132,7 @@ export default function ConversationPane({
                   grouped={grouped}
                   onReact={onReact}
                   onReply={onReply}
+                  onRetry={onRetry}
                   showReceipt={!!receipt && m.id === receipt.messageId}
                   receiptLabel={receipt?.label}
                   highlight={searchQuery}

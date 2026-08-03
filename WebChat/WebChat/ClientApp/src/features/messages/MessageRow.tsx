@@ -10,6 +10,7 @@ import QuoteBlock from './components/QuoteBlock';
 import AttachmentCard from './components/AttachmentCard';
 import ReactionBar from './components/ReactionBar';
 import ReadReceipt from './components/ReadReceipt';
+import MessageStatus from './components/MessageStatus';
 
 export interface MessageRowProps {
   message: Message;
@@ -18,6 +19,8 @@ export interface MessageRowProps {
   grouped: boolean;
   onReact: (messageId: string, emoji: string) => void;
   onReply: (message: Message) => void;
+  /** Re-sends a message whose optimistic send failed. */
+  onRetry?: (message: Message) => void;
   receiptLabel?: string;
   showReceipt?: boolean;
   /** Active in-thread search term, forwarded to MessageBody for highlighting. */
@@ -29,9 +32,10 @@ export interface MessageRowProps {
  * tested and reused independently, and so memoization has something stable to compare.
  */
 function MessageRow({
-  message: m, grouped, density, onReact, onReply, receiptLabel, showReceipt, highlight,
+  message: m, grouped, density, onReact, onReply, onRetry, receiptLabel, showReceipt, highlight,
 }: MessageRowProps) {
   const d = densityTokens(density);
+  const pending = m.status === 'sending';
 
   return (
     <Stack
@@ -41,6 +45,9 @@ function MessageRow({
         px: 3,
         py: grouped ? d.groupPadY : d.msgPadY,
         position: 'relative',
+        // In-flight messages read as provisional until the server confirms them.
+        opacity: pending ? 0.6 : 1,
+        transition: 'opacity .15s',
         '&:hover': { bgcolor: 'action.hover' },
         '&:hover .row-actions': { opacity: 1 },
         '&:focus-within .row-actions': { opacity: 1 },
@@ -81,7 +88,10 @@ function MessageRow({
 
         <ReactionBar reactions={m.reactions ?? []} onToggle={(emoji) => onReact(m.id, emoji)} />
 
-        {showReceipt && receiptLabel && <ReadReceipt label={receiptLabel} />}
+        <MessageStatus status={m.status} onRetry={() => onRetry?.(m)} />
+
+        {/* A failed message has not been delivered, so a read receipt would be a lie. */}
+        {showReceipt && receiptLabel && !m.status && <ReadReceipt label={receiptLabel} />}
       </Box>
 
       <Stack

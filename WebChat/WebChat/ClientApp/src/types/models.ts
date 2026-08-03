@@ -75,6 +75,12 @@ export interface Message {
   quote: Quote | null;
   /** MOCK: no message attachment storage. */
   attachment: Attachment | null;
+
+  /**
+   * Delivery state for optimistic sends. Absent on messages loaded from the server.
+   * 'failed' rows stay in the list so the text is not lost and a retry can be offered.
+   */
+  status?: 'sending' | 'sent' | 'failed';
 }
 
 export interface DirectoryEntry {
