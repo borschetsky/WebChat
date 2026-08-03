@@ -4,6 +4,8 @@ import authReducer, { readStoredUser } from '@/features/auth/authSlice';
 import type { AuthState } from '@/features/auth/authSlice';
 import composerReducer from '@/features/composer/composerSlice';
 import uiReducer from '@/features/ui/uiSlice';
+import realtimeReducer from '@/features/realtime/realtimeSlice';
+import { realtimeMiddleware } from '@/features/realtime/signalrMiddleware';
 
 /**
  * Exported so tests can build an isolated store with a chosen session.
@@ -19,10 +21,14 @@ export const makeStore = (auth?: AuthState) =>
       auth: authReducer,
       composer: composerReducer,
       ui: uiReducer,
+      realtime: realtimeReducer,
       [chatApi.reducerPath]: chatApi.reducer,
     },
     preloadedState: { auth: auth ?? { user: readStoredUser(), busy: false } },
-    middleware: (getDefault) => getDefault().concat(chatApi.middleware),
+    // The realtime listener must run before the API middleware so a hub event that
+    // patches the cache is not racing an in-flight query.
+    middleware: (getDefault) =>
+      getDefault().prepend(realtimeMiddleware.middleware).concat(chatApi.middleware),
   });
 
 export const store = makeStore();

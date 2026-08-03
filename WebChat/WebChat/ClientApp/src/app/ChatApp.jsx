@@ -1,24 +1,25 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Snackbar } from '@mui/material';
 import AppShell, { useIsMobile } from '@/app/AppShell';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import {
-  chatApi, messagesAdapter,
   useGetProfileQuery, useGetThreadsQuery, useGetMessagesQuery, useSearchThreadQuery,
   useLazySearchDirectoryQuery, useSendMessageMutation, useStartThreadMutation,
-  useSaveProfileMutation, useToggleReactionMutation,
+  useSaveProfileMutation, useToggleReactionMutation, messagesAdapter,
 } from '@/app/api/chatApi';
 import ThreadList from '@/features/threads/ThreadList';
 import ConversationPane from '@/features/messages/ConversationPane';
 import SettingsDrawer from '@/features/settings/SettingsDrawer';
 import ComposeDialog from '@/features/threads/ComposeDialog';
 import { useThemeMode } from '@/theme/ThemeModeProvider';
-import { useChatConnection } from '@/features/realtime/useChatConnection';
-import { avatarColor } from '@/theme/tokens';
 import { uploadAvatar } from '@/services';
-import { markThreadRead, markAllThreadsRead, readReceiptFor, noteIncomingMessage } from '@/services/chat-service';
-import { toLiveMessage } from '@/services/adapters';
-import { composerCleared, draftChanged, replyStarted, takeDraftFile } from '@/features/composer/composerSlice';
+import { markThreadRead, markAllThreadsRead, readReceiptFor } from '@/services/chat-service';
+import { invokeHub } from '@/features/realtime/signalrMiddleware';
+import {
+  realtimeStarted, unreadCleared, allUnreadCleared,
+  selectLivePatches, selectUnread, selectTypingIn,
+} from '@/features/realtime/realtimeSlice';
+import { composerCleared, replyStarted, takeDraftFile } from '@/features/composer/composerSlice';
 import {
   threadSelected, queryChanged, filterChanged, searchToggled, searchQueryChanged,
   settingsOpened, settingsClosed, composeOpened, composeClosed,
@@ -29,13 +30,14 @@ import {
 
 const TYPING_IDLE_MS = 3000;
 const EMPTY_MESSAGES = messagesAdapter.getInitialState();
+const { selectAll: selectAllMessages } = messagesAdapter.getSelectors();
 
 /**
- * The chat screen.
+ * The chat screen. Composition and data wiring only.
  *
  * Server data comes from RTK Query, view state from uiSlice, composer state from
- * composerSlice. The only local state left is the transient typing indicator and the
- * mocked unread overlay, neither of which the server can provide.
+ * composerSlice, and everything hub-derived from realtimeSlice. There is no local
+ * component state left.
  *
  * This component does not subscribe to the composer draft - Composer passes its contents
  * up on send - so typing never re-renders the message list.
@@ -56,6 +58,11 @@ export default function ChatApp({ user, onSignOut }) {
   const pane = useAppSelector(selectPane);
   const snack = useAppSelector(selectSnack);
 
+  // --- realtime overlay -----------------------------------------------------
+  const live = useAppSelector(selectLivePatches);
+  const unread = useAppSelector(selectUnread);
+  const typingIn = useAppSelector(selectTypingIn);
+
   // --- server data ----------------------------------------------------------
   const { data: profile } = useGetProfileQuery(undefined, { skip: !user });
   const { data: threads = [], isLoading: loadingThreads, isError: threadsFailed } =
@@ -75,143 +82,57 @@ export default function ChatApp({ user, onSignOut }) {
   const [saveProfile] = useSaveProfileMutation();
   const [toggleReaction] = useToggleReactionMutation();
 
-  // --- local, because nothing on the server backs it ------------------------
-  const [typing, setTyping] = useState(false);
-  const [unread, setUnread] = useState({});
-
-  const activeIdRef = useRef(null);
-  activeIdRef.current = activeId;
-  const typingTimer = useRef(null);
   const stopTypingTimer = useRef(null);
-
   const notify = useCallback((msg) => dispatch(notified(msg)), [dispatch]);
 
-  // A failed profile/threads load means the token is no longer good.
+  // Open the hub for a session restored from storage; sign-in connects via its own action.
+  useEffect(() => { if (user) dispatch(realtimeStarted()); }, [user, dispatch]);
+
+  // A failed thread load means the token is no longer good.
   useEffect(() => { if (threadsFailed) onSignOut(); }, [threadsFailed, onSignOut]);
 
-  const messages = useMemo(
-    () => messagesAdapter.getSelectors().selectAll(messageCache),
-    [messageCache],
-  );
+  const messages = useMemo(() => selectAllMessages(messageCache), [messageCache]);
 
-  /** Threads carry live presence/typing patches that the cached list does not. */
-  const [live, setLive] = useState({});
   const decorated = useMemo(
     () => threads.map((t) => ({ ...t, ...(live[t.id] ?? {}), unread: unread[t.id] ?? 0 })),
     [threads, live, unread],
   );
   const active = decorated.find((t) => t.id === activeId) ?? null;
 
-  const patchLive = useCallback((id, patch) => {
-    setLive((l) => ({ ...l, [id]: { ...(l[id] ?? {}), ...patch } }));
-  }, []);
-
-  // --- SignalR --------------------------------------------------------------
-  const handlers = useMemo(() => ({
-    ReciveMessage: (payload) => {
-      const incoming = toLiveMessage(payload, user.id);
-      const isActive = incoming.threadId === activeIdRef.current;
-
-      if (!isActive && !incoming.own) {
-        // MOCK: unread has no server watermark, but the trigger is a real hub event.
-        const n = noteIncomingMessage(incoming.threadId);
-        setUnread((u) => ({ ...u, [incoming.threadId]: n }));
-      }
-      patchLive(incoming.threadId, { preview: incoming.text, time: incoming.time, isTyping: false });
-
-      if (isActive) {
-        // O(1) upsert, and idempotent - the hub echoes the sender's own message back.
-        dispatch(chatApi.util.updateQueryData('getMessages', incoming.threadId, (draft) => {
-          messagesAdapter.upsertOne(draft, incoming);
-        }));
-        setTyping(false);
-      }
-    },
-
-    ReviceThread: () => { dispatch(chatApi.util.invalidateTags(['Threads'])); },
-
-    ReciveTypingStatus: ({ userId, threadId, UserId, ThreadId }) => {
-      const uid = userId ?? UserId;
-      const tid = threadId ?? ThreadId;
-      if (!tid) return;
-      const t = threads.find((x) => x.id === tid);
-      if (t && t.opponentId !== uid) return;
-      patchLive(tid, { isTyping: true });
-      if (tid === activeIdRef.current) {
-        setTyping(true);
-        clearTimeout(typingTimer.current);
-        typingTimer.current = setTimeout(() => setTyping(false), TYPING_IDLE_MS);
-      }
-    },
-
-    ReciveStopTypingStatus: ({ threadId, ThreadId }) => {
-      const tid = threadId ?? ThreadId;
-      if (tid) patchLive(tid, { isTyping: false });
-      if (tid === activeIdRef.current) setTyping(false);
-    },
-
-    ReciveConnectedStatus: (id) => {
-      threads.filter((t) => t.opponentId === id).forEach((t) => patchLive(t.id, { presence: 'online' }));
-    },
-    ReciveDisconnectedStatus: (id) => {
-      threads.filter((t) => t.opponentId === id).forEach((t) => patchLive(t.id, { presence: 'offline' }));
-    },
-
-    ReciveAvatar: ({ body, uploaderId }) => {
-      const fileName = body?.value ?? body;
-      threads.filter((t) => t.opponentId === uploaderId).forEach((t) => patchLive(t.id, { avatarFileName: fileName }));
-      if (profile?.id === uploaderId) dispatch(chatApi.util.invalidateTags(['Profile']));
-    },
-
-    ReviceUpdatedOpponentProfile: (p) => {
-      if (!p) return;
-      threads.filter((t) => t.opponentId === p.id).forEach((t) => patchLive(t.id, { name: p.username }));
-      if (profile?.id === p.id) dispatch(chatApi.util.invalidateTags(['Profile']));
-    },
-  }), [dispatch, patchLive, threads, profile?.id, user?.id]);
-
-  const { invoke } = useChatConnection(user?.token, handlers);
-
   // --- actions --------------------------------------------------------------
   const selectThread = useCallback(async (id) => {
     dispatch(threadSelected(id));
     dispatch(composerCleared());
-    setTyping(false);
     await markThreadRead(id);
-    setUnread((u) => ({ ...u, [id]: 0 }));
+    dispatch(unreadCleared(id));
   }, [dispatch]);
 
   const handleTyping = (value) => {
     if (!activeId) return;
-    if (!value) { invoke('OnStopTyping', activeId); return; }
-    invoke('OnTyping', activeId);
+    if (!value) { invokeHub('OnStopTyping', activeId); return; }
+    invokeHub('OnTyping', activeId);
     clearTimeout(stopTypingTimer.current);
-    stopTypingTimer.current = setTimeout(() => invoke('OnStopTyping', activeId), TYPING_IDLE_MS);
+    stopTypingTimer.current = setTimeout(() => invokeHub('OnStopTyping', activeId), TYPING_IDLE_MS);
   };
-
-  const doSend = useCallback((args) => {
-    sendMessage(args).unwrap().catch(() => {
-      // The failed row stays in the cache with a retry affordance, so no snackbar here.
-    });
-  }, [sendMessage]);
 
   /** Payload comes from Composer so this component never subscribes to the draft. */
   const handleSend = ({ text, replyTo, attachment }) => {
     if (!activeId || (!text && !attachment)) return;
     const file = attachment ? takeDraftFile(attachment.key) : null;
     dispatch(composerCleared());
-    invoke('OnStopTyping', activeId);
-    doSend({ threadId: activeId, text, username: profile?.name, replyTo, file });
+    invokeHub('OnStopTyping', activeId);
+    // A failure leaves the row in the cache marked 'failed' with a Retry, so nothing to catch.
+    sendMessage({ threadId: activeId, text, username: profile?.name, replyTo, file }).unwrap().catch(() => {});
   };
 
   const handleRetry = (message) => {
-    doSend({
+    sendMessage({
       threadId: message.threadId,
       text: message.text,
       username: profile?.name,
       replyTo: message.quote,
       retryOf: message.id,
-    });
+    }).unwrap().catch(() => {});
   };
 
   const handleStartThread = async (person) => {
@@ -237,7 +158,7 @@ export default function ChatApp({ user, onSignOut }) {
     form.append('file', file);
     try {
       await uploadAvatar(form, user.token);
-      dispatch(chatApi.util.invalidateTags(['Profile']));
+      // The hub broadcasts ReciveAvatar, which invalidates the profile for everyone.
       notify('Avatar updated');
     } catch {
       notify('Avatar upload failed.');
@@ -277,7 +198,7 @@ export default function ChatApp({ user, onSignOut }) {
             onSettings={() => dispatch(settingsOpened())}
             onMarkAllRead={async () => {
               await markAllThreadsRead();
-              setUnread({});
+              dispatch(allUnreadCleared());
               notify('All conversations marked as read');
             }}
           />
@@ -293,7 +214,7 @@ export default function ChatApp({ user, onSignOut }) {
           searchQuery={searchQuery}
           searchCount={shown.length}
           totalCount={messages.length}
-          typing={typing}
+          typing={typingIn === activeId && !!activeId}
           receipt={receipt}
           onBack={() => dispatch(paneChanged('list'))}
           onToggleSearch={() => dispatch(searchToggled())}

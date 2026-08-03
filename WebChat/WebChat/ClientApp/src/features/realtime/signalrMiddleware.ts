@@ -1,0 +1,158 @@
+import { createListenerMiddleware } from '@reduxjs/toolkit';
+import * as signalR from '@microsoft/signalr';
+import type { AppDispatch, RootState } from '@/app/store';
+import Config from '@/config';
+import { chatApi, messagesAdapter } from '@/app/api/chatApi';
+import { toLiveMessage } from '@/services/adapters';
+import { noteIncomingMessage } from '@/services/chat-service';
+import { signedIn, signedOut } from '@/features/auth/authSlice';
+import type { AvatarBroadcastDto, MessageDto, ProfileDto, TypingStatusDto } from '@/types/dto';
+import {
+  realtimeStarted, realtimeReset, connectionStatusChanged,
+  threadPatched, opponentTyping, unreadBumped,
+} from './realtimeSlice';
+
+/**
+ * Owns the SignalR connection.
+ *
+ * Previously this lived in ChatApp as a hook whose handler object closed over `threads`,
+ * so it was rebuilt on every thread change and every handler had to be re-registered.
+ * Here the connection is created once per session and hub events become plain dispatches,
+ * which means no component knows the hub exists.
+ */
+export const realtimeMiddleware = createListenerMiddleware();
+
+const startListening = realtimeMiddleware.startListening.withTypes<RootState, AppDispatch>();
+
+let connection: signalR.HubConnection | null = null;
+
+/** Typing notifications are fire-and-forget; a dropped one is not worth surfacing. */
+export const invokeHub = (method: string, ...args: unknown[]) => {
+  if (connection?.state === signalR.HubConnectionState.Connected) {
+    connection.invoke(method, ...args).catch(() => {});
+  }
+};
+
+const teardown = async () => {
+  const c = connection;
+  connection = null;
+  if (c) {
+    ['ReciveMessage', 'ReviceThread', 'ReciveTypingStatus', 'ReciveStopTypingStatus',
+      'ReciveConnectedStatus', 'ReciveDisconnectedStatus', 'ReciveAvatar',
+      'ReviceUpdatedOpponentProfile'].forEach((e) => c.off(e));
+    await c.stop().catch(() => {});
+  }
+};
+
+const connect = async (token: string, dispatch: AppDispatch, getState: () => RootState) => {
+  await teardown();
+
+  // Config.network.api is relative by default, so this resolves same-origin and works both
+  // behind the Vite proxy and when served by the ASP.NET host.
+  const c = new signalR.HubConnectionBuilder()
+    .withUrl(`${Config.network.api}${Config.network.wss}`, { accessTokenFactory: () => token })
+    .withAutomaticReconnect()
+    .build();
+
+  connection = c;
+
+  /** The thread a hub event refers to, from the currently cached thread list. */
+  const threadsOf = () =>
+    chatApi.endpoints.getThreads.select()(getState()).data ?? [];
+
+  c.on('ReciveMessage', (payload: MessageDto) => {
+    const me = getState().auth.user?.id ?? null;
+    const incoming = toLiveMessage(payload, me);
+    const activeId = getState().ui.activeThreadId;
+    const isActive = incoming.threadId === activeId;
+
+    dispatch(threadPatched({
+      threadId: incoming.threadId,
+      patch: { preview: incoming.text, time: incoming.time, isTyping: false },
+    }));
+
+    if (!isActive && !incoming.own) {
+      // MOCK: no server watermark, but the trigger is a real hub event.
+      dispatch(unreadBumped({ threadId: incoming.threadId, count: noteIncomingMessage(incoming.threadId) }));
+    }
+
+    if (isActive) {
+      // O(1) upsert, and idempotent - the hub echoes the sender's own message back, so
+      // this and the mutation's optimistic insert can be the same message.
+      dispatch(chatApi.util.updateQueryData('getMessages', incoming.threadId, (draft) => {
+        messagesAdapter.upsertOne(draft, incoming);
+      }));
+      dispatch(opponentTyping({ threadId: incoming.threadId, typing: false }));
+    }
+  });
+
+  c.on('ReviceThread', () => { dispatch(chatApi.util.invalidateTags(['Threads'])); });
+
+  c.on('ReciveTypingStatus', ({ userId, threadId, UserId, ThreadId }: TypingStatusDto) => {
+    const uid = userId ?? UserId;
+    const tid = threadId ?? ThreadId;
+    if (!tid) return;
+    const t = threadsOf().find((x) => x.id === tid);
+    if (t && t.opponentId !== uid) return;
+    dispatch(opponentTyping({ threadId: tid, typing: true }));
+  });
+
+  c.on('ReciveStopTypingStatus', ({ threadId, ThreadId }: TypingStatusDto) => {
+    const tid = threadId ?? ThreadId;
+    if (tid) dispatch(opponentTyping({ threadId: tid, typing: false }));
+  });
+
+  const presence = (id: string, value: 'online' | 'offline') => {
+    threadsOf()
+      .filter((t) => t.opponentId === id)
+      .forEach((t) => dispatch(threadPatched({ threadId: t.id, patch: { presence: value } })));
+  };
+  c.on('ReciveConnectedStatus', (id: string) => presence(id, 'online'));
+  c.on('ReciveDisconnectedStatus', (id: string) => presence(id, 'offline'));
+
+  c.on('ReciveAvatar', ({ body, uploaderId }: AvatarBroadcastDto) => {
+    const fileName = typeof body === 'string' ? body : body?.value;
+    threadsOf()
+      .filter((t) => t.opponentId === uploaderId)
+      .forEach((t) => dispatch(threadPatched({ threadId: t.id, patch: { avatarFileName: fileName ?? null } })));
+    if (getState().auth.user?.id === uploaderId) dispatch(chatApi.util.invalidateTags(['Profile']));
+  });
+
+  c.on('ReviceUpdatedOpponentProfile', (p: ProfileDto | null) => {
+    if (!p) return;
+    threadsOf()
+      .filter((t) => t.opponentId === p.id)
+      .forEach((t) => dispatch(threadPatched({ threadId: t.id, patch: { name: p.username ?? 'Unknown' } })));
+    if (getState().auth.user?.id === p.id) dispatch(chatApi.util.invalidateTags(['Profile']));
+  });
+
+  c.onreconnecting(() => dispatch(connectionStatusChanged('reconnecting')));
+  c.onreconnected(() => dispatch(connectionStatusChanged('connected')));
+  c.onclose(() => dispatch(connectionStatusChanged('disconnected')));
+
+  dispatch(connectionStatusChanged('connecting'));
+  try {
+    await c.start();
+    dispatch(connectionStatusChanged('connected'));
+  } catch {
+    dispatch(connectionStatusChanged('failed'));
+  }
+};
+
+// Connect on sign-in, and on boot when a session was restored from storage.
+startListening({
+  matcher: (action) => signedIn.match(action) || realtimeStarted.match(action),
+  effect: async (_action, api) => {
+    api.cancelActiveListeners();
+    const token = api.getState().auth.user?.token;
+    if (token) await connect(token, api.dispatch, api.getState);
+  },
+});
+
+startListening({
+  actionCreator: signedOut,
+  effect: async (_action, api) => {
+    await teardown();
+    api.dispatch(realtimeReset());
+  },
+});

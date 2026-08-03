@@ -5,9 +5,23 @@ import CssBaseline from '@mui/material/CssBaseline';
 import App from '@/app/App';
 import { ThemeModeProvider } from '@/theme/ThemeModeProvider';
 
-// SignalR would try to open a socket; the app under test only needs it not to throw.
-vi.mock('@/features/realtime/useChatConnection', () => ({
-  useChatConnection: () => ({ status: 'connected', invoke: vi.fn(), connection: { current: null } }),
+// SignalR now lives in middleware; stub the hub so no socket is opened.
+vi.mock('@microsoft/signalr', () => ({
+  HubConnectionState: { Connected: 'Connected' },
+  HubConnectionBuilder: class {
+    withUrl() { return this; }
+    withAutomaticReconnect() { return this; }
+    build() {
+      return {
+        state: 'Disconnected',
+        on() {}, off() {},
+        onreconnecting() {}, onreconnected() {}, onclose() {},
+        start: () => Promise.resolve(),
+        stop: () => Promise.resolve(),
+        invoke: () => Promise.resolve(),
+      };
+    }
+  },
 }));
 
 // Every API call goes through chat-service, so stubbing it stubs the whole data layer.
