@@ -5,6 +5,20 @@
     <AspNetCoreHostingModel>InProcess</AspNetCoreHostingModel>
     <UserSecretsId>66350019-9781-4727-8cba-25a46e19fee2</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+
+    <!-- Starts the Vite dev server on F5 so the app no longer needs `npm run dev` in a second
+         terminal. Microsoft.AspNetCore.SpaProxy launches SpaProxyLaunchCommand from SpaRoot and
+         holds requests until SpaProxyServerUrl answers.
+
+         Note this is NOT UseReactDevelopmentServer, which looks like the obvious fix but blocks
+         waiting for Create React App's "Starting the development server" banner - output Vite
+         never produces, so startup would hang.
+
+         Only active in Development; the compose setup still runs the client in its own
+         container and points SpaDevServerUrl at it. -->
+    <SpaRoot>ClientApp\</SpaRoot>
+    <SpaProxyServerUrl>http://localhost:3000</SpaProxyServerUrl>
+    <SpaProxyLaunchCommand>npm run dev</SpaProxyLaunchCommand>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,6 +35,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.10" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="10.0.10" />
+    <PackageReference Include="Microsoft.AspNetCore.SpaProxy" Version="10.0.10" />
     <PackageReference Include="Microsoft.AspNetCore.SpaServices.Extensions" Version="10.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10">
       <PrivateAssets>all</PrivateAssets>

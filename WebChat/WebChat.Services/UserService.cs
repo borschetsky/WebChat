@@ -129,6 +129,16 @@ namespace WebChat.Services
         public ProfileViewModel GetUserProfile(string userId)
         {
             var model = ctx.User.FirstOrDefault(u => u.Id == userId);
+
+            // A signed token whose user no longer exists is not an exceptional case: it
+            // happens whenever the database is rebuilt while a browser still holds a session,
+            // which the move off SQL Server made routine. Returning null lets the controller
+            // answer 401 instead of throwing a NullReferenceException out of the mapper.
+            if (model == null)
+            {
+                return null;
+            }
+
             var viewModel = this.mappingService.MapUserModelRoProfileViewModel(model);
             viewModel.Username = GetUserNameById(userId);
 

@@ -1,22 +1,23 @@
 {
   "$schema": "https://json.schemastore.org/launchsettings.json",
   "profiles": {
-    "WebChat (local Postgres, no Docker)": {
+    "WebChat (starts the client automatically)": {
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": true,
-      "launchUrl": "swagger",
       "applicationUrl": "https://localhost:7199;http://localhost:5199",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "ASPNETCORE_HTTPS_PORT": "7199",
-        "ConnectionStrings__DefaultConnection": "Host=localhost;Port=5432;Database=WebChat;Username=webchat;Password=webchat"
+        "ConnectionStrings__DefaultConnection": "Host=localhost;Port=5432;Database=WebChat;Username=webchat;Password=webchat",
+        "ASPNETCORE_HOSTINGSTARTUPASSEMBLIES": "Microsoft.AspNetCore.SpaProxy"
       }
     },
-    "WebChat (local Postgres + React dev server)": {
+    "WebChat (client already running on :3000)": {
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": true,
+      "launchUrl": "swagger",
       "applicationUrl": "https://localhost:7199;http://localhost:5199",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
