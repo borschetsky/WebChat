@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/launchsettings.json",
   "profiles": {
-    "WebChat (LocalDB, no Docker)": {
+    "WebChat (local Postgres, no Docker)": {
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": true,
@@ -10,10 +10,10 @@
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "ASPNETCORE_HTTPS_PORT": "7199",
-        "ConnectionStrings__DefaultConnection": "Server=(localdb)\\MSSQLLocalDB;Database=WebChat;Trusted_Connection=True;TrustServerCertificate=True"
+        "ConnectionStrings__DefaultConnection": "Host=localhost;Port=5432;Database=WebChat;Username=webchat;Password=webchat"
       }
     },
-    "WebChat (LocalDB + React dev server)": {
+    "WebChat (local Postgres + React dev server)": {
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": true,
@@ -21,7 +21,7 @@
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "ASPNETCORE_HTTPS_PORT": "7199",
-        "ConnectionStrings__DefaultConnection": "Server=(localdb)\\MSSQLLocalDB;Database=WebChat;Trusted_Connection=True;TrustServerCertificate=True",
+        "ConnectionStrings__DefaultConnection": "Host=localhost;Port=5432;Database=WebChat;Username=webchat;Password=webchat",
         "SpaDevServerUrl": "http://localhost:3000"
       }
     }

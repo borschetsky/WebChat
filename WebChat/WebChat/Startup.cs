@@ -67,9 +67,9 @@ namespace WebChat
             services.AddDbContext<WebChatContext>(options =>
             {
                 var connectionString = Configuration.GetConnectionString("DefaultConnection");
-                // Retry on transient faults - the containerised SQL Server drops connections
-                // while it is starting, and Azure SQL throttles.
-                options.UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure());
+                // Retry on transient faults - a containerised database drops connections while
+                // it is starting, and managed instances throttle.
+                options.UseNpgsql(connectionString, npgsql => npgsql.EnableRetryOnFailure());
             });
 
             services.AddSignalR();

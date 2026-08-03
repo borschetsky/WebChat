@@ -74,7 +74,7 @@ namespace WebChat.Services
                 throw new ArgumentNullException("User Entity can not be null");
             }
 
-            newUser.CreatedOn = DateTime.Now;
+            newUser.CreatedOn = DateTime.UtcNow;
 
             ctx.User.Add(newUser);
             ctx.SaveChanges();

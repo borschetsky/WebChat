@@ -11,7 +11,7 @@ namespace WebChat.Models
     {
         public Message()
         {
-            base.CreatedOn = DateTime.Now;
+            base.CreatedOn = DateTime.UtcNow;
         }
 
         public string Text { get; set; }

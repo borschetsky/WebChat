@@ -18,7 +18,7 @@ namespace WebChat.Services.Helpers
                 Text = model.Text,
                 SenderId = model.SenderId,
                 ThreadId = model.ThreadId,
-                CreatedOn = DateTime.Now
+                CreatedOn = DateTime.UtcNow
             };
 
             return messageModel;
