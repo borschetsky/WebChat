@@ -19,6 +19,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The Web SDK globs appsettings.*.json into Content, which would package real
+         credentials on `dotnet publish`. The file is only ever meant to be read from a
+         developer's working copy; deployments use R2__* environment variables. -->
+    <Content Update="appsettings.Secrets.json" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.10" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="10.0.10" />
     <PackageReference Include="Microsoft.AspNetCore.SpaServices.Extensions" Version="10.0.10" />
