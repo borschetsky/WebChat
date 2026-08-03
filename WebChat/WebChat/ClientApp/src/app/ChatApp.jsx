@@ -107,25 +107,28 @@ export default function ChatApp({ user, onSignOut }) {
     dispatch(unreadCleared(id));
   }, [dispatch]);
 
-  const handleTyping = (value) => {
+  // Everything below is wrapped in useCallback because it is handed to memoized rows.
+  // Without stable identities React.memo compares a fresh function every render, so the
+  // whole message list re-renders anyway and the memo is decorative.
+  const handleTyping = useCallback((value) => {
     if (!activeId) return;
     if (!value) { invokeHub('OnStopTyping', activeId); return; }
     invokeHub('OnTyping', activeId);
     clearTimeout(stopTypingTimer.current);
     stopTypingTimer.current = setTimeout(() => invokeHub('OnStopTyping', activeId), TYPING_IDLE_MS);
-  };
+  }, [activeId]);
 
   /** Payload comes from Composer so this component never subscribes to the draft. */
-  const handleSend = ({ text, replyTo, attachment }) => {
+  const handleSend = useCallback(({ text, replyTo, attachment }) => {
     if (!activeId || (!text && !attachment)) return;
     const file = attachment ? takeDraftFile(attachment.key) : null;
     dispatch(composerCleared());
     invokeHub('OnStopTyping', activeId);
     // A failure leaves the row in the cache marked 'failed' with a Retry, so nothing to catch.
     sendMessage({ threadId: activeId, text, username: profile?.name, replyTo, file }).unwrap().catch(() => {});
-  };
+  }, [activeId, dispatch, profile?.name, sendMessage]);
 
-  const handleRetry = (message) => {
+  const handleRetry = useCallback((message) => {
     sendMessage({
       threadId: message.threadId,
       text: message.text,
@@ -133,7 +136,17 @@ export default function ChatApp({ user, onSignOut }) {
       replyTo: message.quote,
       retryOf: message.id,
     }).unwrap().catch(() => {});
-  };
+  }, [profile?.name, sendMessage]);
+
+  const handleReact = useCallback(
+    (messageId, emoji) => toggleReaction({ threadId: activeId, messageId, emoji }),
+    [activeId, toggleReaction],
+  );
+
+  const handleReply = useCallback(
+    (m) => dispatch(replyStarted({ author: m.author, text: m.text })),
+    [dispatch],
+  );
 
   const handleStartThread = async (person) => {
     dispatch(composeClosed());
@@ -222,8 +235,8 @@ export default function ChatApp({ user, onSignOut }) {
           onOpenSettings={() => dispatch(settingsOpened())}
           onSend={handleSend}
           onTyping={handleTyping}
-          onReact={(messageId, emoji) => toggleReaction({ threadId: activeId, messageId, emoji })}
-          onReply={(m) => dispatch(replyStarted({ author: m.author, text: m.text }))}
+          onReact={handleReact}
+          onReply={handleReply}
           onRetry={handleRetry}
           onCompose={() => dispatch(composeOpened())}
         />

@@ -11,6 +11,7 @@ import AddIcon from '@mui/icons-material/Add';
 import ForumIcon from '@mui/icons-material/Forum';
 import SearchOffIcon from '@mui/icons-material/SearchOff';
 import PresenceAvatar from '@/components/PresenceAvatar';
+import ThreadListItem from './ThreadListItem';
 import EmptyState from '@/components/EmptyState';
 import SearchField from '@/components/SearchField';
 import NotificationsMenu from '@/features/notifications/NotificationsMenu';
@@ -116,33 +117,13 @@ export default function ThreadList({
         {!loading && threads.length > 0 && (
           <List disablePadding sx={{ px: 1 }}>
             {threads.map((t) => (
-              <ListItemButton
+              <ThreadListItem
                 key={t.id}
+                thread={t}
                 selected={t.id === activeId}
-                onClick={() => onSelect(t.id)}
-                sx={{ gap: 1.5, py: d.rowPadY, px: 2, mb: 0.25, '&.Mui-selected': { bgcolor: 'background.selected' } }}
-              >
-                <PresenceAvatar
-                  name={t.name}
-                  color={t.color}
-                  avatarFileName={t.avatarFileName}
-                  size={d.avatar}
-                  presence={t.presence}
-                  showPresence={!t.group}
-                />
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline' }}>
-                    <Typography noWrap sx={{ flex: 1, fontSize: d.nameSize, fontWeight: t.unread ? 600 : 400 }}>{t.name}</Typography>
-                    <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>{t.time}</Typography>
-                  </Stack>
-                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                    <Typography noWrap sx={{ flex: 1, fontSize: 13, color: t.unread ? 'text.primary' : 'text.secondary', fontStyle: t.isTyping ? 'italic' : 'normal' }}>
-                      {t.isTyping ? 'typing…' : t.preview}
-                    </Typography>
-                    {t.unread > 0 && <Badge color="primary" badgeContent={t.unread} sx={{ mr: 1.5 }} />}
-                  </Stack>
-                </Box>
-              </ListItemButton>
+                density={density}
+                onSelect={onSelect}
+              />
             ))}
           </List>
         )}

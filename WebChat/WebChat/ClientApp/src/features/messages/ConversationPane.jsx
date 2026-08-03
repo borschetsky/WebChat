@@ -8,12 +8,11 @@ import ManageSearchIcon from '@mui/icons-material/ManageSearch';
 import ForumIcon from '@mui/icons-material/Forum';
 import AddIcon from '@mui/icons-material/Add';
 import PresenceAvatar from '@/components/PresenceAvatar';
-import MessageRow from '@/features/messages/MessageRow';
+import MessageList from './MessageList';
 import Composer from '@/features/composer/Composer';
 import { PRESENCE, densityTokens } from '@/theme/tokens';
 import EmptyState from '@/components/EmptyState';
 import SearchField from '@/components/SearchField';
-import DaySeparator from './components/DaySeparator';
 
 const presenceLine = (thread) => {
   if (!thread) return '';
@@ -112,35 +111,17 @@ export default function ConversationPane({
         aria-live="polite"
         aria-busy={loading}
       >
-        {loading ? (
-          [...Array(5)].map((_, i) => (
-            <Stack key={i} direction="row" spacing={1.5} sx={{ px: 3, py: 1.5 }}>
-              <Skeleton variant="circular" width={36} height={36} />
-              <Box sx={{ flex: 1 }}><Skeleton width={120} /><Skeleton width="60%" /></Box>
-            </Stack>
-          ))
-        ) : (
-          messages.map((m, i) => {
-            const prev = messages[i - 1];
-            const grouped = !!prev && prev.authorId === m.authorId && !m.quote && !m.startsDay && !searchQuery.trim();
-            return (
-              <React.Fragment key={m.id}>
-                {m.startsDay && m.dayKey && <DaySeparator dayKey={m.dayKey} />}
-                <MessageRow
-                  message={m}
-                  density={density}
-                  grouped={grouped}
-                  onReact={onReact}
-                  onReply={onReply}
-                  onRetry={onRetry}
-                  showReceipt={!!receipt && m.id === receipt.messageId}
-                  receiptLabel={receipt?.label}
-                  highlight={searchQuery}
-                />
-              </React.Fragment>
-            );
-          })
-        )}
+        <MessageList
+          messages={messages}
+          density={density}
+          loading={loading}
+          searchQuery={searchQuery}
+          receipt={receipt}
+          onReact={onReact}
+          onReply={onReply}
+          onRetry={onRetry}
+          threadId={thread.id}
+        />
 
         {typing && (
           <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', px: 3, py: 1 }}>
