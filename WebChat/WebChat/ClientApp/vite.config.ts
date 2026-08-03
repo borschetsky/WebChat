@@ -27,6 +27,14 @@ export default defineConfig({
     proxy: {
       '/api': { target: apiTarget, changeOrigin: true, secure: false },
       '/chat': { target: apiTarget, changeOrigin: true, secure: false, ws: true },
+      // Avatars. getUserAvatar builds a relative /images/{fileName}, which without this
+      // rule hits the dev server's SPA fallback and returns index.html to an <img> tag -
+      // a broken avatar with a 200 status and no clue as to why.
+      //
+      // The API answers with a 302 whose Location is an absolute R2 URL, which passes
+      // through untouched for the browser to follow - so dev behaves like production,
+      // with the image bytes coming from R2 rather than through this proxy.
+      '/images': { target: apiTarget, changeOrigin: true, secure: false },
     },
   },
   build: {
