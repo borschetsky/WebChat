@@ -24,9 +24,9 @@ const presenceLine = (thread) => {
 export default function ConversationPane({
   thread, messages, loading, density, isMobile,
   searchOpen, searchQuery, searchCount, totalCount,
-  draft, setDraft, replyTo, attachment, typing, receipt,
+  typing, receipt,
   onBack, onToggleSearch, onSearchQuery, onOpenSettings,
-  onSend, onTyping, onReact, onReply, onCancelReply, onAttach, onRemoveAttach,
+  onSend, onTyping, onReact, onReply,
   onCompose,
 }) {
   const d = densityTokens(density);
@@ -159,15 +159,8 @@ export default function ConversationPane({
       </Box>
 
       <Composer
-        draft={draft}
-        setDraft={setDraft}
         onSend={onSend}
         onTyping={onTyping}
-        replyTo={replyTo}
-        onCancelReply={onCancelReply}
-        attachment={attachment}
-        onAttach={onAttach}
-        onRemoveAttach={onRemoveAttach}
         placeholder={`Message ${thread.name.split(' ')[0]}`}
       />
     </>

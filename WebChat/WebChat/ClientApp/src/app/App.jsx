@@ -1,41 +1,36 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import AuthScreen from '@/features/auth/AuthScreen';
 import ChatApp from '@/app/ChatApp';
 import { login, register } from '@/services';
-
-const STORAGE_KEY = 'user-data';
-
-const readUser = () => {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY));
-  } catch {
-    return null;
-  }
-};
+import { useAppDispatch, useAppSelector } from '@/app/hooks';
+import {
+  authBusy, signedIn, signedOut, selectAuthBusy, selectUser,
+} from '@/features/auth/authSlice';
 
 function AppRoutes() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(readUser);
-  const [busy, setBusy] = useState(false);
+  const dispatch = useAppDispatch();
+  const user = useAppSelector(selectUser);
+  const busy = useAppSelector(selectAuthBusy);
 
   const authenticate = useCallback(async (fn, payload) => {
-    setBusy(true);
+    dispatch(authBusy(true));
     try {
       const res = await fn(payload);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(res.data));
-      setUser(res.data);
+      // The reducer owns localStorage, so persistence is not a component concern.
+      dispatch(signedIn(res.data));
       navigate('/dashboard', { replace: true });
-    } finally {
-      setBusy(false);
+    } catch (err) {
+      dispatch(authBusy(false));
+      throw err;
     }
-  }, [navigate]);
+  }, [dispatch, navigate]);
 
   const signOut = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
-    setUser(null);
+    dispatch(signedOut());
     navigate('/login', { replace: true });
-  }, [navigate]);
+  }, [dispatch, navigate]);
 
   return (
     <Routes>
@@ -68,7 +63,7 @@ function AppRoutes() {
         element={user ? <ChatApp user={user} onSignOut={signOut} /> : <Navigate to="/login" replace />}
       />
 
-      {/* v6 matches paths exactly, so the catch-all has to be "*" rather than "/". */}
+      {/* v6+ matches paths exactly, so the catch-all has to be "*" rather than "/". */}
       <Route path="*" element={<Navigate to={user ? '/dashboard' : '/login'} replace />} />
     </Routes>
   );

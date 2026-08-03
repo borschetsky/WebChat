@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Snackbar } from '@mui/material';
 import AppShell, { useIsMobile } from '@/app/AppShell';
+import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import ThreadList from '@/features/threads/ThreadList';
 import ConversationPane from '@/features/messages/ConversationPane';
 import SettingsDrawer from '@/features/settings/SettingsDrawer';
@@ -15,42 +16,51 @@ import {
   toggleReaction, markThreadRead, markAllThreadsRead, readReceiptFor, noteIncomingMessage,
 } from '@/services/chat-service';
 import { toLiveMessage } from '@/services/adapters';
+import { composerCleared, draftChanged, replyStarted, takeDraftFile } from '@/features/composer/composerSlice';
+import {
+  threadSelected, queryChanged, filterChanged, searchToggled, searchQueryChanged,
+  settingsOpened, settingsClosed, composeOpened, composeClosed,
+  paneChanged, notified, notificationDismissed,
+  selectActiveThreadId, selectQuery, selectFilter, selectSearchOpen, selectSearchQuery,
+  selectSettingsOpen, selectComposeOpen, selectPane, selectSnack,
+} from '@/features/ui/uiSlice';
 
 const TYPING_IDLE_MS = 3000;
 
 /**
- * The chat screen. Replaces the old class-based Dashboard: same API and hub, but the state
- * lives in hooks and every read goes through chat-service so mocked features are invisible
- * at this level.
+ * The chat screen.
+ *
+ * View state lives in uiSlice and composer state in composerSlice. Server data - profile,
+ * threads, messages - is still local state here; it moves to RTK Query in Phase 3.
+ *
+ * Note this component does not subscribe to the composer draft. Composer passes its
+ * contents up on send instead, so typing never re-renders this tree.
  */
 export default function ChatApp({ user, onSignOut }) {
+  const dispatch = useAppDispatch();
   const { density } = useThemeMode();
   const isMobile = useIsMobile();
   const token = user?.token;
 
+  // --- view state (store) ---------------------------------------------------
+  const activeId = useAppSelector(selectActiveThreadId);
+  const query = useAppSelector(selectQuery);
+  const filter = useAppSelector(selectFilter);
+  const searchOpen = useAppSelector(selectSearchOpen);
+  const searchQuery = useAppSelector(selectSearchQuery);
+  const settingsOpen = useAppSelector(selectSettingsOpen);
+  const composeOpen = useAppSelector(selectComposeOpen);
+  const pane = useAppSelector(selectPane);
+  const snack = useAppSelector(selectSnack);
+
+  // --- server data (moves to RTK Query in Phase 3) --------------------------
   const [profile, setProfile] = useState(null);
   const [threads, setThreads] = useState([]);
   const [loadingThreads, setLoadingThreads] = useState(true);
-  const [activeId, setActiveId] = useState(null);
-
   const [messages, setMessages] = useState([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
-
-  const [query, setQuery] = useState('');
-  const [tab, setTab] = useState('all');
-  const [draft, setDraft] = useState('');
-  const [replyTo, setReplyTo] = useState(null);
-  const [attachment, setAttachment] = useState(null);
-
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState(null);
-
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [composeOpen, setComposeOpen] = useState(false);
   const [typing, setTyping] = useState(false);
-  const [snack, setSnack] = useState('');
-  const [pane, setPane] = useState('list');
 
   const activeIdRef = useRef(null);
   activeIdRef.current = activeId;
@@ -58,10 +68,11 @@ export default function ChatApp({ user, onSignOut }) {
   const stopTypingTimer = useRef(null);
 
   const active = threads.find((t) => t.id === activeId) ?? null;
+  const notify = useCallback((msg) => dispatch(notified(msg)), [dispatch]);
 
   // --- initial load ---------------------------------------------------------
   useEffect(() => {
-    if (!token) return;
+    if (!token) return undefined;
     let cancelled = false;
     (async () => {
       try {
@@ -88,8 +99,7 @@ export default function ChatApp({ user, onSignOut }) {
       const incoming = toLiveMessage(payload, user.id);
       const isActive = incoming.threadId === activeIdRef.current;
 
-      // MOCK: unread has no server-side watermark, but the trigger is a real hub event -
-      // a message that arrived while you were looking elsewhere. Session-scoped.
+      // MOCK: unread has no server-side watermark, but the trigger is a real hub event.
       const unread = !isActive && !incoming.own ? noteIncomingMessage(incoming.threadId) : undefined;
 
       patchThread((t) => t.id === incoming.threadId, {
@@ -100,8 +110,7 @@ export default function ChatApp({ user, onSignOut }) {
       });
 
       if (isActive) {
-        // The hub echoes to the sender too, so the REST response and this event can be the
-        // same message - dedupe on id rather than showing it twice.
+        // The hub echoes to the sender too, so dedupe on id.
         setMessages((ms) => (ms.some((m) => m.id === incoming.id) ? ms : [...ms, incoming]));
         setTyping(false);
       }
@@ -166,12 +175,9 @@ export default function ChatApp({ user, onSignOut }) {
 
   // --- thread selection -----------------------------------------------------
   const selectThread = useCallback(async (id) => {
-    setActiveId(id);
-    setPane('chat');
-    setSearchOpen(false);
-    setSearchQuery('');
+    dispatch(threadSelected(id));
+    dispatch(composerCleared());
     setSearchResults(null);
-    setReplyTo(null);
     setTyping(false);
     setLoadingMessages(true);
     await markThreadRead(id);
@@ -180,11 +186,11 @@ export default function ChatApp({ user, onSignOut }) {
       setMessages(await loadMessages(id, token));
     } catch {
       setMessages([]);
-      setSnack('Could not load this conversation.');
+      notify('Could not load this conversation.');
     } finally {
       setLoadingMessages(false);
     }
-  }, [token, patchThread]);
+  }, [token, patchThread, dispatch, notify]);
 
   // --- in-thread search (server side) ---------------------------------------
   useEffect(() => {
@@ -213,26 +219,23 @@ export default function ChatApp({ user, onSignOut }) {
     stopTypingTimer.current = setTimeout(() => invoke('OnStopTyping', activeId), TYPING_IDLE_MS);
   };
 
-  const handleSend = async () => {
-    const text = draft.trim();
+  /** Payload comes from Composer so this component never subscribes to the draft. */
+  const handleSend = async ({ text, replyTo, attachment }) => {
     if (!activeId || (!text && !attachment)) return;
-    setDraft('');
-    const sentReply = replyTo;
-    const sentFile = attachment;
-    setReplyTo(null);
-    setAttachment(null);
+    const file = attachment ? takeDraftFile(attachment.key) : null;
+    dispatch(composerCleared());
     invoke('OnStopTyping', activeId);
 
     try {
       const sent = await sendMessage(
-        { threadId: activeId, text: text || sentFile?.name || '', username: profile?.name, replyTo: sentReply, file: sentFile },
+        { threadId: activeId, text: text || attachment?.name || '', username: profile?.name, replyTo, file },
         token
       );
       setMessages((ms) => (ms.some((m) => m.id === sent.id) ? ms : [...ms, sent]));
       patchThread((t) => t.id === activeId, { preview: sent.text, time: sent.time });
     } catch {
-      setDraft(text);
-      setSnack('Message failed to send.');
+      dispatch(draftChanged(text));
+      notify('Message failed to send.');
     }
   };
 
@@ -242,22 +245,22 @@ export default function ChatApp({ user, onSignOut }) {
   };
 
   const handleStartThread = async (person) => {
-    setComposeOpen(false);
+    dispatch(composeClosed());
     try {
       const { threadId, existed } = await startThreadWith(person, token);
-      const refreshed = await loadThreads(token);
-      setThreads(refreshed);
+      setThreads(await loadThreads(token));
       await selectThread(threadId);
-      setSnack(existed ? `You already had a conversation with ${person.name}` : `Conversation with ${person.name} started`);
+      notify(existed
+        ? `You already had a conversation with ${person.name}`
+        : `Conversation with ${person.name} started`);
     } catch {
-      setSnack('Could not start that conversation.');
+      notify('Could not start that conversation.');
     }
   };
 
   const handleSaveProfile = async (next) => {
-    const saved = await saveProfile(next, token);
-    setProfile(saved);
-    setSnack('Profile updated');
+    setProfile(await saveProfile(next, token));
+    notify('Profile updated');
   };
 
   const handleUploadAvatar = async (file) => {
@@ -267,16 +270,16 @@ export default function ChatApp({ user, onSignOut }) {
       const res = await uploadAvatar(form, token);
       const fileName = res?.data?.value ?? res?.data;
       setProfile((p) => (p ? { ...p, avatarFileName: fileName } : p));
-      setSnack('Avatar updated');
+      notify('Avatar updated');
     } catch {
-      setSnack('Avatar upload failed.');
+      notify('Avatar upload failed.');
     }
   };
 
   // --- derived --------------------------------------------------------------
   const q = query.trim().toLowerCase();
   const visibleThreads = threads
-    .filter((t) => (tab === 'unread' ? t.unread > 0 : tab === 'groups' ? t.group : true))
+    .filter((t) => (filter === 'unread' ? t.unread > 0 : filter === 'groups' ? t.group : true))
     .filter((t) => !q || t.name.toLowerCase().includes(q) || (t.preview ?? '').toLowerCase().includes(q));
 
   const shown = searchResults ?? messages;
@@ -294,17 +297,21 @@ export default function ChatApp({ user, onSignOut }) {
             allThreads={threads}
             activeId={activeId}
             query={query}
-            tab={tab}
+            tab={filter}
             density={density}
             loading={loadingThreads}
             profile={profile}
             unreadTotal={threads.reduce((a, t) => a + t.unread, 0)}
-            onQuery={setQuery}
-            onTab={setTab}
+            onQuery={(v) => dispatch(queryChanged(v))}
+            onTab={(v) => dispatch(filterChanged(v))}
             onSelect={selectThread}
-            onCompose={() => setComposeOpen(true)}
-            onSettings={() => setSettingsOpen(true)}
-            onMarkAllRead={async () => { await markAllThreadsRead(); setThreads((ts) => ts.map((t) => ({ ...t, unread: 0 }))); setSnack('All conversations marked as read'); }}
+            onCompose={() => dispatch(composeOpened())}
+            onSettings={() => dispatch(settingsOpened())}
+            onMarkAllRead={async () => {
+              await markAllThreadsRead();
+              setThreads((ts) => ts.map((t) => ({ ...t, unread: 0 })));
+              notify('All conversations marked as read');
+            }}
           />
         }
       >
@@ -318,30 +325,23 @@ export default function ChatApp({ user, onSignOut }) {
           searchQuery={searchQuery}
           searchCount={shown.length}
           totalCount={messages.length}
-          draft={draft}
-          setDraft={setDraft}
-          replyTo={replyTo}
-          attachment={attachment}
           typing={typing}
           receipt={receipt}
-          onBack={() => setPane('list')}
-          onToggleSearch={() => { setSearchOpen((o) => !o); setSearchQuery(''); setSearchResults(null); }}
-          onSearchQuery={setSearchQuery}
-          onOpenSettings={() => setSettingsOpen(true)}
+          onBack={() => dispatch(paneChanged('list'))}
+          onToggleSearch={() => { dispatch(searchToggled()); setSearchResults(null); }}
+          onSearchQuery={(v) => dispatch(searchQueryChanged(v))}
+          onOpenSettings={() => dispatch(settingsOpened())}
           onSend={handleSend}
           onTyping={handleTyping}
           onReact={handleReact}
-          onReply={(m) => setReplyTo({ author: m.author, text: m.text })}
-          onCancelReply={() => setReplyTo(null)}
-          onAttach={(f) => setAttachment(f)}
-          onRemoveAttach={() => setAttachment(null)}
-          onCompose={() => setComposeOpen(true)}
+          onReply={(m) => dispatch(replyStarted({ author: m.author, text: m.text }))}
+          onCompose={() => dispatch(composeOpened())}
         />
       </AppShell>
 
       <SettingsDrawer
         open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
+        onClose={() => dispatch(settingsClosed())}
         profile={profile}
         members={active?.members ?? []}
         threadName={active?.name}
@@ -353,7 +353,7 @@ export default function ChatApp({ user, onSignOut }) {
 
       <ComposeDialog
         open={composeOpen}
-        onClose={() => setComposeOpen(false)}
+        onClose={() => dispatch(composeClosed())}
         onStart={handleStartThread}
         onSearch={(term) => searchDirectory(term, token)}
         fullScreen={isMobile}
@@ -363,7 +363,7 @@ export default function ChatApp({ user, onSignOut }) {
         open={!!snack}
         message={snack}
         autoHideDuration={4000}
-        onClose={() => setSnack('')}
+        onClose={() => dispatch(notificationDismissed())}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
       />
     </>
