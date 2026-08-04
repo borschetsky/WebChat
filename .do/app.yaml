@@ -1,0 +1,88 @@
+# DigitalOcean App Platform spec.
+#
+#     doctl apps create --spec .do/app.yaml
+#     doctl apps update <app-id> --spec .do/app.yaml
+#
+# This exists because the create wizard cannot express what this repo needs: the Dockerfile
+# lives in the project directory but its COPY paths are relative to the solution directory
+# one level up, since it copies six .csproj files and ClientApp before restoring. source_dir
+# sets the build context, dockerfile_path is resolved from the repo root, and only a spec
+# lets the two differ - point the wizard's "source directory" at the Dockerfile's folder and
+# detection succeeds but every COPY then fails.
+name: webchat
+region: fra
+
+services:
+  - name: web
+    github:
+      repo: borschetsky/WebChat
+      branch: master
+      deploy_on_push: true
+
+    # The build context. Not the Dockerfile's own directory - see the note above.
+    source_dir: WebChat
+    dockerfile_path: WebChat/WebChat/Dockerfile
+
+    http_port: 8080
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-1gb
+
+    # Registered ahead of UseHttpsRedirection in Startup.Configure, so it answers 200 to a
+    # probe that arrives as plain HTTP with no X-Forwarded-Proto. Any other path would be
+    # answered with a 307 and counted as a failed check, rolling back a healthy deploy.
+    health_check:
+      http_path: /health
+
+    envs:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+
+      # The platform terminates TLS and forwards plain HTTP on this port.
+      - key: ASPNETCORE_URLS
+        value: http://+:8080
+
+      # Without this the app sees `http`, redirects to `https`, and the platform forwards
+      # `http` again - an infinite redirect. Safe here only because App Platform overwrites
+      # X-Forwarded-* on the way in.
+      - key: ForwardedHeaders__Enabled
+        value: "true"
+
+      # SignalR sends credentials, so the origin has to be listed explicitly; a wildcard is
+      # not allowed with AllowCredentials. ${APP_URL} is substituted by the platform.
+      - key: Cors__AllowedOrigins__0
+        value: ${APP_URL}
+
+      # Npgsql wants key/value, while the database component exposes a postgresql:// URI -
+      # hence composing it from the parts. Managed Postgres requires TLS.
+      - key: ConnectionStrings__DefaultConnection
+        scope: RUN_TIME
+        value: Host=${db.HOSTNAME};Port=${db.PORT};Database=${db.DATABASE};Username=${db.USERNAME};Password=${db.PASSWORD};SSL Mode=Require;Trust Server Certificate=true
+
+      # Startup.ValidateRequiredConfiguration refuses to boot without this outside
+      # Development. Generate with: openssl rand -base64 48
+      - key: JWTSecretKey
+        scope: RUN_TIME
+        type: SECRET
+        value: REPLACE_ME
+
+      # Avatars. With any of these absent the app falls back to local disk, which App
+      # Platform wipes on every deploy - so all three must be set here.
+      - key: R2__AccountId
+        scope: RUN_TIME
+        type: SECRET
+        value: REPLACE_ME
+      - key: R2__AccessKeyId
+        scope: RUN_TIME
+        type: SECRET
+        value: REPLACE_ME
+      - key: R2__SecretAccessKey
+        scope: RUN_TIME
+        type: SECRET
+        value: REPLACE_ME
+
+databases:
+  - name: db
+    engine: PG
+    version: "16"
+    # Dev database: single node, no backups, cheapest tier. Set true for a managed cluster.
+    production: false
