@@ -89,6 +89,11 @@ export default function ChatApp({ user, onSignOut }) {
   useEffect(() => { if (user) dispatch(realtimeStarted()); }, [user, dispatch]);
 
   // A failed thread load means the token is no longer good.
+  //
+  // This depends on a callback prop, which is the shape that produced the search render
+  // loop: an unstable onSignOut would re-run the effect on every render and sign out
+  // repeatedly for as long as threadsFailed held. It is safe only because App.jsx wraps
+  // signOut in useCallback - so that wrapping is load-bearing, not tidiness.
   useEffect(() => { if (threadsFailed) onSignOut(); }, [threadsFailed, onSignOut]);
 
   const messages = useMemo(() => selectAllMessages(messageCache), [messageCache]);
