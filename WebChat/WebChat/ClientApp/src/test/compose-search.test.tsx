@@ -38,6 +38,7 @@ function Harness({ onSearch }: { onSearch: (t: string) => Promise<unknown> }) {
     <ThemeModeProvider>
       <ComposeDialog
         open
+        fullScreen={false}
         onClose={() => {}}
         onStart={() => {}}
         // Inline arrow, recreated on every parent render - what ChatApp used to pass.

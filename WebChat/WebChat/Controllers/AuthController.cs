@@ -152,7 +152,12 @@ namespace WebChat.Controllers
             userService.SetEmailConfirmation(userId, issued.Hash, DateTime.UtcNow);
 
             var publicUrl = (configuration.GetValue<string>("App:PublicUrl") ?? string.Empty).TrimEnd('/');
-            var confirmUrl = $"{publicUrl}/api/auth/confirm?token={Uri.EscapeDataString(issued.Token)}";
+
+            // The SPA route, not the API endpoint. Pointing at /api/auth/confirm would work,
+            // but the user would be looking at raw JSON with a bearer token in it rather than
+            // at the app - and the browser would have no way to store the session. The client
+            // route calls the endpoint and then signs in.
+            var confirmUrl = $"{publicUrl}/confirm?token={Uri.EscapeDataString(issued.Token)}";
 
             var (html, text) = ActivationEmail.Render(this.emailOptions.FromName, username, confirmUrl, publicUrl);
 

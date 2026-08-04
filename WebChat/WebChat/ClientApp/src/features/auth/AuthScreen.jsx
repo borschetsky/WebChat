@@ -11,7 +11,7 @@ import ForumIcon from '@mui/icons-material/Forum';
  * The handoff also drew a "Continue with SSO" button. There is no SSO on the server, so it
  * is left out rather than rendered as a button that cannot work.
  */
-export default function AuthScreen({ mode, onSubmit, onSwitch, busy }) {
+export default function AuthScreen({ mode, onSubmit, onSwitch, busy, onNeedsConfirmation }) {
   const isRegister = mode === 'register';
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -29,6 +29,15 @@ export default function AuthScreen({ mode, onSubmit, onSwitch, busy }) {
       // has no response at all.
       const data = err?.response?.data;
       if (!data) { setErrors({ form: 'Cannot reach the server. Is the API running?' }); return; }
+
+      // 403 email_not_confirmed is not a form error - the credentials were right and there
+      // is nothing on this screen to correct. Hand it to the caller, which shows the
+      // check-your-email screen and the resend button that actually resolves it.
+      if (data.error === 'email_not_confirmed' && onNeedsConfirmation) {
+        onNeedsConfirmation(email);
+        return;
+      }
+
       if (data.errors) {
         const flat = {};
         Object.entries(data.errors).forEach(([k, v]) => { flat[k.toLowerCase()] = Array.isArray(v) ? v[0] : v; });

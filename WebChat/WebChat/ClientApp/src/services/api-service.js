@@ -18,6 +18,20 @@ const login = async (loginObj) => {
     return await result;
 };
 
+// Exchanges the token from an activation link for a session. The link points at the API
+// rather than here, so this is only reached when the SPA route hands the token back.
+const confirmEmail = async (token) => {
+    const result = await Axios.get(`${_baseUrl}auth/confirm?token=${encodeURIComponent(token)}`);
+    return await result;
+};
+
+// Always resolves with the same 200 whatever the address is - the endpoint deliberately
+// gives nothing away about which addresses hold accounts.
+const resendConfirmation = async (email) => {
+    const result = await Axios.post(`${_baseUrl}auth/resend-confirmation`, { email });
+    return await result;
+};
+
 const searchForUsers = async (value, token) => {
         const result = await Axios.get(`${_baseUrl}users/search?name=${value}`, {
             headers: authHeader(token)
@@ -83,4 +97,4 @@ const updateUsersProfile = async (token, user) => {
     return await result;
 };
 
-export { getProfile, getMessages, getThreads, createThread, sendMessageToApi, uploadAvatar, searchForUsers, login, register, searchForMessageInThread, updateUsersProfile } ;
+export { getProfile, getMessages, getThreads, createThread, sendMessageToApi, uploadAvatar, searchForUsers, login, register, confirmEmail, resendConfirmation, searchForMessageInThread, updateUsersProfile } ;
