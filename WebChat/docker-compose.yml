@@ -18,10 +18,18 @@ services:
       POSTGRES_DB: WebChat
       POSTGRES_USER: webchat
       POSTGRES_PASSWORD: a80a7cac-3775-41bd-a997-16b300780655
+    # Published on 5433 because a workstation with Postgres installed natively already
+    # holds 5432, and the bind would fail. Nothing in the stack uses this mapping - the
+    # API reaches the database as postgres:5432 over the compose network - it exists
+    # only so psql/pgAdmin on the host can reach the containerised instance.
     ports:
-      - '5432:5432'
+      - '5433:5432'
     volumes:
-      - webchat-db:/var/lib/postgresql/data
+      # Postgres 18 moved the data directory one level down, into a version-named
+      # subdirectory of /var/lib/postgresql, so that pg_upgrade --link can work across a
+      # single mount. Mounting the old /var/lib/postgresql/data path makes the entrypoint
+      # refuse to start outright rather than silently ignoring the volume.
+      - webchat-db:/var/lib/postgresql
     # The API retries while the database starts, but a healthcheck keeps the log quiet.
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U webchat -d WebChat"]
