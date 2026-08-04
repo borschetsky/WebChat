@@ -96,6 +96,24 @@ services:
         type: SECRET
         value: REPLACE_ME
 
+      # Outbound mail via Brevo's SMTP relay. Without these the app logs the message rather
+      # than sending it, which in production means nobody can ever activate an account.
+      - key: Email__SmtpUser
+        scope: RUN_TIME
+        type: SECRET
+        value: REPLACE_ME
+      - key: Email__SmtpKey
+        scope: RUN_TIME
+        type: SECRET
+        value: REPLACE_ME
+      - key: Email__FromAddress
+        scope: RUN_TIME
+        value: REPLACE_ME
+
+      # Base for the confirmation link. Must be the public address, or every link 404s.
+      - key: App__PublicUrl
+        value: ${APP_URL}
+
 databases:
   - name: db
     engine: PG

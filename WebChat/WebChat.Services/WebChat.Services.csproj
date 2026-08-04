@@ -5,7 +5,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- The activation email, from the design handoff. Embedded rather than copied to the
+         output so it cannot go missing from a published app - ActivationEmail resolves it by
+         resource name and throws at send time, not at startup, if it does. -->
+    <EmbeddedResource Include="Email\Templates\ActivateAccount.html" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="CryptoHelper" Version="5.1.0" />
+    <PackageReference Include="MailKit" Version="4.17.0" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.22.0" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.22.0" />
   </ItemGroup>
