@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Threading.Tasks;
@@ -69,6 +70,7 @@ namespace WebChat.Controllers
         /// the point of the feature is that an address is proven reachable before it can be
         /// used, and handing back a working session here would undo that.
         /// </summary>
+        [EnableRateLimiting(Startup.EmailSendPolicy)]
         [HttpPost("register")]
         public async Task<ActionResult> Post([FromBody] RegisterViewModel model)
         {
@@ -127,6 +129,7 @@ namespace WebChat.Controllers
         /// genuinely pending. Anything else turns this into an oracle for which addresses
         /// hold accounts, which is worse than the inconvenience it saves.
         /// </summary>
+        [EnableRateLimiting(Startup.EmailSendPolicy)]
         [HttpPost("resend-confirmation")]
         public async Task<ActionResult> Resend([FromBody] ResendConfirmationViewModel model)
         {
@@ -134,13 +137,29 @@ namespace WebChat.Controllers
 
             var user = userService.GetUserByEmail(model.Email);
 
-            if (user != null && !user.EmailConfirmed)
+            if (user != null && !user.EmailConfirmed && !RecentlySent(user.EmailConfirmationSentAt))
             {
                 await SendConfirmation(user.Id, user.Username, user.Email);
             }
 
+            // Identical response whether a mail went out, the address is unknown, it is
+            // already confirmed, or the cooldown suppressed it. The moment any of those
+            // differ - in body, status, or noticeably in timing - this becomes an oracle for
+            // which addresses hold accounts.
             return Ok(new { message = "If that address needs confirming, a new link is on its way." });
         }
+
+        /// <summary>
+        /// True when a confirmation went out too recently to send another.
+        ///
+        /// The per-IP limiter cannot cover this case: it stops one source flooding, but a
+        /// distributed request aimed at a single victim's inbox looks like many sources and
+        /// slips straight through. This is what makes the mailbox itself the unit being
+        /// protected, and it needs no extra state - the timestamp is already stored.
+        /// </summary>
+        private bool RecentlySent(DateTime? sentAt) =>
+            sentAt != null
+            && DateTime.UtcNow - sentAt.Value < TimeSpan.FromSeconds(this.emailOptions.ResendCooldownSeconds);
 
         private async Task<bool> SendConfirmation(string userId, string username, string email)
         {

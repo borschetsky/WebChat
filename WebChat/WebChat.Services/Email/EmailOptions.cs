@@ -46,6 +46,17 @@ namespace WebChat.Services.Email
         public int ConfirmationLifetimeHours { get; set; } = 24;
 
         /// <summary>
+        /// Shortest gap between two confirmation emails to the same address. Stops
+        /// resend-confirmation being used to mail-bomb someone, which the per-IP limiter
+        /// alone would not: an attacker with many addresses to send *from* is rate-limited,
+        /// but one distributed attack aimed at a single victim is not.
+        ///
+        /// Enforced against EmailConfirmationSentAt, which is already stored, so this costs
+        /// no extra state.
+        /// </summary>
+        public int ResendCooldownSeconds { get; set; } = 60;
+
+        /// <summary>
         /// True when real mail can be sent. Startup falls back to a sender that only logs
         /// when this is false, so a fresh clone runs and can register without anyone holding
         /// a provider account - the same bargain AddAvatarStorage makes for R2.

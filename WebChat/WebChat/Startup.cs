@@ -3,8 +3,10 @@ using Amazon.S3;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -14,6 +16,7 @@ using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.RateLimiting;
 using System.Threading.Tasks;
 using WebChat.Connection;
 using WebChat.Handler;
@@ -29,6 +32,9 @@ namespace WebChat
     public class Startup
     {
         private const string CorsPolicyName = "WebChatCors";
+
+        /// <summary>Applied to the endpoints that cause an email to be sent.</summary>
+        public const string EmailSendPolicy = "EmailSend";
 
         private readonly IWebHostEnvironment environment;
 
@@ -118,6 +124,53 @@ namespace WebChat
             });
 
             services.AddSignalR();
+            AddRateLimiting(services);
+        }
+
+        /// <summary>
+        /// Caps how often one caller can make the app send email.
+        ///
+        /// register and resend-confirmation are unauthenticated and each cause a message to
+        /// go out, so without this a script can exhaust the provider's daily quota - 300 on
+        /// Brevo's free plan - and take account activation down for everyone with it.
+        ///
+        /// Partitioned by remote IP, which is only correct because UseForwardedHeaders runs
+        /// first in Configure. Behind a TLS-terminating proxy without it every request
+        /// appears to come from the proxy, so the whole world would share one bucket and the
+        /// first few users each minute would lock everyone else out.
+        ///
+        /// The matching per-address limit lives in AuthController, against the send timestamp
+        /// already on the user: this one stops a single source flooding, that one stops a
+        /// distributed flood aimed at one victim's inbox.
+        /// </summary>
+        private static void AddRateLimiting(IServiceCollection services)
+        {
+            services.AddRateLimiter(options =>
+            {
+                options.AddPolicy(EmailSendPolicy, context =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        // Unknown addresses share one bucket rather than each getting their
+                        // own, which would make the limit trivial to bypass.
+                        partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                        factory: _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = 5,
+                            Window = TimeSpan.FromMinutes(15),
+                            QueueLimit = 0,
+                        }));
+
+                options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+                options.OnRejected = async (context, token) =>
+                {
+                    // A bare 429 with an empty body reads as a server fault to the client.
+                    context.HttpContext.Response.ContentType = "application/json";
+                    await context.HttpContext.Response.WriteAsync(
+                        "{\"error\":\"too_many_requests\"," +
+                        "\"message\":\"Too many attempts. Wait a few minutes and try again.\"}",
+                        token);
+                };
+            });
         }
 
         private void RegisterAuthentication(IServiceCollection services)
@@ -323,6 +376,8 @@ namespace WebChat
 
             app.UseRouting();
             app.UseCors(CorsPolicyName);
+            // After UseRouting so the endpoint - and therefore its policy - is known.
+            app.UseRateLimiter();
             app.UseAuthentication();
             app.UseAuthorization();
 
