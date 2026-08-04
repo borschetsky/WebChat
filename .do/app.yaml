@@ -24,8 +24,15 @@ services:
     dockerfile_path: WebChat/WebChat/Dockerfile
 
     http_port: 8080
+
+    # Must stay at 1. SignalR here has no backplane, so with two instances a message sent by
+    # a client on one container never reaches a client connected to the other - the app looks
+    # fine and silently drops half the conversation. Scaling out needs a Redis backplane
+    # first. The wizard defaults to 2, which is both wrong and double the price.
     instance_count: 1
-    instance_size_slug: apps-s-1vcpu-1gb
+
+    # Slug names change; pick the cheapest 512 MB tier in the UI if this one is rejected.
+    instance_size_slug: apps-s-1vcpu-512mb
 
     # Registered ahead of UseHttpsRedirection in Startup.Configure, so it answers 200 to a
     # probe that arrives as plain HTTP with no X-Forwarded-Proto. Any other path would be
@@ -36,6 +43,14 @@ services:
     envs:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
+
+      # The Web SDK turns Server GC on by default (System.GC.Server is true in
+      # WebChat.runtimeconfig.json), which reserves a heap per core and is sized for a
+      # machine, not a 512 MB container - the usual result is an OOM kill under light load.
+      # Workstation GC trades a little throughput for a much smaller footprint. Drop this if
+      # the instance is ever moved to 1 GB or more.
+      - key: DOTNET_gcServer
+        value: "0"
 
       # The platform terminates TLS and forwards plain HTTP on this port.
       - key: ASPNETCORE_URLS
