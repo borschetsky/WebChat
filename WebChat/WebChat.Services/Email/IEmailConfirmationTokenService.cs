@@ -14,5 +14,13 @@ namespace WebChat.Services.Email
         /// endpoint anyone can call.
         /// </summary>
         bool Verify(string token, string storedHash, DateTime? sentAt);
+
+        /// <summary>
+        /// The stored form of a token, so a confirmation request can find its user with an
+        /// indexed lookup instead of reading every row and comparing. Finding the candidate
+        /// this way does not replace <see cref="Verify"/>: that still checks expiry and does
+        /// the constant-time comparison.
+        /// </summary>
+        string HashFor(string token);
     }
 }

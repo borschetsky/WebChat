@@ -35,6 +35,24 @@ namespace WebChat.Services
         string GetOponentIdByTheadId(string senderId, string threadId);
 
         ICollection<User> GetUsers();
+
+        /// <summary>
+        /// Records a pending confirmation, replacing any previous one - so a resend
+        /// invalidates the link already sent rather than leaving two valid at once.
+        /// </summary>
+        void SetEmailConfirmation(string userId, string tokenHash, DateTime sentAt);
+
+        /// <summary>
+        /// Finds the user holding this pending token hash, or null. Expiry and the
+        /// constant-time comparison are still the token service's job.
+        /// </summary>
+        User GetUserByConfirmationHash(string tokenHash);
+
+        /// <summary>
+        /// Marks the address confirmed and clears the pending token, which is what makes a
+        /// confirmation link single-use.
+        /// </summary>
+        void ConfirmEmail(string userId);
         
 
 

@@ -77,6 +77,9 @@ namespace WebChat.Services.Email
                    && CryptographicOperations.FixedTimeEquals(candidate, expected);
         }
 
+        public string HashFor(string token) =>
+            string.IsNullOrWhiteSpace(token) ? null : Hash(token);
+
         private static string Hash(string token)
         {
             var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(token));

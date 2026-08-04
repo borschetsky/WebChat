@@ -80,6 +80,54 @@ namespace WebChat.Services
             ctx.SaveChanges();
         }
 
+        public void SetEmailConfirmation(string userId, string tokenHash, DateTime sentAt)
+        {
+            var user = ctx.User.FirstOrDefault(u => u.Id == userId);
+            if (user == null)
+            {
+                return;
+            }
+
+            // Overwriting rather than adding: a resend must invalidate the link already in
+            // the user's inbox, or every old email stays usable until it expires.
+            user.EmailConfirmationTokenHash = tokenHash;
+            user.EmailConfirmationSentAt = sentAt;
+            ctx.User.Update(user);
+            ctx.SaveChanges();
+        }
+
+        public User GetUserByConfirmationHash(string tokenHash)
+        {
+            // Guarded, because a null hash matches every row that has no pending confirmation
+            // - which is most of them, and would confirm an arbitrary account.
+            if (string.IsNullOrWhiteSpace(tokenHash))
+            {
+                return null;
+            }
+
+            return ctx.User.FirstOrDefault(u => u.EmailConfirmationTokenHash == tokenHash);
+        }
+
+        public void ConfirmEmail(string userId)
+        {
+            var user = ctx.User.FirstOrDefault(u => u.Id == userId);
+            if (user == null)
+            {
+                return;
+            }
+
+            user.EmailConfirmed = true;
+
+            // Clearing these is what makes the link single-use. Leaving them would let the
+            // same URL be replayed until it expired.
+            user.EmailConfirmationTokenHash = null;
+            user.EmailConfirmationSentAt = null;
+            user.ModifiedOn = DateTime.UtcNow;
+
+            ctx.User.Update(user);
+            ctx.SaveChanges();
+        }
+
         public User CreateUser(string username, string email, string password)
         {
 
