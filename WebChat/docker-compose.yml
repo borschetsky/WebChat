@@ -5,6 +5,17 @@ services:
       dockerfile: WebChat/ClientApp/Dockerfile
     ports:
       - '3000:3000'
+    # Where vite.config.ts proxies /api, /chat and /images. Its default is
+    # https://localhost:7199 - the Kestrel port on a developer's machine - which inside this
+    # container resolves to the container itself and refuses the connection. The client then
+    # reports "Cannot reach the server", because a 502 from the dev proxy is indistinguishable
+    # from the API being down.
+    #
+    # HTTPS rather than :8080, because the API redirects HTTP to HTTPS and the dev proxy does
+    # not follow redirects - the browser would be sent to an address only reachable inside the
+    # compose network. The self-signed certificate is accepted via secure:false.
+    environment:
+      - VITE_API_PROXY_TARGET=https://webchat-api:8443
     volumes:
       - ./WebChat/ClientApp:/app
       # Anonymous volume keeps the image's node_modules from being masked by the
