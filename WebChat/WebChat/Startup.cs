@@ -11,6 +11,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
+using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using WebChat.Connection;
@@ -28,16 +30,57 @@ namespace WebChat
     {
         private const string CorsPolicyName = "WebChatCors";
 
-        public Startup(IConfiguration configuration)
+        private readonly IWebHostEnvironment environment;
+
+        public Startup(IConfiguration configuration, IWebHostEnvironment environment)
         {
             Configuration = configuration;
+            this.environment = environment;
         }
 
         public IConfiguration Configuration { get; }
 
+        /// <summary>
+        /// Stops a deployment that is missing a secret, before it can serve a single request.
+        ///
+        /// The development values live in appsettings.Development.json, which is loaded only
+        /// in that environment, so anything else inherits nothing at all. Without this check a
+        /// production instance would sign tokens with a null key - or, if a default were ever
+        /// reintroduced to appsettings.json, with one published on GitHub. Both fail silently,
+        /// which is the reason to fail here instead.
+        /// </summary>
+        private void ValidateRequiredConfiguration()
+        {
+            if (this.environment.IsDevelopment())
+            {
+                return;
+            }
+
+            var missing = new List<string>();
+
+            if (string.IsNullOrWhiteSpace(Configuration.GetValue<string>("JWTSecretKey")))
+            {
+                missing.Add("JWTSecretKey");
+            }
+
+            if (string.IsNullOrWhiteSpace(Configuration.GetConnectionString("DefaultConnection")))
+            {
+                missing.Add("ConnectionStrings__DefaultConnection");
+            }
+
+            if (missing.Count > 0)
+            {
+                throw new InvalidOperationException(
+                    $"Missing required configuration for the {this.environment.EnvironmentName} environment: " +
+                    $"{string.Join(", ", missing)}. Supply these as environment variables - " +
+                    "WebChat/.env.example lists every one the app reads.");
+            }
+        }
+
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            this.ValidateRequiredConfiguration();
             this.RegisterAuthentication(services);
             this.RegisterServices(services);
 

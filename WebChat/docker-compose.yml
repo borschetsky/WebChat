@@ -28,7 +28,7 @@ services:
     environment:
       POSTGRES_DB: WebChat
       POSTGRES_USER: webchat
-      POSTGRES_PASSWORD: a80a7cac-3775-41bd-a997-16b300780655
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?copy .env.example to .env and fill it in}
     # Published on 5433 because a workstation with Postgres installed natively already
     # holds 5432, and the bind would fail. Nothing in the stack uses this mapping - the
     # API reaches the database as postgres:5432 over the compose network - it exists
@@ -54,13 +54,32 @@ services:
     ports:
       - '8080:8080'
       - '8081:8443'
+    # Values come from .env in this directory, which compose loads automatically. The `:?`
+    # forms stop the command naming the missing variable rather than substituting an empty
+    # string - an empty password would otherwise reach Postgres and the API separately and
+    # fail much further downstream.
+    #
+    # Nothing here is baked into an image: these are injected at run time, and ASP.NET Core
+    # maps them onto config keys with __ as the section separator. Deploying means setting
+    # the same names as platform environment variables, with no .env file involved.
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       # .NET 8+ containers run as non-root, so Kestrel binds unprivileged ports.
       - ASPNETCORE_URLS=https://+:8443;http://+:8080
-      - ASPNETCORE_Kestrel__Certificates__Default__Password=8175
+      - ASPNETCORE_Kestrel__Certificates__Default__Password=${CERT_PASSWORD:?password used when exporting aspnetapp.pfx}
       - ASPNETCORE_Kestrel__Certificates__Default__Path=/https/aspnetapp.pfx
       - ASPNETCORE_HTTPS_PORT=8081
+      # Built from POSTGRES_PASSWORD so the database and the client that connects to it
+      # cannot drift apart.
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=WebChat;Username=webchat;Password=${POSTGRES_PASSWORD:?copy .env.example to .env and fill it in}
+      # Quoted because the `:?` message would otherwise contain ": ", which YAML reads as a
+      # key/value separator and turns this list item into a map.
+      - "JWTSecretKey=${JWT_SECRET_KEY:?generate one with `openssl rand -base64 48`}"
+      # No `:?` - blank is a supported configuration. Startup.AddAvatarStorage falls back to
+      # local disk when a credential is missing, so a clone with no Cloudflare account runs.
+      - R2__AccountId=${R2_ACCOUNT_ID}
+      - R2__AccessKeyId=${R2_ACCESS_KEY_ID}
+      - R2__SecretAccessKey=${R2_SECRET_ACCESS_KEY}
       - SpaDevServerUrl=http://react-app:3000
       - Cors__AllowedOrigins__0=http://localhost:3000
       - Cors__AllowedOrigins__1=https://localhost:8081
