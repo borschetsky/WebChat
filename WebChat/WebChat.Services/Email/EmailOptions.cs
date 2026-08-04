@@ -20,7 +20,11 @@ namespace WebChat.Services.Email
         /// <summary>587 is STARTTLS; 465 is implicit SSL. Both work with Brevo.</summary>
         public int SmtpPort { get; set; } = 587;
 
-        /// <summary>The provider login, not the sender address - with Brevo these differ.</summary>
+        /// <summary>
+        /// The SMTP login, which is neither the account email nor the sender address. Brevo
+        /// generates a dedicated one - it looks like b46927001@smtp-brevo.com and is shown
+        /// under SMTP &amp; API -> SMTP. Authenticating with the account email fails there.
+        /// </summary>
         public string SmtpUser { get; set; } = "";
 
         /// <summary>

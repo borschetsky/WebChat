@@ -172,6 +172,40 @@ namespace WebChat
             services.AddSingleton(typeof(IConnectionMapping<string>), typeof(ConnectionMapping<string>));
             services.AddTransient<IImageHandler, ImageHandler>();
             AddAvatarStorage(services);
+            AddEmail(services);
+        }
+
+        /// <summary>
+        /// Mail goes over SMTP when credentials are present, and to the log otherwise.
+        ///
+        /// The fallback is the same bargain <see cref="AddAvatarStorage"/> makes for R2: a
+        /// developer cloning this repo has no Brevo account, and registration should still
+        /// work rather than fail on the first signup. The confirmation link is written to the
+        /// log at Warning, so the whole flow stays exercisable offline.
+        ///
+        /// SmtpUser and SmtpKey are credentials and must come from appsettings.Secrets.json,
+        /// .env, or platform environment variables - never appsettings.json.
+        /// </summary>
+        private void AddEmail(IServiceCollection services)
+        {
+            var email = new WebChat.Services.Email.EmailOptions();
+            Configuration.GetSection(WebChat.Services.Email.EmailOptions.SectionName).Bind(email);
+            services.AddSingleton(email);
+
+            services.AddSingleton<WebChat.Services.Email.IEmailConfirmationTokenService>(
+                new WebChat.Services.Email.EmailConfirmationTokenService(
+                    TimeSpan.FromHours(email.ConfirmationLifetimeHours)));
+
+            if (email.IsConfigured)
+            {
+                services.AddTransient<WebChat.Services.Email.IEmailSender,
+                                      WebChat.Services.Email.SmtpEmailSender>();
+            }
+            else
+            {
+                services.AddTransient<WebChat.Services.Email.IEmailSender,
+                                      WebChat.Services.Email.LoggingEmailSender>();
+            }
         }
 
         /// <summary>

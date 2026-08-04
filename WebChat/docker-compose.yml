@@ -80,6 +80,13 @@ services:
       - R2__AccountId=${R2_ACCOUNT_ID}
       - R2__AccessKeyId=${R2_ACCESS_KEY_ID}
       - R2__SecretAccessKey=${R2_SECRET_ACCESS_KEY}
+      # Also no `:?` - blank selects the sender that only logs, so the stack runs without a
+      # Brevo account and the confirmation link shows up in `docker compose logs webchat-api`.
+      - Email__SmtpUser=${EMAIL_SMTP_USER}
+      - Email__SmtpKey=${EMAIL_SMTP_KEY}
+      - Email__FromAddress=${EMAIL_FROM_ADDRESS}
+      # The confirmation link must point where a browser can reach, not at the container.
+      - App__PublicUrl=https://localhost:8081
       - SpaDevServerUrl=http://react-app:3000
       - Cors__AllowedOrigins__0=http://localhost:3000
       - Cors__AllowedOrigins__1=https://localhost:8081
