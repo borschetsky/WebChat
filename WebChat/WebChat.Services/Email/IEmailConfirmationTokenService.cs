@@ -1,0 +1,18 @@
+using System;
+
+namespace WebChat.Services.Email
+{
+    public interface IEmailConfirmationTokenService
+    {
+        /// <summary>Mints a token for a confirmation link, with the hash to persist.</summary>
+        IssuedToken Issue();
+
+        /// <summary>
+        /// True when <paramref name="token"/> matches <paramref name="storedHash"/> and was
+        /// issued recently enough. Returns false rather than throwing for any malformed
+        /// input - the token arrives from a public URL, so a throw here is a 500 on an
+        /// endpoint anyone can call.
+        /// </summary>
+        bool Verify(string token, string storedHash, DateTime? sentAt);
+    }
+}
