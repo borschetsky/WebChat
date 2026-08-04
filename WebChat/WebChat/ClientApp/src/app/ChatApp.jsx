@@ -107,6 +107,17 @@ export default function ChatApp({ user, onSignOut }) {
     dispatch(unreadCleared(id));
   }, [dispatch]);
 
+  // ComposeDialog runs its search from an effect that lists this among its dependencies, so
+  // an inline arrow here re-triggers that effect on every render - and because the effect
+  // sets loading state, each run causes the next. The result is an unbounded stream of
+  // /api/users/search calls whose responses are all discarded by the following run's
+  // cleanup, so the spinner never stops and no result is ever shown. The lazy-query trigger
+  // from RTK Query is itself stable, so this identity never changes.
+  const handleSearchDirectory = useCallback(
+    (term) => triggerDirectory(term).unwrap(),
+    [triggerDirectory],
+  );
+
   // Everything below is wrapped in useCallback because it is handed to memoized rows.
   // Without stable identities React.memo compares a fresh function every render, so the
   // whole message list re-renders anyway and the memo is decorative.
@@ -258,7 +269,7 @@ export default function ChatApp({ user, onSignOut }) {
         open={composeOpen}
         onClose={() => dispatch(composeClosed())}
         onStart={handleStartThread}
-        onSearch={(t) => triggerDirectory(t).unwrap()}
+        onSearch={handleSearchDirectory}
         fullScreen={isMobile}
       />
 
