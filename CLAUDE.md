@@ -8,8 +8,11 @@ built by Vite.
 **→ [`docs/ctx/README.md`](docs/ctx/README.md)** is the index of context notes for this repo.
 
 Before exploring a subsystem or starting a change, check the index for a note covering that
-area — it will usually save you the investigation. After finishing any non-trivial
-exploration or change, run the **`checkpoint`** skill
+area — it will usually save you the investigation. Fixing a reported defect has its own
+pipeline: the **`fix-flow`** skill (`.claude/skills/fix-flow/SKILL.md`), whose load-bearing
+step is proving the new test fails *before* the fix exists.
+
+After finishing any non-trivial exploration or change, run the **`checkpoint`** skill
 (`.claude/skills/checkpoint/SKILL.md`): it re-checks this file for claims the change made
 untrue, then captures the note via the **`ctx`** skill (`.claude/skills/ctx/SKILL.md`).
 

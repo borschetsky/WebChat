@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Box, Button, Dialog, DialogActions, DialogContent, DialogTitle,
   List, ListItemButton, Typography,
@@ -20,6 +20,15 @@ export default function ComposeDialog({ open, onClose, onStart, onSearch, fullSc
   const [people, setPeople] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // Held in a ref so the effect below does not depend on its identity. Listing onSearch as a
+  // dependency makes this component only as stable as its caller: an inline arrow prop
+  // re-runs the effect every render, the effect sets loading state, and that render triggers
+  // the next run - an endless stream of requests whose results are each thrown away by the
+  // following run's cleanup, so the spinner never stops and nothing is ever displayed.
+  // A ref keeps the latest callback without making a re-render mean a refetch.
+  const search = useRef(onSearch);
+  useEffect(() => { search.current = onSearch; }, [onSearch]);
+
   useEffect(() => {
     if (!open) return undefined;
     const term = q.trim();
@@ -29,7 +38,7 @@ export default function ComposeDialog({ open, onClose, onStart, onSearch, fullSc
     setLoading(true);
     const t = setTimeout(async () => {
       try {
-        const found = await onSearch(term);
+        const found = await search.current(term);
         if (!cancelled) setPeople(found);
       } catch {
         if (!cancelled) setPeople([]);
@@ -39,7 +48,7 @@ export default function ComposeDialog({ open, onClose, onStart, onSearch, fullSc
     }, 250);
 
     return () => { cancelled = true; clearTimeout(t); };
-  }, [q, open, onSearch]);
+  }, [q, open]);
 
   useEffect(() => { if (!open) { setQ(''); setPeople([]); } }, [open]);
 

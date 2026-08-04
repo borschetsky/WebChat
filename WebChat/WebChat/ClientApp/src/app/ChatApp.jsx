@@ -89,6 +89,11 @@ export default function ChatApp({ user, onSignOut }) {
   useEffect(() => { if (user) dispatch(realtimeStarted()); }, [user, dispatch]);
 
   // A failed thread load means the token is no longer good.
+  //
+  // This depends on a callback prop, which is the shape that produced the search render
+  // loop: an unstable onSignOut would re-run the effect on every render and sign out
+  // repeatedly for as long as threadsFailed held. It is safe only because App.jsx wraps
+  // signOut in useCallback - so that wrapping is load-bearing, not tidiness.
   useEffect(() => { if (threadsFailed) onSignOut(); }, [threadsFailed, onSignOut]);
 
   const messages = useMemo(() => selectAllMessages(messageCache), [messageCache]);
@@ -106,6 +111,17 @@ export default function ChatApp({ user, onSignOut }) {
     await markThreadRead(id);
     dispatch(unreadCleared(id));
   }, [dispatch]);
+
+  // ComposeDialog runs its search from an effect that lists this among its dependencies, so
+  // an inline arrow here re-triggers that effect on every render - and because the effect
+  // sets loading state, each run causes the next. The result is an unbounded stream of
+  // /api/users/search calls whose responses are all discarded by the following run's
+  // cleanup, so the spinner never stops and no result is ever shown. The lazy-query trigger
+  // from RTK Query is itself stable, so this identity never changes.
+  const handleSearchDirectory = useCallback(
+    (term) => triggerDirectory(term).unwrap(),
+    [triggerDirectory],
+  );
 
   // Everything below is wrapped in useCallback because it is handed to memoized rows.
   // Without stable identities React.memo compares a fresh function every render, so the
@@ -258,7 +274,7 @@ export default function ChatApp({ user, onSignOut }) {
         open={composeOpen}
         onClose={() => dispatch(composeClosed())}
         onStart={handleStartThread}
-        onSearch={(t) => triggerDirectory(t).unwrap()}
+        onSearch={handleSearchDirectory}
         fullScreen={isMobile}
       />
 

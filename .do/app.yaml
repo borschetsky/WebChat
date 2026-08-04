@@ -31,8 +31,9 @@ services:
     # first. The wizard defaults to 2, which is both wrong and double the price.
     instance_count: 1
 
-    # Slug names change; pick the cheapest 512 MB tier in the UI if this one is rejected.
-    instance_size_slug: apps-s-1vcpu-512mb
+    # 512 MB, $5/month, the cheapest App Platform tier. `doctl apps tier instance-size list`
+    # prints the current set if this is ever rejected as an unknown size.
+    instance_size_slug: basic-xxs
 
     # Registered ahead of UseHttpsRedirection in Startup.Configure, so it answers 200 to a
     # probe that arrives as plain HTTP with no X-Forwarded-Proto. Any other path would be
