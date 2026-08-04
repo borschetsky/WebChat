@@ -20,7 +20,7 @@ the sender's POST returns the persisted message, and the server separately pushe
 both exist, and the client de-duplicates.
 
 ```
-Browser ──POST /api/hey/send──▶ HeyController ─▶ MessageService ─▶ EF Core ─▶ SQL Server
+Browser ──POST /api/hey/send──▶ HeyController ─▶ MessageService ─▶ EF Core ─▶ PostgreSQL
    ▲                                  │
    └────── ReciveMessage ── ChatHub ◀─┘   (push to the *other* participant)
 ```
@@ -121,12 +121,14 @@ keys differently and breaks the UI. Do not migrate it casually.
 
 ### Database
 
-Code-first, and it bootstraps itself: `PrepDB.MigrateDatabaseAsync` runs in `Program.Main`
-before the host starts, creating the database if missing and applying pending migrations,
-retrying while SQL Server comes up. Disable with `Database:AutoMigrate = false`.
+PostgreSQL via Npgsql. Code-first, and it bootstraps itself: `PrepDB.MigrateDatabaseAsync`
+runs in `Program.Main` before the host starts, creating the database if missing and applying
+pending migrations, retrying while the server comes up. Disable with
+`Database:AutoMigrate = false`.
 
-Connection strings need `TrustServerCertificate=True` — `Microsoft.Data.SqlClient` defaults
-`Encrypt` to true since v4.
+Every stored `DateTime` must be UTC. Columns are `timestamp with time zone`, and Npgsql
+*throws* on a `Kind` of `Local` or `Unspecified` rather than guessing — so `DateTime.Now`
+fails at insert time instead of merely being wrong.
 
 ### Configuration precedence
 
@@ -249,11 +251,15 @@ Start the dev server **first**, or the SPA proxy floods the API with failing req
 
 ```bash
 cd WebChat/WebChat/ClientApp && npm run dev            # http://localhost:3000
-cd WebChat/WebChat && dotnet run --launch-profile "WebChat (LocalDB, no Docker)"
+cd WebChat/WebChat && dotnet run --launch-profile "WebChat (client already running on :3000)"
 ```
 
+The other profile, `WebChat (starts the client automatically)`, launches the dev server
+itself via `Microsoft.AspNetCore.SpaProxy` — so use that one and skip the first command.
+
 Browse `http://localhost:3000` (Vite proxies `/api`, `/chat`, `/images`; gives HMR) or
-`https://localhost:7199` (also serves Swagger). LocalDB migrates itself on startup.
+`https://localhost:7199` (also serves Swagger). The database migrates itself on startup;
+both profiles point at a Postgres on `localhost:5432`.
 
 ```bash
 cd WebChat/WebChat/ClientApp

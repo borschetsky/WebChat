@@ -4,12 +4,15 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
+using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using WebChat.Connection;
@@ -27,16 +30,57 @@ namespace WebChat
     {
         private const string CorsPolicyName = "WebChatCors";
 
-        public Startup(IConfiguration configuration)
+        private readonly IWebHostEnvironment environment;
+
+        public Startup(IConfiguration configuration, IWebHostEnvironment environment)
         {
             Configuration = configuration;
+            this.environment = environment;
         }
 
         public IConfiguration Configuration { get; }
 
+        /// <summary>
+        /// Stops a deployment that is missing a secret, before it can serve a single request.
+        ///
+        /// The development values live in appsettings.Development.json, which is loaded only
+        /// in that environment, so anything else inherits nothing at all. Without this check a
+        /// production instance would sign tokens with a null key - or, if a default were ever
+        /// reintroduced to appsettings.json, with one published on GitHub. Both fail silently,
+        /// which is the reason to fail here instead.
+        /// </summary>
+        private void ValidateRequiredConfiguration()
+        {
+            if (this.environment.IsDevelopment())
+            {
+                return;
+            }
+
+            var missing = new List<string>();
+
+            if (string.IsNullOrWhiteSpace(Configuration.GetValue<string>("JWTSecretKey")))
+            {
+                missing.Add("JWTSecretKey");
+            }
+
+            if (string.IsNullOrWhiteSpace(Configuration.GetConnectionString("DefaultConnection")))
+            {
+                missing.Add("ConnectionStrings__DefaultConnection");
+            }
+
+            if (missing.Count > 0)
+            {
+                throw new InvalidOperationException(
+                    $"Missing required configuration for the {this.environment.EnvironmentName} environment: " +
+                    $"{string.Join(", ", missing)}. Supply these as environment variables - " +
+                    "WebChat/.env.example lists every one the app reads.");
+            }
+        }
+
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            this.ValidateRequiredConfiguration();
             this.RegisterAuthentication(services);
             this.RegisterServices(services);
 
@@ -184,6 +228,30 @@ namespace WebChat
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            // Must run before anything that reads the scheme or the client address.
+            //
+            // A TLS-terminating platform - App Platform, a load balancer, an ingress - answers
+            // HTTPS itself and forwards plain HTTP to the container, recording the original
+            // scheme in X-Forwarded-Proto. Without this middleware UseHttpsRedirection below
+            // sees `http`, answers 307 to `https`, the proxy terminates that and forwards
+            // `http` again: an infinite redirect the app cannot escape. It is invisible until
+            // the app is actually behind a proxy, because direct HTTPS requests never hit it.
+            if (Configuration.GetValue<bool>("ForwardedHeaders:Enabled"))
+            {
+                var forwarded = new ForwardedHeadersOptions
+                {
+                    ForwardedHeaders = ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedFor,
+                };
+                // The defaults trust only loopback, and the proxy is neither loopback nor at a
+                // known address, so the headers would be dropped without a word. Clearing the
+                // lists means trusting X-Forwarded-* from any caller - which is why this whole
+                // block is opt-in, and must stay off unless something in front of the app is
+                // guaranteed to overwrite those headers.
+                forwarded.KnownIPNetworks.Clear();
+                forwarded.KnownProxies.Clear();
+                app.UseForwardedHeaders(forwarded);
+            }
+
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();

@@ -333,3 +333,7 @@ ASALocalRun/
 # real keys (currently Cloudflare R2); appsettings.Secrets.example.json is the committed
 # template. Never commit the former.
 appsettings.Secrets.json
+
+# Read automatically by docker compose from WebChat/. Holds the real database password, JWT
+# signing key and R2 credentials; WebChat/.env.example is the committed template.
+.env

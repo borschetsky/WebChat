@@ -1,7 +1,7 @@
 # WebChat
 
-Real-time chat app: ASP.NET Core (.NET 10) REST API + SignalR hub, with a Create React App
-SPA client.
+Real-time chat app: ASP.NET Core (.NET 10) REST API + SignalR hub, with a React SPA client
+built by Vite.
 
 ## Context notes — read these first
 
@@ -9,8 +9,9 @@ SPA client.
 
 Before exploring a subsystem or starting a change, check the index for a note covering that
 area — it will usually save you the investigation. After finishing any non-trivial
-exploration or change, record what you learned with the **`ctx`** skill
-(`.claude/skills/ctx/SKILL.md`), which writes a new note and updates the index.
+exploration or change, run the **`checkpoint`** skill
+(`.claude/skills/checkpoint/SKILL.md`): it re-checks this file for claims the change made
+untrue, then captures the note via the **`ctx`** skill (`.claude/skills/ctx/SKILL.md`).
 
 ## Layout
 
@@ -49,8 +50,12 @@ cd WebChat
 docker compose up --build
 ```
 
-The API is reachable on `https://localhost:8081` (this is what `ClientApp/src/config.js`
-points at); the CRA dev server is on `http://localhost:3000`.
+The API is reachable on `https://localhost:8081` and the Vite dev server on
+`http://localhost:3000`; both serve the SPA, and `ClientApp/src/config.ts` defaults the API
+base to `/` so requests stay same-origin either way.
+
+Secrets come from `WebChat/.env`, which compose loads automatically — copy `.env.example`
+and fill it in, or the command stops naming the variable it wanted.
 
 ## Things worth knowing
 
@@ -69,21 +74,40 @@ points at); the CRA dev server is on `http://localhost:3000`.
   before the host starts: it creates the database if missing and applies pending migrations,
   retrying while the server comes up. Turn it off with `Database:AutoMigrate = false` and
   use `dotnet ef database update` instead.
-- **The client is React 18 + MUI v9, built with Vite.** JSX must live in `.jsx` files — Vite
-  does not transform JSX in `.js`. Build output is `ClientApp/dist`, which `AddSpaStaticFiles`
-  points at.
-- **UI components talk to `services/chat-service.js`, never to `api-service` or `mocks`
+- **The client is React 19 + MUI v9 + Redux Toolkit, built with Vite 8.** JSX must live in
+  `.jsx` files — Vite does not transform JSX in `.js`. Build output is `ClientApp/dist`,
+  which `AddSpaStaticFiles` points at.
+- **UI components talk to `services/chat-service.ts`, never to `api-service` or `mocks`
   directly.** That seam is what keeps mocked features indistinguishable from real ones;
   seven features are mocked because the API cannot back them — the settings drawer lists
-  them, and `mocks.js` names the endpoint each would need.
-- **Design tokens come from the handoff and are final** (`src/theme.js`). Prefer an existing
-  token over a new value.
+  them, and `mocks.ts` names the endpoint each would need.
+- **Design tokens come from the handoff and are final** (`src/theme/tokens.js`). Prefer an
+  existing token over a new value.
 - **After upgrading a client dependency across a major, restart the Vite dev server with
   `--force`.** Vite pre-bundles dependencies into `node_modules/.vite/deps` and a running
   dev server keeps serving the old bundle, producing errors like *"does not provide an
   export named 'Navigate'"* even though the installed package is correct and the production
   build is fine.
-- **Vite is pinned to 6.x because the host runs Node 18.** Vite 8 needs Node ≥ 20.19; once
-  Node is upgraded it should be a straight version bump.
-- Secrets are currently committed in `appsettings.json` and `docker-compose.yml`. Do not
-  add more; prefer user secrets or environment variables.
+- **Vite 8 needs Node ≥ 20.19**, so the client Dockerfile cannot drop below `node:22`.
+- **Publishing must build the SPA, and the csproj is what does it.** The `BuildSpa` and
+  `IncludeSpaOutput` targets run `vite build` and map `dist` into the published output at
+  `ClientApp/dist`. Nothing else does — for years publishing produced an app with no client
+  at all, and Development hid it completely because `UseSpa` proxies to the dev server
+  instead of reading that directory. `IncludeSpaOutput` now fails the publish when `dist` is
+  empty. Docker passes `-p:SkipSpaBuild=true` and builds the SPA in a Node stage, because
+  the .NET SDK image has no Node.
+- **Behind a TLS-terminating proxy, set `ForwardedHeaders__Enabled=true`.** The platform
+  answers HTTPS and forwards plain HTTP, so `UseHttpsRedirection` sees `http`, redirects to
+  `https`, and the proxy forwards `http` again — an infinite loop. It is off by default
+  because enabling it clears the known-proxy lists, which means trusting `X-Forwarded-*`
+  from anyone.
+- **Secrets are supplied per runner, never committed.** Visual Studio reads
+  `appsettings.Secrets.json`; docker compose reads `WebChat/.env`; a deployment sets
+  environment variables. All three land on the same keys, because ASP.NET Core maps `__` to
+  the section separator (`R2__AccessKeyId` → `R2:AccessKeyId`) — so no templating or
+  placeholder substitution is needed anywhere, and nothing is baked in at image build time.
+  Development-only values live in `appsettings.Development.json`, which is loaded only in
+  that environment; outside it `Startup.ValidateRequiredConfiguration` fails at boot naming
+  what is missing. Do not reintroduce a default into `appsettings.json` — a shared fallback
+  is what lets a misconfigured deployment start and sign tokens with a public key.
+  The keys already in git history remain compromised until rotated.

@@ -1,5 +1,5 @@
 # Vite dev server for the WebChat SPA.
-# Vite 6 supports Node ^18 || ^20 || >=22; the old react-scripts 3.x Node 16 pin is gone.
+# Vite 8 requires Node >= 20.19, so the tag here cannot drop back to 18.
 FROM node:22-alpine
 
 WORKDIR /app
@@ -13,6 +13,6 @@ COPY WebChat/ClientApp/ ./
 
 EXPOSE 3000
 
-# vite.config.js sets host:true and strictPort:3000, so the API container can reach
-# this by service name.
+# vite.config.ts sets host:true, strictPort:3000 and allowedHosts:['react-app'], so the
+# API container can reach this by service name.
 CMD ["npm", "run", "dev"]

@@ -22,6 +22,13 @@ export default defineConfig({
     // Bind on all interfaces so the API container can reach the dev server by
     // its compose service name.
     host: true,
+    // ...and accept that service name in the Host header. Vite blocks hosts it does not
+    // recognise as DNS-rebinding protection, and UseProxyToSpaDevelopmentServer forwards
+    // the target's authority - so under docker compose every proxied request arrives as
+    // Host: react-app and is answered with a plain-text 403 from Vite, not from Kestrel.
+    // Requests that reach the dev server directly on localhost:3000 are unaffected, which
+    // is what makes this look like an API bug rather than a client one.
+    allowedHosts: ['react-app'],
     // Same-origin API access when browsing the dev server directly. secure:false
     // accepts the ASP.NET developer certificate, which is self-signed.
     proxy: {

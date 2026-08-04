@@ -18,6 +18,9 @@
 **/Dockerfile*
 **/node_modules
 **/npm-debug.log
+# A developer's local vite build. The image builds the SPA in its own Node stage, and
+# copying a stale dist in first would leave orphaned hashed assets alongside the fresh ones.
+**/dist
 **/obj
 **/secrets.dev.yaml
 **/values.dev.yaml
