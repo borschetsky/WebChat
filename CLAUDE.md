@@ -18,7 +18,7 @@ untrue, then captures the note via the **`ctx`** skill (`.claude/skills/ctx/SKIL
 
 ## Layout
 
-The solution lives one level down, at `WebChat/WebChat.sln`. Six projects:
+The solution lives one level down, at `WebChat/WebChat.sln`. Seven projects:
 
 | Project | Path | Role |
 |---|---|---|
@@ -28,6 +28,7 @@ The solution lives one level down, at `WebChat/WebChat.sln`. Six projects:
 | `WebChat.Services` | `WebChat/WebChat.Services` | Business logic, JWT issuing, mapping |
 | `WebChat.Hubs` | `WebChat/WebChat.Hub` | SignalR `ChatHub` and connection tracking |
 | `WebChat.AvatarWriter` | `WebChat/WebChat.AvatarWriter` | Avatar image validation and writing |
+| `WebChat.Tests` | `WebChat/WebChat.Tests` | xUnit. Run with `dotnet test WebChat.Tests` |
 
 The React client is at `WebChat/WebChat/ClientApp`.
 
@@ -64,6 +65,11 @@ and fill it in, or the command stops naming the variable it wanted.
 
 - **Auth is hand-rolled JWT**, not ASP.NET Identity. Controllers identify the caller via
   `User.Identity.Name`, which carries the *user id* — not the username.
+- **`register` returns no token, and sign-in requires a confirmed address.** The account is
+  created, an activation link is emailed, and `login` answers 403 `email_not_confirmed`
+  until it is opened — so any test or script that registered and used the token straight
+  away must now confirm first. Without SMTP credentials the app logs the message instead of
+  sending, so the link is in the log and the flow still works offline.
 - **Serialization is Newtonsoft.Json on purpose.** Some endpoints return
   `Dictionary<DateTime, …>` and the client parses those keys as dates; System.Text.Json
   formats non-string dictionary keys differently and would break the UI.
@@ -108,7 +114,10 @@ and fill it in, or the command stops naming the variable it wanted.
   probe from inside the platform's network carries no `X-Forwarded-Proto`, would otherwise
   get a 307, and would roll back a deployment that is in fact healthy. Keep it shallow — the
   app cannot start without a reachable database, so probing one here only adds a way for a
-  transient fault to kill a working instance.
+  transient fault to kill a working instance. **The email rate limiter partitions by remote
+  IP and so depends on this too:** with forwarded headers off, every request looks like the
+  proxy, the whole world shares one bucket, and the first five callers each window lock
+  everyone else out.
 - **Secrets are supplied per runner, never committed.** Visual Studio reads
   `appsettings.Secrets.json`; docker compose reads `WebChat/.env`; a deployment sets
   environment variables. All three land on the same keys, because ASP.NET Core maps `__` to
