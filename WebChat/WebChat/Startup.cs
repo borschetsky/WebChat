@@ -101,6 +101,7 @@ namespace WebChat
             services.AddControllers().AddNewtonsoftJson();
             services.AddSwaggerGen();
             services.AddRazorPages();
+            services.AddHealthChecks();
 
             services.AddSpaStaticFiles(configuration =>
             {
@@ -261,6 +262,20 @@ namespace WebChat
                 // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
             }
+
+            // Deliberately ahead of UseHttpsRedirection, so it answers regardless of scheme.
+            //
+            // A hosting platform probes this over plain HTTP from inside its own network,
+            // where there is no TLS to terminate and no X-Forwarded-Proto to set. Behind
+            // UseHttpsRedirection such a probe is answered with a 307, which a health check
+            // counts as a failure - so a perfectly healthy instance gets marked unhealthy and
+            // the deployment is rolled back, with the app itself giving no sign of trouble.
+            //
+            // The check is shallow on purpose: it reports that the process is up and serving,
+            // nothing more. The app already refuses to start without a reachable database -
+            // PrepDB migrates before the host runs - so probing the database here would only
+            // add a way for a transient fault to have a working instance killed.
+            app.UseHealthChecks("/health");
 
             app.UseHttpsRedirection();
             app.UseStaticFiles();

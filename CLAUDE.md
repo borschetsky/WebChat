@@ -96,11 +96,16 @@ and fill it in, or the command stops naming the variable it wanted.
   instead of reading that directory. `IncludeSpaOutput` now fails the publish when `dist` is
   empty. Docker passes `-p:SkipSpaBuild=true` and builds the SPA in a Node stage, because
   the .NET SDK image has no Node.
-- **Behind a TLS-terminating proxy, set `ForwardedHeaders__Enabled=true`.** The platform
-  answers HTTPS and forwards plain HTTP, so `UseHttpsRedirection` sees `http`, redirects to
-  `https`, and the proxy forwards `http` again — an infinite loop. It is off by default
-  because enabling it clears the known-proxy lists, which means trusting `X-Forwarded-*`
-  from anyone.
+- **Behind a TLS-terminating proxy, set `ForwardedHeaders__Enabled=true` and point the
+  platform's health check at `/health`.** The platform answers HTTPS and forwards plain
+  HTTP, so `UseHttpsRedirection` sees `http`, redirects to `https`, and the proxy forwards
+  `http` again — an infinite loop. The flag is off by default because enabling it clears the
+  known-proxy lists, which means trusting `X-Forwarded-*` from anyone. `/health` is
+  registered *ahead* of `UseHttpsRedirection` so it answers 200 regardless of scheme: a
+  probe from inside the platform's network carries no `X-Forwarded-Proto`, would otherwise
+  get a 307, and would roll back a deployment that is in fact healthy. Keep it shallow — the
+  app cannot start without a reachable database, so probing one here only adds a way for a
+  transient fault to kill a working instance.
 - **Secrets are supplied per runner, never committed.** Visual Studio reads
   `appsettings.Secrets.json`; docker compose reads `WebChat/.env`; a deployment sets
   environment variables. All three land on the same keys, because ASP.NET Core maps `__` to
