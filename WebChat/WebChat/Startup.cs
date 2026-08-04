@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -184,6 +185,30 @@ namespace WebChat
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            // Must run before anything that reads the scheme or the client address.
+            //
+            // A TLS-terminating platform - App Platform, a load balancer, an ingress - answers
+            // HTTPS itself and forwards plain HTTP to the container, recording the original
+            // scheme in X-Forwarded-Proto. Without this middleware UseHttpsRedirection below
+            // sees `http`, answers 307 to `https`, the proxy terminates that and forwards
+            // `http` again: an infinite redirect the app cannot escape. It is invisible until
+            // the app is actually behind a proxy, because direct HTTPS requests never hit it.
+            if (Configuration.GetValue<bool>("ForwardedHeaders:Enabled"))
+            {
+                var forwarded = new ForwardedHeadersOptions
+                {
+                    ForwardedHeaders = ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedFor,
+                };
+                // The defaults trust only loopback, and the proxy is neither loopback nor at a
+                // known address, so the headers would be dropped without a word. Clearing the
+                // lists means trusting X-Forwarded-* from any caller - which is why this whole
+                // block is opt-in, and must stay off unless something in front of the app is
+                // guaranteed to overwrite those headers.
+                forwarded.KnownIPNetworks.Clear();
+                forwarded.KnownProxies.Clear();
+                app.UseForwardedHeaders(forwarded);
+            }
+
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();

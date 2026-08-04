@@ -33,11 +33,56 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The Web SDK globs **/*.json into Content, which reaches into the client and
+         publishes package.json, tsconfig.json and - once the SPA has been built -
+         dist/manifest.json. That last one lands at the same relative path as the copy
+         IncludeSpaOutput adds, and the publish fails with NETSDK1152.
+         The built SPA reaches the output only through IncludeSpaOutput; nothing under
+         ClientApp is publish content in its own right. -->
+    <Content Remove="$(SpaRoot)**" />
+    <!-- Keep the client visible in Solution Explorer, without publishing any of it. -->
+    <None Include="$(SpaRoot)**"
+          Exclude="$(SpaRoot)node_modules\**;$(SpaRoot)dist\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- The Web SDK globs appsettings.*.json into Content, which would package real
          credentials on `dotnet publish`. The file is only ever meant to be read from a
          developer's working copy; deployments use R2__* environment variables. -->
     <Content Update="appsettings.Secrets.json" CopyToPublishDirectory="Never" />
   </ItemGroup>
+
+  <!-- Publishing the .NET app is only half of a deployment: without these targets nothing
+       ever runs `vite build`, so ClientApp/dist is absent from the output and
+       AddSpaStaticFiles has nothing to serve. In Development that goes unnoticed, because
+       UseSpa proxies to the Vite dev server instead of reading the directory at all - so
+       the app appears to work right up until it is deployed. -->
+  <Target Name="BuildSpa" BeforeTargets="ComputeFilesToPublish"
+          Condition="'$(SkipSpaBuild)' != 'true'">
+    <Message Importance="high" Text="Building the SPA in $(SpaRoot)" />
+    <!-- npm ci wipes and recreates node_modules, which costs ~20s even when nothing has
+         changed, so only pay for it when the directory is not there at all. -->
+    <Exec Command="npm ci --no-audit --no-fund" WorkingDirectory="$(SpaRoot)"
+          Condition="!Exists('$(SpaRoot)node_modules')" />
+    <Exec Command="npm run build" WorkingDirectory="$(SpaRoot)" />
+  </Target>
+
+  <!-- Separate from BuildSpa so the Docker build can set SkipSpaBuild=true - there the SPA
+       is built in a Node stage and copied in, since the .NET SDK image has no Node. -->
+  <Target Name="IncludeSpaOutput" BeforeTargets="ComputeFilesToPublish" DependsOnTargets="BuildSpa">
+    <ItemGroup>
+      <SpaDistFile Include="$(SpaRoot)dist\**" />
+    </ItemGroup>
+    <Error Condition="'@(SpaDistFile)' == ''"
+           Text="$(SpaRoot)dist is empty, so the published app would serve no SPA. Run 'npm run build' in $(SpaRoot), or pass -p:SkipSpaBuild=true only when the output is supplied another way." />
+    <ItemGroup>
+      <ResolvedFileToPublish Include="@(SpaDistFile)">
+        <!-- Must match AddSpaStaticFiles(RootPath = "ClientApp/dist") in Startup.cs. -->
+        <RelativePath>ClientApp\dist\%(RecursiveDir)%(Filename)%(Extension)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.10" />
