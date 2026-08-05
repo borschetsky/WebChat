@@ -6,6 +6,10 @@ built by Vite.
 ## Context notes — read these first
 
 **→ [`docs/ctx/README.md`](docs/ctx/README.md)** is the index of context notes for this repo.
+**→ [`docs/research/README.md`](docs/research/README.md)** indexes answers to questions that
+needed facts from outside it — providers, pricing, protocols, standards. Written by the
+**`researcher`** agent (`.claude/agents/researcher.md`). Unlike ctx notes, research notes
+**expire**: each carries the date it was verified, and prices and limits rot.
 
 Before exploring a subsystem or starting a change, check the index for a note covering that
 area — it will usually save you the investigation. Fixing a reported defect has its own
