@@ -156,12 +156,15 @@ namespace WebChat.Services
 
         public User GetUserByEmail(string email)
         {
-            if (string.IsNullOrEmpty(email))
-            {
-                throw new ArgumentNullException("Email can not be null or empty");
-            }
+            // No longer throws on empty input. Sign-in, resend-confirmation and password
+            // reset all pass user-supplied values straight in, and a throw on a public
+            // endpoint is a 500 where a null is a clean "no such user".
+            return UserQueries.ByEmailOrUsername(ctx.User, email);
+        }
 
-            return ctx.User.FirstOrDefault(u => u.Email == email);
+        public User FindByEmailOrUsername(string identifier)
+        {
+            return UserQueries.ByEmailOrUsername(ctx.User, identifier);
         }
 
         public string GetUserIdByName(string name)
@@ -214,36 +217,17 @@ namespace WebChat.Services
             return ctx.User.ToList();
         }
 
+        // Both are now case-insensitive. Comparing exactly let `User@x.com` and `user@x.com`
+        // register as two accounts, after which sign-in resolved to whichever the database
+        // happened to return first.
         public bool isEmailUniq(string email)
         {
-            if (string.IsNullOrEmpty(email))
-            {
-                throw new ArgumentNullException("Email can not be null or empty");
-            }
-            var user = ctx.User.FirstOrDefault(u => u.Email == email);
-
-            if (user != null)
-            {
-                return false;
-            }
-
-            return true;
+            return UserQueries.IsEmailAvailable(ctx.User, email);
         }
 
         public bool isUsernameUniq(string userName)
         {
-            if (string.IsNullOrEmpty(userName))
-            {
-                throw new ArgumentNullException("Username can not be null or empty");
-            }
-            var user = ctx.User.FirstOrDefault(u => u.Username == userName);
-
-            if (user != null)
-            {
-                return false;
-            }
-
-            return true;
+            return UserQueries.IsUsernameAvailable(ctx.User, userName);
         }
 
 

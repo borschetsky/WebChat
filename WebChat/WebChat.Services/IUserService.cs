@@ -24,6 +24,12 @@ namespace WebChat.Services
 
         User GetUserByEmail(string email);
 
+        /// <summary>
+        /// Finds a user by email address or username, case-insensitively. Returns null rather
+        /// than throwing for anything unknown or malformed.
+        /// </summary>
+        User FindByEmailOrUsername(string identifier);
+
         User CreateUser(string username, string email, string password);
 
         void AddUser(User newUser);

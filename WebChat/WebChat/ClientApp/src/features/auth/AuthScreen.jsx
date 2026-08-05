@@ -22,7 +22,9 @@ export default function AuthScreen({ mode, onSubmit, onSwitch, busy, onNeedsConf
     e.preventDefault();
     setErrors({});
     try {
-      await onSubmit(isRegister ? { username, email, password } : { email, password });
+      // Sign-in sends `identifier`, which the API resolves as either an address or a
+      // username. Register still sends `email`, because there it really must be one.
+      await onSubmit(isRegister ? { username, email, password } : { identifier: email, password });
     } catch (err) {
       // The API answers 400 with either field errors ({email: "..."}) or an ASP.NET
       // ProblemDetails validation payload ({errors: {Email: [...]}}). A network failure
@@ -34,7 +36,9 @@ export default function AuthScreen({ mode, onSubmit, onSwitch, busy, onNeedsConf
       // is nothing on this screen to correct. Hand it to the caller, which shows the
       // check-your-email screen and the resend button that actually resolves it.
       if (data.error === 'email_not_confirmed' && onNeedsConfirmation) {
-        onNeedsConfirmation(email);
+        // data.email, not the typed value: sign-in accepts a username, and the resend
+        // endpoint needs the actual address.
+        onNeedsConfirmation(data.email || email);
         return;
       }
 
@@ -74,10 +78,16 @@ export default function AuthScreen({ mode, onSubmit, onSwitch, busy, onNeedsConf
             />
           )}
 
+          {/* type="email" only on the register form. On sign-in the field also accepts a
+              username, and the browser's own validation would reject one before submit. */}
           <TextField
-            label="Email" type="email" fullWidth autoComplete="email"
+            label={isRegister ? 'Email' : 'Email or username'}
+            type={isRegister ? 'email' : 'text'}
+            fullWidth
+            autoComplete={isRegister ? 'email' : 'username'}
             value={email} onChange={(e) => setEmail(e.target.value)}
-            error={!!errors.email} helperText={errors.email}
+            error={!!(errors.email || errors.identifier)}
+            helperText={errors.email || errors.identifier}
           />
 
           <TextField

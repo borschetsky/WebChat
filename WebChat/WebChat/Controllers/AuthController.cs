@@ -42,9 +42,9 @@ namespace WebChat.Controllers
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            var user = userService.GetUserByEmail(model.Email);
+            var user = userService.FindByEmailOrUsername(model.Identifier);
 
-            if (user == null) return BadRequest(new { email = "no user with this email"});
+            if (user == null) return BadRequest(new { identifier = "no account with this email or username" });
 
             var passwordValid = authService.VerifyPassword(model.Password, user.Password);
 
@@ -59,6 +59,12 @@ namespace WebChat.Controllers
                 {
                     error = "email_not_confirmed",
                     message = "Confirm your email address to sign in. Check your inbox for the activation link.",
+
+                    // Returned so the client can show which mailbox to check, and resend to
+                    // it - the caller may have signed in with a username and not have the
+                    // address to hand. Not a leak: reaching this line required the correct
+                    // password, so they already hold the account.
+                    email = user.Email,
                 });
             }
 

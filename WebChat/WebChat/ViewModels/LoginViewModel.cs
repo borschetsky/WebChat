@@ -4,9 +4,15 @@ namespace WebChat.ViewModels
 {
     public class LoginViewModel
     {
+        /// <summary>
+        /// An email address or a username.
+        ///
+        /// Deliberately not annotated with [EmailAddress]. That attribute is what made
+        /// signing in with a username impossible: validation rejected the value before any
+        /// lookup could run.
+        /// </summary>
         [Required]
-        [EmailAddress]
-        public string Email { get; set; }
+        public string Identifier { get; set; }
 
         [Required]
         [MinLength(6)]
