@@ -59,6 +59,18 @@ namespace WebChat.Services
         /// confirmation link single-use.
         /// </summary>
         void ConfirmEmail(string userId);
+
+        /// <summary>Records a pending password reset, replacing any previous one.</summary>
+        void SetPasswordReset(string userId, string tokenHash, DateTime sentAt);
+
+        /// <summary>Finds the user holding this pending reset hash, or null.</summary>
+        User GetUserByPasswordResetHash(string tokenHash);
+
+        /// <summary>
+        /// Sets a new password hash, clears the reset token, and marks the email confirmed -
+        /// opening the link proved the mailbox.
+        /// </summary>
+        void ResetPassword(string userId, string newPasswordHash);
         
 
 

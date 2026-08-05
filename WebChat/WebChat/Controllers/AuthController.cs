@@ -18,6 +18,7 @@ namespace WebChat.Controllers
         private readonly IUserService userService;
         private readonly IEmailSender emailSender;
         private readonly IEmailConfirmationTokenService tokens;
+        private readonly IPasswordResetTokenService resetTokens;
         private readonly EmailOptions emailOptions;
         private readonly IConfiguration configuration;
 
@@ -26,6 +27,7 @@ namespace WebChat.Controllers
             IUserService userService,
             IEmailSender emailSender,
             IEmailConfirmationTokenService tokens,
+            IPasswordResetTokenService resetTokens,
             EmailOptions emailOptions,
             IConfiguration configuration)
         {
@@ -33,6 +35,7 @@ namespace WebChat.Controllers
             this.userService = userService ?? throw new ArgumentNullException("User service can not be null, check IoC container");
             this.emailSender = emailSender ?? throw new ArgumentNullException(nameof(emailSender));
             this.tokens = tokens ?? throw new ArgumentNullException(nameof(tokens));
+            this.resetTokens = resetTokens ?? throw new ArgumentNullException(nameof(resetTokens));
             this.emailOptions = emailOptions ?? throw new ArgumentNullException(nameof(emailOptions));
             this.configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         }
@@ -154,6 +157,76 @@ namespace WebChat.Controllers
             // which addresses hold accounts.
             return Ok(new { message = "If that address needs confirming, a new link is on its way." });
         }
+
+        /// <summary>
+        /// Starts a password reset.
+        ///
+        /// Answers identically whether the address exists, is unconfirmed, or was asked for a
+        /// moment ago. Unlike sign-in - where a wrong address can safely say so, because the
+        /// caller is claiming to own it - this endpoint is answerable by anyone about anyone,
+        /// so any difference in the response enumerates the user base.
+        ///
+        /// Deliberately accepts only an email address, not a username. The reset has to reach
+        /// a mailbox, and letting someone type a username here would confirm that the
+        /// username exists.
+        /// </summary>
+        [EnableRateLimiting(Startup.EmailSendPolicy)]
+        [HttpPost("forgot-password")]
+        public async Task<ActionResult> ForgotPassword([FromBody] ResendConfirmationViewModel model)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            var user = userService.GetUserByEmail(model.Email);
+
+            if (user != null && !RecentlySent(user.PasswordResetSentAt))
+            {
+                var issued = resetTokens.Issue();
+
+                // Persisted before sending, as with confirmation: a link in an inbox that the
+                // database has no record of is indistinguishable from an expired one.
+                userService.SetPasswordReset(user.Id, issued.Hash, DateTime.UtcNow);
+
+                var publicUrl = PublicUrl();
+                var resetUrl = $"{publicUrl}/reset-password?token={Uri.EscapeDataString(issued.Token)}";
+                var (html, text) = PasswordResetEmail.Render(
+                    this.emailOptions.FromName, user.Username, resetUrl, publicUrl);
+
+                await emailSender.SendAsync(
+                    user.Email, PasswordResetEmail.Subject(this.emailOptions.FromName), html, text);
+            }
+
+            return Ok(new { message = "If that address has an account, a reset link is on its way." });
+        }
+
+        /// <summary>
+        /// Completes a reset. Signs the user in afterwards, because opening the link proved
+        /// they hold the mailbox and they have just chosen the password.
+        /// </summary>
+        [HttpPost("reset-password")]
+        public ActionResult<AuthData> ResetPassword([FromBody] ResetPasswordViewModel model)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            var user = userService.GetUserByPasswordResetHash(resetTokens.HashFor(model.Token));
+
+            // Verify still runs after the lookup: it applies expiry and compares in constant
+            // time. The lookup only narrows the candidate.
+            if (user == null || !resetTokens.Verify(model.Token, user.PasswordResetTokenHash, user.PasswordResetSentAt))
+            {
+                return BadRequest(new
+                {
+                    error = "invalid_or_expired",
+                    message = "This reset link is no longer valid. Request a new one and try again.",
+                });
+            }
+
+            userService.ResetPassword(user.Id, authService.HashPassword(model.Password));
+
+            return authService.GetToken(user.Id);
+        }
+
+        private string PublicUrl() =>
+            (configuration.GetValue<string>("App:PublicUrl") ?? string.Empty).TrimEnd('/');
 
         /// <summary>
         /// True when a confirmation went out too recently to send another.

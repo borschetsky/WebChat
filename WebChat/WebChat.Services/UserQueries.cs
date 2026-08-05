@@ -40,6 +40,25 @@ namespace WebChat.Services
         }
 
         /// <summary>
+        /// Finds a user by email address only, case-insensitively.
+        ///
+        /// Kept separate from <see cref="ByEmailOrUsername"/> on purpose. Password reset and
+        /// resend-confirmation must not accept a username: both send to a mailbox, and
+        /// matching a username there would let someone discover that a username exists by
+        /// watching which requests are accepted.
+        /// </summary>
+        public static User ByEmail(IQueryable<User> users, string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                return null;
+            }
+
+            var normalised = email.Trim().ToLower();
+            return users.FirstOrDefault(u => u.Email.ToLower() == normalised);
+        }
+
+        /// <summary>
         /// True when no account already uses this email, ignoring case. Without the case fold
         /// both `User@x.com` and `user@x.com` can be registered, and sign-in then resolves to
         /// whichever the database returns first.

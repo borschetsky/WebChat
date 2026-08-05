@@ -128,6 +128,59 @@ namespace WebChat.Services
             ctx.SaveChanges();
         }
 
+        public void SetPasswordReset(string userId, string tokenHash, DateTime sentAt)
+        {
+            var user = ctx.User.FirstOrDefault(u => u.Id == userId);
+            if (user == null)
+            {
+                return;
+            }
+
+            // Overwrites any previous request, so asking again invalidates the link already
+            // sent rather than leaving several usable at once.
+            user.PasswordResetTokenHash = tokenHash;
+            user.PasswordResetSentAt = sentAt;
+            ctx.User.Update(user);
+            ctx.SaveChanges();
+        }
+
+        public User GetUserByPasswordResetHash(string tokenHash)
+        {
+            // Guarded: a null hash matches every row with no reset pending, which is nearly
+            // all of them, and would hand over an arbitrary account.
+            if (string.IsNullOrWhiteSpace(tokenHash))
+            {
+                return null;
+            }
+
+            return ctx.User.FirstOrDefault(u => u.PasswordResetTokenHash == tokenHash);
+        }
+
+        public void ResetPassword(string userId, string newPasswordHash)
+        {
+            var user = ctx.User.FirstOrDefault(u => u.Id == userId);
+            if (user == null)
+            {
+                return;
+            }
+
+            user.Password = newPasswordHash;
+
+            // Clearing these makes the link single-use.
+            user.PasswordResetTokenHash = null;
+            user.PasswordResetSentAt = null;
+
+            // Opening a link sent to that mailbox is the same proof activation asks for, so
+            // someone who resets should not then be told to go and confirm.
+            user.EmailConfirmed = true;
+            user.EmailConfirmationTokenHash = null;
+            user.EmailConfirmationSentAt = null;
+
+            user.ModifiedOn = DateTime.UtcNow;
+            ctx.User.Update(user);
+            ctx.SaveChanges();
+        }
+
         public User CreateUser(string username, string email, string password)
         {
 
@@ -156,10 +209,11 @@ namespace WebChat.Services
 
         public User GetUserByEmail(string email)
         {
-            // No longer throws on empty input. Sign-in, resend-confirmation and password
-            // reset all pass user-supplied values straight in, and a throw on a public
-            // endpoint is a 500 where a null is a clean "no such user".
-            return UserQueries.ByEmailOrUsername(ctx.User, email);
+            // Email only - see UserQueries.ByEmail for why reset and resend must not accept a
+            // username. No longer throws on empty input either: these endpoints pass
+            // user-supplied values straight in, and a throw there is a 500 where a null is a
+            // clean "no such user".
+            return UserQueries.ByEmail(ctx.User, email);
         }
 
         public User FindByEmailOrUsername(string identifier)

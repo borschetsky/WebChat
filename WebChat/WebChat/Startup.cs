@@ -249,6 +249,12 @@ namespace WebChat
                 new WebChat.Services.Email.EmailConfirmationTokenService(
                     TimeSpan.FromHours(email.ConfirmationLifetimeHours)));
 
+            // One hour, not the confirmation window: a reset link is a live credential for
+            // the account it opens, so it must not sit valid in an inbox overnight.
+            services.AddSingleton<WebChat.Services.Email.IPasswordResetTokenService>(
+                new WebChat.Services.Email.PasswordResetTokenService(
+                    TimeSpan.FromHours(email.PasswordResetLifetimeHours)));
+
             if (email.IsConfigured)
             {
                 services.AddTransient<WebChat.Services.Email.IEmailSender,
