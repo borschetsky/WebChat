@@ -54,6 +54,11 @@ export default function ComposeDialog({ open, onClose, onStart, onStartGroup, on
   useEffect(() => {
     if (!open) return undefined;
     const term = q.trim();
+    // Clearing results for an empty box should really be derived at render rather than set
+    // here. Left as-is deliberately: this effect is the one that caused the request loop in
+    // docs/ctx/2026-08-04-compose-search-render-loop.md, it is pinned by a regression test,
+    // and restructuring it does not belong in the change that introduced the linter.
+    // oxlint-disable-next-line rh/set-state-in-effect
     if (!term) { setPeople([]); return undefined; }
 
     let cancelled = false;
@@ -76,6 +81,10 @@ export default function ComposeDialog({ open, onClose, onStart, onStartGroup, on
   // people selected from last time would be a surprising place to land.
   useEffect(() => {
     if (!open) {
+      // The idiomatic replacement is remounting the dialog from a key at the call site,
+      // which is a change to ChatApp rather than to this file. Deferred; see the ctx note
+      // for this change.
+      // oxlint-disable-next-line rh/set-state-in-effect
       setQ(''); setPeople([]); setIsGroup(false); setGroupName(''); setPicked([]);
     }
   }, [open]);

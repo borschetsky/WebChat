@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Box, Button, IconButton, Skeleton, Stack, Typography } from '@mui/material';
+import { Box, Button, IconButton, Stack, Typography } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SearchIcon from '@mui/icons-material/Search';
 import InfoIcon from '@mui/icons-material/Info';

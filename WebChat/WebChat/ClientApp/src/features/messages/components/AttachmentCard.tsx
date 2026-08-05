@@ -48,6 +48,10 @@ export default function AttachmentCard({ attachment, progress }: AttachmentCardP
         minWidth: 240,
       }}
     >
+      {/* Not a component defined during render: iconForFile only looks one up from the
+          static ICONS map above, so its identity is stable per file extension and no state
+          can be reset by re-rendering it. */}
+      {/* oxlint-disable-next-line rh/static-components */}
       <Icon color="primary" />
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Typography noWrap sx={{ fontSize: 13, fontWeight: 500 }}>{attachment.name}</Typography>

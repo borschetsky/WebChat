@@ -18,7 +18,10 @@ import ErrorOutlineIcon from '@mui/icons-material/ErrorOutlineOutlined';
  * error.
  */
 export default function ConfirmEmail({ token, onConfirm, onDone, onBackToLogin }) {
-  const [state, setState] = useState('working');
+  // A link with no token at all is invalid from the first render. Deriving that here rather
+  // than setting it from the effect avoids showing "Activating your account…" for one frame
+  // before replacing it, and keeps the effect free of synchronous setState.
+  const [state, setState] = useState(() => (token ? 'working' : 'invalid'));
 
   const confirm = useRef(onConfirm);
   useEffect(() => { confirm.current = onConfirm; }, [onConfirm]);
@@ -27,7 +30,7 @@ export default function ConfirmEmail({ token, onConfirm, onDone, onBackToLogin }
   useEffect(() => { done.current = onDone; }, [onDone]);
 
   useEffect(() => {
-    if (!token) { setState('invalid'); return undefined; }
+    if (!token) return undefined;
 
     let cancelled = false;
     (async () => {

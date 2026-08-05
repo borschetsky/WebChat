@@ -100,7 +100,7 @@ export default function ChatApp({ user, onSignOut }) {
   const messages = useMemo(() => selectAllMessages(messageCache), [messageCache]);
 
   const decorated = useMemo(
-    () => threads.map((t) => ({ ...t, ...(live[t.id] ?? {}), unread: unread[t.id] ?? 0 })),
+    () => threads.map((t) => ({ ...t, ...live[t.id], unread: unread[t.id] ?? 0 })),
     [threads, live, unread],
   );
   const active = decorated.find((t) => t.id === activeId) ?? null;

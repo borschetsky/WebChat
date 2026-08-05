@@ -35,12 +35,12 @@ const realtimeSlice = createSlice({
 
     threadPatched(state, action: PayloadAction<{ threadId: string; patch: Partial<Thread> }>) {
       const { threadId, patch } = action.payload;
-      state.live[threadId] = { ...(state.live[threadId] ?? {}), ...patch };
+      state.live[threadId] = { ...state.live[threadId], ...patch };
     },
 
     opponentTyping(state, action: PayloadAction<{ threadId: string; typing: boolean }>) {
       const { threadId, typing } = action.payload;
-      state.live[threadId] = { ...(state.live[threadId] ?? {}), isTyping: typing };
+      state.live[threadId] = { ...state.live[threadId], isTyping: typing };
       if (typing) state.typingIn = threadId;
       else if (state.typingIn === threadId) state.typingIn = null;
     },

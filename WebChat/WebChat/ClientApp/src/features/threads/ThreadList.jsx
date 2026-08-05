@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Badge, Box, Button, Chip, Divider, IconButton,
-  List, ListItemButton, Skeleton, Stack, Typography,
+  List, Skeleton, Stack, Typography,
 } from '@mui/material';
 import EditSquareIcon from '@mui/icons-material/EditSquare';
 import NotificationsIcon from '@mui/icons-material/Notifications';
@@ -15,7 +15,6 @@ import ThreadListItem from './ThreadListItem';
 import EmptyState from '@/components/EmptyState';
 import SearchField from '@/components/SearchField';
 import NotificationsMenu from '@/features/notifications/NotificationsMenu';
-import { densityTokens } from '@/theme/tokens';
 
 const TABS = [['all', 'All'], ['unread', 'Unread'], ['groups', 'Groups']];
 
@@ -38,7 +37,6 @@ export default function ThreadList({
   threads, allThreads, activeId, query, tab, density, loading, unreadTotal, profile,
   onQuery, onTab, onSelect, onCompose, onSettings, onMarkAllRead,
 }) {
-  const d = densityTokens(density);
   const [bell, setBell] = React.useState(null);
 
   return (
@@ -91,6 +89,9 @@ export default function ThreadList({
             label={label}
             size="small"
             onClick={() => onTab(k)}
+            // A native radio input cannot carry the Chip's styling, and the role is
+            // already correct inside the radiogroup declared above.
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
             role="radio"
             aria-checked={tab === k}
             variant={tab === k ? 'filled' : 'outlined'}

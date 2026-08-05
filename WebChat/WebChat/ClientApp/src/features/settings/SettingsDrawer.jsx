@@ -29,6 +29,9 @@ export default function SettingsDrawer({
   const [error, setError] = useState('');
 
   useEffect(() => {
+    // Same "reset the form when the prop changes" shape as ComposeDialog: the idiomatic fix
+    // is a key at the call site, deferred for the same reason.
+    // oxlint-disable-next-line rh/set-state-in-effect
     setName(profile?.name ?? '');
     setEmail(profile?.email ?? '');
     setError('');

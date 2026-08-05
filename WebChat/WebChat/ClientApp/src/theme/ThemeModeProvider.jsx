@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { ThemeProvider } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { buildTheme } from '@/theme/tokens';
@@ -46,9 +46,17 @@ export function ThemeModeProvider({ children }) {
 
   const mode = storedMode ?? (prefersDark ? 'dark' : 'light');
 
-  const setMode = (next) => { setStoredMode(next); write(STORAGE.mode, next); };
-  const setDensity = (next) => { setDensityState(next); write(STORAGE.density, next); };
-  const toggleMode = () => setMode(mode === 'dark' ? 'light' : 'dark');
+  // Memoized so the context value below can depend on them honestly. Without this they are
+  // new functions every render, and listing them in the useMemo deps would defeat it.
+  const setMode = useCallback((next) => { setStoredMode(next); write(STORAGE.mode, next); }, []);
+  const setDensity = useCallback((next) => {
+    setDensityState(next);
+    write(STORAGE.density, next);
+  }, []);
+  const toggleMode = useCallback(
+    () => setMode(mode === 'dark' ? 'light' : 'dark'),
+    [mode, setMode],
+  );
 
   const theme = useMemo(() => buildTheme(mode), [mode]);
 
@@ -59,7 +67,7 @@ export function ThemeModeProvider({ children }) {
 
   const value = useMemo(
     () => ({ mode, density, setMode, setDensity, toggleMode, followsSystem: storedMode === null }),
-    [mode, density, storedMode]
+    [mode, density, storedMode, setMode, setDensity, toggleMode],
   );
 
   return (
