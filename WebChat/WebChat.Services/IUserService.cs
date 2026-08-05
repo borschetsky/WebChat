@@ -70,7 +70,12 @@ namespace WebChat.Services
         /// Sets a new password hash, clears the reset token, and marks the email confirmed -
         /// opening the link proved the mailbox.
         /// </summary>
-        void ResetPassword(string userId, string newPasswordHash);
+        /// <summary>
+        /// Sets a new password hash, clears the reset token, marks the email confirmed, and
+        /// rotates the security stamp so existing sessions stop working. Returns the new
+        /// stamp, so the caller can issue a token that will actually authenticate.
+        /// </summary>
+        string ResetPassword(string userId, string newPasswordHash);
         
 
 

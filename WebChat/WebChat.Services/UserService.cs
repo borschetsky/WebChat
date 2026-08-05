@@ -156,15 +156,20 @@ namespace WebChat.Services
             return ctx.User.FirstOrDefault(u => u.PasswordResetTokenHash == tokenHash);
         }
 
-        public void ResetPassword(string userId, string newPasswordHash)
+        public string ResetPassword(string userId, string newPasswordHash)
         {
             var user = ctx.User.FirstOrDefault(u => u.Id == userId);
             if (user == null)
             {
-                return;
+                return null;
             }
 
             user.Password = newPasswordHash;
+
+            // Rotating this is what actually ends the compromise: every token signed with the
+            // previous stamp stops authenticating on its next request. Without it a reset
+            // changes the password while an attacker keeps their session for up to a week.
+            user.SecurityStamp = Guid.NewGuid().ToString();
 
             // Clearing these makes the link single-use.
             user.PasswordResetTokenHash = null;
@@ -179,6 +184,8 @@ namespace WebChat.Services
             user.ModifiedOn = DateTime.UtcNow;
             ctx.User.Update(user);
             ctx.SaveChanges();
+
+            return user.SecurityStamp;
         }
 
         public User CreateUser(string username, string email, string password)
@@ -189,7 +196,11 @@ namespace WebChat.Services
                 Id = Guid.NewGuid().ToString(),
                 Username = username,
                 Email = email,
-                Password = authService.HashPassword(password)
+                Password = authService.HashPassword(password),
+
+                // Present from creation: a null stamp would make the very first token
+                // unverifiable against the user it was issued for.
+                SecurityStamp = Guid.NewGuid().ToString()
             };
 
             return newUser;

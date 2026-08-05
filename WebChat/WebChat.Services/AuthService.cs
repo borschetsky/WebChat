@@ -22,7 +22,10 @@ namespace WebChat.Services
             this.jwtSecret = jwtSecret;
         }
 
-        public AuthData GetToken(string id)
+        /// <summary>Name of the claim carrying the user's security stamp.</summary>
+        public const string SecurityStampClaim = "sstamp";
+
+        public AuthData GetToken(string id, string securityStamp)
         {
             var expirationTime = DateTime.UtcNow.AddSeconds(jwtLifeSpan);
 
@@ -30,7 +33,12 @@ namespace WebChat.Services
             {
                 Subject = new ClaimsIdentity(new[]
                 {
-                    new Claim(ClaimTypes.Name, id)
+                    new Claim(ClaimTypes.Name, id),
+
+                    // Carried so authentication can reject this token once the stamp is
+                    // rotated. Without it the JWT is unrevokable: nothing else in the request
+                    // pipeline consults the database.
+                    new Claim(SecurityStampClaim, securityStamp ?? string.Empty),
                 }),
 
                 Expires = expirationTime,

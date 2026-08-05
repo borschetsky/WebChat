@@ -71,7 +71,7 @@ namespace WebChat.Controllers
                 });
             }
 
-            return authService.GetToken(user.Id);
+            return authService.GetToken(user.Id, user.SecurityStamp);
         }
 
         /// <summary>
@@ -128,7 +128,7 @@ namespace WebChat.Controllers
 
             userService.ConfirmEmail(user.Id);
 
-            return authService.GetToken(user.Id);
+            return authService.GetToken(user.Id, user.SecurityStamp);
         }
 
         /// <summary>
@@ -220,9 +220,11 @@ namespace WebChat.Controllers
                 });
             }
 
-            userService.ResetPassword(user.Id, authService.HashPassword(model.Password));
+            // The rotated stamp, not the one loaded a moment ago: signing with the previous
+            // value would produce a token that authentication immediately rejects.
+            var newStamp = userService.ResetPassword(user.Id, authService.HashPassword(model.Password));
 
-            return authService.GetToken(user.Id);
+            return authService.GetToken(user.Id, newStamp);
         }
 
         private string PublicUrl() =>
