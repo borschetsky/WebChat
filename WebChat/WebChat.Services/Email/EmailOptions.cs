@@ -46,6 +46,13 @@ namespace WebChat.Services.Email
         public int ConfirmationLifetimeHours { get; set; } = 24;
 
         /// <summary>
+        /// How long a password-reset link stays valid. One hour, not twenty-four: a reset
+        /// link is a live credential for the account it opens, whereas a confirmation link
+        /// can only confirm an address its holder already controls.
+        /// </summary>
+        public int PasswordResetLifetimeHours { get; set; } = 1;
+
+        /// <summary>
         /// Shortest gap between two confirmation emails to the same address. Stops
         /// resend-confirmation being used to mail-bomb someone, which the per-IP limiter
         /// alone would not: an attacker with many addresses to send *from* is rate-limited,

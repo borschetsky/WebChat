@@ -27,6 +27,16 @@ const confirmEmail = async (token) => {
 
 // Always resolves with the same 200 whatever the address is - the endpoint deliberately
 // gives nothing away about which addresses hold accounts.
+const forgotPassword = async (email) => {
+    const result = await Axios.post(`${_baseUrl}auth/forgot-password`, { email });
+    return await result;
+};
+
+const resetPassword = async (token, password) => {
+    const result = await Axios.post(`${_baseUrl}auth/reset-password`, { token, password });
+    return await result;
+};
+
 const resendConfirmation = async (email) => {
     const result = await Axios.post(`${_baseUrl}auth/resend-confirmation`, { email });
     return await result;
@@ -97,4 +107,4 @@ const updateUsersProfile = async (token, user) => {
     return await result;
 };
 
-export { getProfile, getMessages, getThreads, createThread, sendMessageToApi, uploadAvatar, searchForUsers, login, register, confirmEmail, resendConfirmation, searchForMessageInThread, updateUsersProfile } ;
+export { getProfile, getMessages, getThreads, createThread, sendMessageToApi, uploadAvatar, searchForUsers, login, register, confirmEmail, resendConfirmation, forgotPassword, resetPassword, searchForMessageInThread, updateUsersProfile } ;

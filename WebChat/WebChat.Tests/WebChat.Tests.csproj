@@ -9,7 +9,9 @@
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.10" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
     <PackageReference Include="Xunit.SkippableFact" Version="1.5.61" />
@@ -22,6 +24,7 @@
   <ItemGroup>
     <ProjectReference Include="..\WebChat.Services\WebChat.Services.csproj" />
     <ProjectReference Include="..\WebChat.Data\WebChat.Models.csproj" />
+    <ProjectReference Include="..\WebChat.Connection\WebChat.Connection.csproj" />
   </ItemGroup>
 
 </Project>

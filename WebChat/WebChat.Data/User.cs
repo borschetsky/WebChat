@@ -48,6 +48,35 @@ namespace WebChat.Models
         [DataType(DataType.DateTime)]
         public DateTime? EmailConfirmationSentAt { get; set; }
 
+        /// <summary>
+        /// Changes whenever every existing session must stop working - currently on password
+        /// reset. Issued tokens carry the value they were signed with, and authentication
+        /// rejects any token whose stamp no longer matches.
+        ///
+        /// This exists because the JWT is otherwise unrevokable: it carries a user id and an
+        /// expiry and nothing consults the database, so a stolen token stayed valid for the
+        /// full seven-day lifespan no matter what the owner did about it. Resetting a password
+        /// without this ends nothing.
+        /// </summary>
+        public string SecurityStamp { get; set; }
+
+        /// <summary>
+        /// SHA-256 of the outstanding password-reset token, or null when none is pending.
+        /// Stored as a hash for the same reason as the confirmation token: a leaked database
+        /// must not hand over the ability to take over every account with a reset in flight.
+        /// Cleared on use, which is what makes a reset link single-use.
+        /// </summary>
+        public string PasswordResetTokenHash { get; set; }
+
+        /// <summary>
+        /// When the outstanding reset token was issued, in UTC. Expiry is measured from here,
+        /// and is deliberately much shorter than the confirmation window - a reset link is a
+        /// live credential for whatever it opens, so it should not sit valid in an inbox
+        /// overnight.
+        /// </summary>
+        [DataType(DataType.DateTime)]
+        public DateTime? PasswordResetSentAt { get; set; }
+
         public ICollection<Message> Messages { get; set; }
 
         public ICollection<Thread> Threads { get; set; }

@@ -15,6 +15,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading.RateLimiting;
 using System.Threading.Tasks;
@@ -189,6 +190,42 @@ namespace WebChat
                     };
                     options.Events = new JwtBearerEvents
                     {
+                        // Signature and expiry are not enough on their own: a JWT stays valid
+                        // for its whole lifespan no matter what happens to the account. This
+                        // is what makes a password reset end existing sessions - the stamp in
+                        // the token must still match the one on the user.
+                        //
+                        // It costs one database read per authenticated request, which is the
+                        // honest price of revocation without a session store. Worth measuring
+                        // before assuming it is free.
+                        OnTokenValidated = async context =>
+                        {
+                            var userId = context.Principal?.Identity?.Name;
+                            var presented = context.Principal?.FindFirst(AuthService.SecurityStampClaim)?.Value;
+
+                            // Tokens issued before this feature carry no stamp. They are
+                            // refused rather than trusted: accepting a missing claim would
+                            // leave a permanent way to bypass the check.
+                            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(presented))
+                            {
+                                context.Fail("Missing security stamp.");
+                                return;
+                            }
+
+                            var db = context.HttpContext.RequestServices.GetRequiredService<WebChatContext>();
+                            var current = await db.User
+                                .Where(u => u.Id == userId)
+                                .Select(u => u.SecurityStamp)
+                                .FirstOrDefaultAsync();
+
+                            // A deleted user has no stamp, which fails here too - previously a
+                            // token for a deleted account kept working until it expired.
+                            if (current == null || current != presented)
+                            {
+                                context.Fail("Security stamp no longer valid.");
+                            }
+                        },
+
                         OnMessageReceived = context =>
                         {
                             var accessToken = context.Request.Query["access_token"];
@@ -248,6 +285,12 @@ namespace WebChat
             services.AddSingleton<WebChat.Services.Email.IEmailConfirmationTokenService>(
                 new WebChat.Services.Email.EmailConfirmationTokenService(
                     TimeSpan.FromHours(email.ConfirmationLifetimeHours)));
+
+            // One hour, not the confirmation window: a reset link is a live credential for
+            // the account it opens, so it must not sit valid in an inbox overnight.
+            services.AddSingleton<WebChat.Services.Email.IPasswordResetTokenService>(
+                new WebChat.Services.Email.PasswordResetTokenService(
+                    TimeSpan.FromHours(email.PasswordResetLifetimeHours)));
 
             if (email.IsConfigured)
             {

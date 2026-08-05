@@ -9,6 +9,7 @@
          output so it cannot go missing from a published app - ActivationEmail resolves it by
          resource name and throws at send time, not at startup, if it does. -->
     <EmbeddedResource Include="Email\Templates\ActivateAccount.html" />
+    <EmbeddedResource Include="Email\Templates\ResetPassword.html" />
   </ItemGroup>
 
   <ItemGroup>

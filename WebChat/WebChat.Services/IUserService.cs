@@ -24,6 +24,12 @@ namespace WebChat.Services
 
         User GetUserByEmail(string email);
 
+        /// <summary>
+        /// Finds a user by email address or username, case-insensitively. Returns null rather
+        /// than throwing for anything unknown or malformed.
+        /// </summary>
+        User FindByEmailOrUsername(string identifier);
+
         User CreateUser(string username, string email, string password);
 
         void AddUser(User newUser);
@@ -53,6 +59,23 @@ namespace WebChat.Services
         /// confirmation link single-use.
         /// </summary>
         void ConfirmEmail(string userId);
+
+        /// <summary>Records a pending password reset, replacing any previous one.</summary>
+        void SetPasswordReset(string userId, string tokenHash, DateTime sentAt);
+
+        /// <summary>Finds the user holding this pending reset hash, or null.</summary>
+        User GetUserByPasswordResetHash(string tokenHash);
+
+        /// <summary>
+        /// Sets a new password hash, clears the reset token, and marks the email confirmed -
+        /// opening the link proved the mailbox.
+        /// </summary>
+        /// <summary>
+        /// Sets a new password hash, clears the reset token, marks the email confirmed, and
+        /// rotates the security stamp so existing sessions stop working. Returns the new
+        /// stamp, so the caller can issue a token that will actually authenticate.
+        /// </summary>
+        string ResetPassword(string userId, string newPasswordHash);
         
 
 

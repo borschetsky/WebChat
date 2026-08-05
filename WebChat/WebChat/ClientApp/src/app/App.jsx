@@ -5,9 +5,11 @@ import {
 import AuthScreen from '@/features/auth/AuthScreen';
 import CheckYourEmail from '@/features/auth/CheckYourEmail';
 import ConfirmEmail from '@/features/auth/ConfirmEmail';
+import ForgotPassword from '@/features/auth/ForgotPassword';
+import ResetPassword from '@/features/auth/ResetPassword';
 import ChatApp from '@/app/ChatApp';
 import {
-  login, register, confirmEmail, resendConfirmation,
+  login, register, confirmEmail, resendConfirmation, forgotPassword, resetPassword,
 } from '@/services';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import {
@@ -67,6 +69,15 @@ function AppRoutes() {
     await resendConfirmation(email);
   }, []);
 
+  const requestReset = useCallback(async (email) => {
+    await forgotPassword(email);
+  }, []);
+
+  const applyReset = useCallback(async (token, password) => {
+    const res = await resetPassword(token, password);
+    return res.data;
+  }, []);
+
   const signOut = useCallback(() => {
     dispatch(signedOut());
     navigate('/login', { replace: true });
@@ -119,6 +130,15 @@ function AppRoutes() {
       <Route path="/confirm" element={<ConfirmRoute onConfirm={activate} onDone={activated} />} />
 
       <Route
+        path="/forgot-password"
+        element={user ? <Navigate to="/dashboard" replace /> : (
+          <ForgotPassword onRequest={requestReset} onBackToLogin={() => navigate('/login')} />
+        )}
+      />
+
+      <Route path="/reset-password" element={<ResetRoute onReset={applyReset} onDone={activated} />} />
+
+      <Route
         path="/dashboard"
         element={user ? <ChatApp user={user} onSignOut={signOut} /> : <Navigate to="/login" replace />}
       />
@@ -141,6 +161,24 @@ function ConfirmRoute({ onConfirm, onDone }) {
     <ConfirmEmail
       token={params.get('token')}
       onConfirm={onConfirm}
+      onDone={onDone}
+      onBackToLogin={() => navigate('/login', { replace: true })}
+    />
+  );
+}
+
+/**
+ * Reads the token from the query string, for the same reason ConfirmRoute does: useSearchParams
+ * is a hook and cannot be called inside a Route element expression.
+ */
+function ResetRoute({ onReset, onDone }) {
+  const [params] = useSearchParams();
+  const navigate = useNavigate();
+
+  return (
+    <ResetPassword
+      token={params.get('token')}
+      onReset={onReset}
       onDone={onDone}
       onBackToLogin={() => navigate('/login', { replace: true })}
     />
