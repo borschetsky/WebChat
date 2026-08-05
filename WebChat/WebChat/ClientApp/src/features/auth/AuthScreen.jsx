@@ -5,6 +5,27 @@ import {
 import ForumIcon from '@mui/icons-material/Forum';
 
 /**
+ * Server validation messages, rewritten for the person reading them.
+ *
+ * ASP.NET phrases its messages after the C# property, so a missing sign-in field reads
+ * "The Identifier field is required." - which names an internal detail at someone who is
+ * only trying to sign in. `default` covers every message for that field; a specific key
+ * overrides it. Unrecognised messages pass through unchanged rather than being swallowed.
+ */
+const FRIENDLY = [
+  { field: 'identifier', match: /required/i, text: 'Enter your email address or username.' },
+  { field: 'email', match: /required/i, text: 'Enter your email address.' },
+  { field: 'email', match: /valid e-?mail/i, text: 'That does not look like an email address.' },
+  { field: 'username', match: /required/i, text: 'Choose a username.' },
+  { field: 'username', match: /minimum length|string or array/i, text: 'Usernames are 3 to 60 characters.' },
+  { field: 'password', match: /required/i, text: 'Enter your password.' },
+  { field: 'password', match: /minimum length|string or array/i, text: 'Passwords are at least 6 characters.' },
+];
+
+const friendly = (field, raw) =>
+  FRIENDLY.find((rule) => rule.field === field && rule.match.test(raw))?.text ?? raw;
+
+/**
  * Shared sign-in / sign-up card, matching the handoff's login screen: centred 420px Paper,
  * radius 16, outlined fields, contained submit.
  *
@@ -44,7 +65,15 @@ export default function AuthScreen({ mode, onSubmit, onSwitch, busy, onNeedsConf
 
       if (data.errors) {
         const flat = {};
-        Object.entries(data.errors).forEach(([k, v]) => { flat[k.toLowerCase()] = Array.isArray(v) ? v[0] : v; });
+        Object.entries(data.errors).forEach(([k, v]) => {
+          const field = k.toLowerCase();
+          const raw = Array.isArray(v) ? v[0] : v;
+          // ASP.NET phrases these after the C# property - "The Identifier field is
+          // required." - which names an internal detail at someone who is just trying to
+          // sign in. Replace the ones we know; pass anything else through rather than
+          // swallowing a message we have not seen.
+          flat[field] = friendly(field, raw);
+        });
         setErrors(flat);
         return;
       }
@@ -72,7 +101,7 @@ export default function AuthScreen({ mode, onSubmit, onSwitch, busy, onNeedsConf
 
           {isRegister && (
             <TextField
-              label="Username" fullWidth autoComplete="username"
+              label="Username" fullWidth required autoComplete="username"
               value={username} onChange={(e) => setUsername(e.target.value)}
               error={!!errors.username} helperText={errors.username}
             />
@@ -84,6 +113,7 @@ export default function AuthScreen({ mode, onSubmit, onSwitch, busy, onNeedsConf
             label={isRegister ? 'Email' : 'Email or username'}
             type={isRegister ? 'email' : 'text'}
             fullWidth
+            required
             autoComplete={isRegister ? 'email' : 'username'}
             value={email} onChange={(e) => setEmail(e.target.value)}
             error={!!(errors.email || errors.identifier)}
@@ -91,7 +121,7 @@ export default function AuthScreen({ mode, onSubmit, onSwitch, busy, onNeedsConf
           />
 
           <TextField
-            label="Password" type="password" fullWidth
+            label="Password" type="password" fullWidth required
             autoComplete={isRegister ? 'new-password' : 'current-password'}
             value={password} onChange={(e) => setPassword(e.target.value)}
             error={!!errors.password} helperText={errors.password}
