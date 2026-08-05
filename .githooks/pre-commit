@@ -1,0 +1,64 @@
+#!/bin/sh
+#
+# Reminds you to record what a change means before it becomes history.
+#
+# WHY THIS EXISTS AS A HOOK RATHER THAN A RULE
+#
+# The `checkpoint` skill already says to update CLAUDE.md and write a ctx note. That rule
+# was followed for some changes and silently skipped for four merged pull requests in a
+# single day. A convention nobody is reminded of is a convention that holds only while
+# someone happens to remember it.
+#
+# It WARNS and does not block. A hook that refuses the commit gets bypassed with --no-verify
+# within a week and then teaches nothing; one that says a useful thing at the right moment
+# keeps working. The judgement about whether a note is needed stays with the author, because
+# no script can make it.
+#
+# Install (once per clone - hooks are not cloned):
+#     git config core.hooksPath .githooks
+#
+# See .claude/skills/checkpoint/SKILL.md for what to actually do.
+
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+[ -z "$staged" ] && exit 0
+
+# Source changes, ignoring generated migrations and lockfiles - a scaffolded migration is
+# not a decision anyone needs the reasoning for.
+code=$(printf '%s\n' "$staged" \
+  | grep -E '\.(cs|ts|tsx|js|jsx)$' \
+  | grep -v -E '(Migrations/.*Designer\.cs|ModelSnapshot\.cs|package-lock\.json)$' \
+  || true)
+
+ctx=$(printf '%s\n' "$staged" | grep -E '^docs/ctx/.*\.md$' || true)
+index=$(printf '%s\n' "$staged" | grep -E '^docs/ctx/README\.md$' || true)
+claude=$(printf '%s\n' "$staged" | grep -E '^CLAUDE\.md$' || true)
+
+warn() { printf '\n\033[33m%s\033[0m\n' "$1"; }
+
+# A note nothing links to is a note nobody will find. The index row is the reference.
+note_added=$(printf '%s\n' "$ctx" | grep -v 'README\.md$' || true)
+if [ -n "$note_added" ] && [ -z "$index" ]; then
+  warn "checkpoint: a ctx note is staged but docs/ctx/README.md is not."
+  echo "  A note with no index row is unreachable - add the row so it can be found."
+  echo "    $note_added"
+fi
+
+if [ -n "$code" ] && [ -z "$ctx" ] && [ -z "$claude" ]; then
+  lines=$(git diff --cached --numstat -- $code 2>/dev/null | awk '{a+=$1; d+=$2} END {print a+d+0}')
+
+  # Small diffs are usually typos, renames and formatting - the cases the skill explicitly
+  # says to skip. Nagging about those is how a hook trains people to ignore it.
+  if [ "${lines:-0}" -gt 40 ]; then
+    warn "checkpoint: ${lines} changed lines of source, and no ctx note or CLAUDE.md update."
+    echo "  Ask the two questions in .claude/skills/checkpoint/SKILL.md:"
+    echo "    1. Did this make anything in CLAUDE.md or ORIENTATION.md untrue?"
+    echo "       Versions, paths, commands, invariants - a stale line there misleads,"
+    echo "       where a missing one only costs a lookup."
+    echo "    2. Would the next person need the reasoning, not just the diff?"
+    echo "       If so: docs/ctx/, and add the index row."
+    echo
+    echo "  Nothing to record? Commit as you are - this is a reminder, not a gate."
+  fi
+fi
+
+exit 0

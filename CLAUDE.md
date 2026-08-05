@@ -12,7 +12,15 @@ needed facts from outside it — providers, pricing, protocols, standards. Writt
 **expire**: each carries the date it was verified, and prices and limits rot.
 
 Before exploring a subsystem or starting a change, check the index for a note covering that
-area — it will usually save you the investigation. Fixing a reported defect has its own
+area — it will usually save you the investigation. **Before committing** any non-trivial
+change, run the **`checkpoint`** skill — and enable the reminder that catches it when you
+forget, which is once per clone because hooks are not cloned:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Fixing a reported defect has its own
 pipeline: the **`fix-flow`** skill (`.claude/skills/fix-flow/SKILL.md`), whose load-bearing
 step is proving the new test fails *before* the fix exists.
 
