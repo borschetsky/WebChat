@@ -59,11 +59,34 @@ describe('toThread', () => {
     expect(toThread(threadDto()).color).toMatch(/^#[0-9a-f]{6}$/i);
   });
 
-  it('defaults the mocked fields', () => {
+  it('treats a thread with no isGroup as direct, and takes members from the payload', () => {
+    // group and members used to come from the mock layer, which always answered false and
+    // a fabricated pair. They are real now: absent isGroup means direct, and members is
+    // whatever the server sent - an older payload with neither yields an empty list rather
+    // than invented people.
     const t = toThread(threadDto());
     expect(t.group).toBe(false);
     expect(t.unread).toBe(0);
-    expect(t.members).toHaveLength(2);
+    expect(t.members).toEqual([]);
+  });
+
+  it('names a group after the thread, not after a person', () => {
+    const t = toThread({
+      ...threadDto(),
+      isGroup: true,
+      name: 'Team standup',
+      members: [
+        { id: 'u1', username: 'sam', email: null, isOnline: true, isTyping: false, avatarFileName: null },
+        { id: 'u2', username: 'jo', email: null, isOnline: false, isTyping: false, avatarFileName: null },
+      ],
+    });
+
+    expect(t.group).toBe(true);
+    expect(t.name).toBe('Team standup');
+    expect(t.members.map((m) => m.name)).toEqual(['sam', 'jo']);
+    expect(t.members[0].presence).toBe('online');
+    // A group has no single avatar to show - one member's picture would misrepresent it.
+    expect(t.avatarFileName).toBeNull();
   });
 
   it('returns an empty array for a 204 or a non-array', () => {

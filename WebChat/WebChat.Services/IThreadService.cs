@@ -12,6 +12,15 @@ namespace WebChat.Services
 
         ICollection<Thread> GetUserThreads(string userId);
 
+        /// <summary>Records thread membership. Call after the thread row exists.</summary>
+        /// <summary>Persists an already-built group thread.</summary>
+        void AddGroupThread(Thread thread);
+
+        void AddParticipants(string threadId, IEnumerable<string> userIds);
+
+        /// <summary>Everyone in the thread, for delivering a message to all of them.</summary>
+        List<string> GetParticipantIds(string threadId);
+
         void AddThread(ThreadViewModel thread);
 
         Thread GetThreadById(string threadId);

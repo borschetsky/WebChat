@@ -94,9 +94,57 @@ namespace WebChat.Services
 
         public ICollection<Thread> GetUserThreads(string userId)
         {
-            var userThreads = ctx.Thread.Where(t => t.OwnerId == userId || t.OponentId == userId).ToList();
+            // Membership rather than the owner/opponent pair, so a group returns for every
+            // member instead of only the two people those columns could name.
+            return ctx.Thread
+                .Where(t => ctx.ThreadParticipant.Any(p => p.ThreadId == t.Id && p.UserId == userId && !p.isDeleted))
+                .ToList();
+        }
 
-            return userThreads;
+        /// <summary>
+        /// Persists an already-built group thread.
+        ///
+        /// Separate from AddThread, which maps from a ThreadViewModel and exists to serve the
+        /// direct-thread path. A group is constructed by the caller because it carries a name
+        /// and no opponent, and routing it through the view-model mapper would mean teaching
+        /// that mapper about a shape it otherwise never sees.
+        /// </summary>
+        public void AddGroupThread(Thread thread)
+        {
+            ctx.Thread.Add(thread);
+            ctx.SaveChanges();
+        }
+
+        /// <summary>
+        /// Records who is in a thread. Call after the thread row exists - these rows carry a
+        /// foreign key to it.
+        /// </summary>
+        public void AddParticipants(string threadId, IEnumerable<string> userIds)
+        {
+            foreach (var userId in userIds.Where(u => !string.IsNullOrWhiteSpace(u)).Distinct())
+            {
+                // Guarded, because a duplicated member would be sent two copies of every
+                // message in the thread.
+                if (ctx.ThreadParticipant.Any(p => p.ThreadId == threadId && p.UserId == userId))
+                {
+                    continue;
+                }
+
+                ctx.ThreadParticipant.Add(new ThreadParticipant
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    ThreadId = threadId,
+                    UserId = userId,
+                    CreatedOn = DateTime.UtcNow,
+                });
+            }
+
+            ctx.SaveChanges();
+        }
+
+        public List<string> GetParticipantIds(string threadId)
+        {
+            return ThreadQueries.ParticipantIds(ctx.ThreadParticipant, threadId);
         }
 
         public List<MessageViewModel> GetThreadMessages(string id)

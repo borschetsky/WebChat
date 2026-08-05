@@ -1,4 +1,4 @@
-import type { Attachment, Quote, Reaction, Thread, ThreadMember } from '@/types/models';
+import type { Attachment, Quote, Reaction, Thread } from '@/types/models';
 
 // MOCK LAYER
 // ==========
@@ -20,7 +20,6 @@ export const MOCK_FEATURES = [
   { key: 'unreadCounts', needs: 'the same read watermark, aggregated' },
   { key: 'attachments', needs: 'message attachment storage (only avatar upload exists today)' },
   { key: 'replyQuote', needs: 'Message.ReplyToMessageId column' },
-  { key: 'groupThreads', needs: 'Thread.OponentId -> a participants collection (there is already a TODO in HeyController)' },
   { key: 'notifications', needs: 'a notification feed; presence "away" also has no server representation' },
 ];
 
@@ -113,17 +112,10 @@ export const mockReadReceipt = (thread: Thread | null | undefined): { read: bool
   return { read: true, label: `Read by ${thread.name?.split(' ')[0] ?? 'them'}` };
 };
 
-// ---------------------------------------------------------------------------
-// Group threads
-// MOCK BECAUSE: Thread has a single OponentId. Every thread is 1:1 today; the design's
-// group affordances (Groups filter, member list) have nothing real to show.
-// ---------------------------------------------------------------------------
-export const mockThreadIsGroup = (): boolean => false;
-
-export const mockThreadMembers = (_threadId: string, opponent: { id?: string; username?: string | null; isOnline?: boolean } | null): ThreadMember[] => [
-  { id: opponent?.id, name: opponent?.username ?? 'Unknown', role: 'Direct message', presence: opponent?.isOnline ? 'online' : 'offline' },
-  { id: 'me', name: 'You', role: 'You', presence: 'online' },
-];
+// Group threads were mocked here until the server gained a participants collection. Both
+// mockThreadIsGroup and mockThreadMembers are gone: adapters.ts now reads isGroup and
+// members straight off the ThreadViewModel. This was the first mocked feature to become
+// real, which is why MOCK_FEATURES is one shorter than it was.
 
 // ---------------------------------------------------------------------------
 // Notifications

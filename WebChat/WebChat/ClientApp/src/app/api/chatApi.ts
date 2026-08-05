@@ -164,6 +164,11 @@ export const chatApi = createApi({
       invalidatesTags: ['Threads'],
     }),
 
+    startGroup: build.mutation<{ threadId: string }, { name: string; members: DirectoryEntry[] }>({
+      queryFn: ({ name, members }, api) => run(() => chat.startGroup(name, members, tokenOf(api.getState))),
+      invalidatesTags: ['Threads'],
+    }),
+
     saveProfile: build.mutation<Profile, Profile>({
       queryFn: (profile, api) => run(() => chat.saveProfile(profile, tokenOf(api.getState))),
       invalidatesTags: ['Profile'],
@@ -195,6 +200,7 @@ export const {
   useLazySearchDirectoryQuery,
   useSendMessageMutation,
   useStartThreadMutation,
+  useStartGroupMutation,
   useSaveProfileMutation,
   useToggleReactionMutation,
 } = chatApi;

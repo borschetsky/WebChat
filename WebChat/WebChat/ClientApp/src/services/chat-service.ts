@@ -6,7 +6,7 @@
 
 import {
   getThreads, getMessages, searchForMessageInThread, sendMessageToApi,
-  searchForUsers, createThread, getProfile, updateUsersProfile,
+  searchForUsers, createThread, createGroup, getProfile, updateUsersProfile,
 } from './api-service';
 
 import {
@@ -73,6 +73,24 @@ export const startThreadWith = async (
     if (existing) return { threadId: existing, existed: true };
     throw error;
   }
+};
+
+/**
+ * Creates a named group.
+ *
+ * Unlike startThreadWith there is no "already exists" case: two people may legitimately
+ * share several groups, so the server never refuses one as a duplicate.
+ *
+ * Only the other members are sent - the server adds the creator, so a client cannot make a
+ * group it is not in.
+ */
+export const startGroup = async (
+  name: string,
+  members: DirectoryEntry[],
+  token: string,
+): Promise<{ threadId: string }> => {
+  const res = await createGroup(name, members.map((m) => m.id), token);
+  return { threadId: res.data?.threadId ?? res.data?.ThreadId };
 };
 
 export interface SendMessageArgs {
