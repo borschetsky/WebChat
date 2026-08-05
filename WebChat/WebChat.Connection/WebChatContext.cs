@@ -16,6 +16,9 @@ namespace WebChat.Connection
 
         public DbSet<Thread> Thread { get; set; }
 
+        /// <summary>Thread membership. Read by thread authorization - see Validator.</summary>
+        public DbSet<ThreadParticipant> ThreadParticipant { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             builder.Entity<Message>()

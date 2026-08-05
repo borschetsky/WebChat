@@ -23,15 +23,17 @@ namespace WebChat.Services.Helpers
             return ctx.Thread.Any(t => t.Id == id);
         }
 
+        /// <summary>
+        /// Thread authorization. Membership is now a row in ThreadParticipant, so this holds
+        /// for a group of any size rather than assuming exactly two people.
+        ///
+        /// The implementation this replaces dereferenced a thread that might not exist, so an
+        /// invented id in the URL produced a NullReferenceException - a 500 raised by the
+        /// authorization check itself, from a value the caller supplies.
+        /// </summary>
         public bool DoesUserBelongToCurentThread(string threadId, string userId)
         {
-            var thread = ctx.Thread.FirstOrDefault(t => t.Id == threadId);
-            if (thread.OwnerId == userId || thread.OponentId == userId)
-            {
-                return true;
-            }
-
-            return false;
+            return ThreadQueries.IsParticipant(ctx.ThreadParticipant, threadId, userId);
         }
     }
 }

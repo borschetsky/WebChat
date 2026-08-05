@@ -62,11 +62,13 @@ namespace WebChat.Controllers
             MessageViewModel responseModel = await messageService.AddMessage(model);
 
             var senderId = User.Identity.Name;
-            var reciverId = this.userSercvice.GetOponentIdByTheadId(senderId, model.ThreadId);
             responseModel.Username = model.Username;
             responseModel.Date = responseModel.Time.Date;
             responseModel.SenderId = senderId;
-            var listOfConnections = new List<string>() { senderId, reciverId};
+
+            // Everyone in the thread, not "the other person". A group has more than one
+            // recipient, and the sender is included so their own other devices see it too.
+            var listOfConnections = this.thredService.GetParticipantIds(model.ThreadId);
             
             await hubContext.Clients.Users(listOfConnections).SendAsync("ReciveMessage", responseModel);
 
@@ -158,19 +160,27 @@ namespace WebChat.Controllers
             //TODO: Export valiation logic to Validation helper and implement caching
             //All curent user's threads
             var curentUserThreads = this.thredService.GetUserThreads(curentUserId);
-            //Validation
-            if (curentUserThreads.Any(t => t.OwnerId == curentOponentId || t.OponentId == curentOponentId))
+
+            // Only direct threads are de-duplicated. Two people may legitimately share several
+            // groups, so this must not fire for them - which is why IsGroup is excluded rather
+            // than relying on participant counts.
+            var existing = curentUserThreads.FirstOrDefault(t =>
+                !t.IsGroup && this.thredService.GetParticipantIds(t.Id).Contains(curentOponentId));
+
+            if (existing != null)
             {
-                var threadId = curentUserThreads.FirstOrDefault(t => t.OwnerId == model.OponentVM.Id || t.OponentId == model.OponentVM.Id).Id;
-                return BadRequest(new { message = "You already have thread with this user", ThreadId = threadId});
+                return BadRequest(new { message = "You already have thread with this user", ThreadId = existing.Id });
             }
-            //End of validation
+
             //Creating response ViewModel
             ThreadViewModel newThreadVM = this.thredService.CreateThreadViewModel(curentUserId, curentOponentId);
 
             //Adding thread to DB
             this.thredService.AddThread(newThreadVM);
-            
+
+            // After the thread row exists - the participant rows carry a foreign key to it.
+            this.thredService.AddParticipants(newThreadVM.Id, new[] { curentUserId, curentOponentId });
+
             newThreadVM.LastMessage = new LastMessageViewModel() { Text = "No messages"};
             newThreadVM.OponentVM = userSercvice.GetOponentProfile(curentUserId);
             //Send thread to Oponent with curent User Info
