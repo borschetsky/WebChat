@@ -36,7 +36,15 @@ const isGrouped = (messages: Message[], i: number, searching: boolean) => {
 };
 
 export default function MessageList({
-  messages, density, loading, searchQuery, receipt, onReact, onReply, onRetry, threadId,
+  messages,
+  density,
+  loading,
+  searchQuery,
+  receipt,
+  onReact,
+  onReply,
+  onRetry,
+  threadId,
 }: MessageListProps) {
   const virtuoso = useRef<VirtuosoHandle>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -48,7 +56,10 @@ export default function MessageList({
         {[...Array(5)].map((_, i) => (
           <Stack key={i} direction="row" spacing={1.5} sx={{ px: 3, py: 1.5 }}>
             <Skeleton variant="circular" width={36} height={36} />
-            <Box sx={{ flex: 1 }}><Skeleton width={120} /><Skeleton width="60%" /></Box>
+            <Box sx={{ flex: 1 }}>
+              <Skeleton width={120} />
+              <Skeleton width="60%" />
+            </Box>
           </Stack>
         ))}
       </>

@@ -24,7 +24,9 @@ export interface DraftAttachment {
 /** Files live outside the store; the slice only holds a key. */
 const files = new Map<string, File>();
 export const takeDraftFile = (key: string): File | undefined => files.get(key);
-export const releaseDraftFile = (key: string) => { files.delete(key); };
+export const releaseDraftFile = (key: string) => {
+  files.delete(key);
+};
 
 let seq = 0;
 export const registerDraftFile = (file: File): DraftAttachment => {
@@ -78,8 +80,12 @@ const composerSlice = createSlice({
 });
 
 export const {
-  draftChanged, replyStarted, replyCancelled,
-  attachmentAdded, attachmentRemoved, composerCleared,
+  draftChanged,
+  replyStarted,
+  replyCancelled,
+  attachmentAdded,
+  attachmentRemoved,
+  composerCleared,
 } = composerSlice.actions;
 
 export const { selectDraft, selectReplyTo, selectAttachment, selectCanSend } =

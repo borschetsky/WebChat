@@ -1,7 +1,15 @@
 import React from 'react';
 import {
-  Badge, Box, Button, Chip, Divider, IconButton,
-  List, Skeleton, Stack, Typography,
+  Badge,
+  Box,
+  Button,
+  Chip,
+  Divider,
+  IconButton,
+  List,
+  Skeleton,
+  Stack,
+  Typography,
 } from '@mui/material';
 import EditSquareIcon from '@mui/icons-material/EditSquare';
 import NotificationsIcon from '@mui/icons-material/Notifications';
@@ -16,7 +24,11 @@ import EmptyState from '@/components/EmptyState';
 import SearchField from '@/components/SearchField';
 import NotificationsMenu from '@/features/notifications/NotificationsMenu';
 
-const TABS = [['all', 'All'], ['unread', 'Unread'], ['groups', 'Groups']];
+const TABS = [
+  ['all', 'All'],
+  ['unread', 'Unread'],
+  ['groups', 'Groups'],
+];
 
 // Empty-state copy per filter. "Groups" is not a missing-results case - the server has no
 // concept of a group thread at all - so it says so rather than implying none matched.
@@ -34,14 +46,31 @@ const EMPTY = {
 };
 
 export default function ThreadList({
-  threads, allThreads, activeId, query, tab, density, loading, unreadTotal, profile,
-  onQuery, onTab, onSelect, onCompose, onSettings, onMarkAllRead,
+  threads,
+  allThreads,
+  activeId,
+  query,
+  tab,
+  density,
+  loading,
+  unreadTotal,
+  profile,
+  onQuery,
+  onTab,
+  onSelect,
+  onCompose,
+  onSettings,
+  onMarkAllRead,
 }) {
   const [bell, setBell] = React.useState(null);
 
   return (
     <Stack sx={{ height: '100%', minWidth: 0 }}>
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', p: 1.5, pl: 2, borderBottom: 1, borderColor: 'divider' }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{ alignItems: 'center', p: 1.5, pl: 2, borderBottom: 1, borderColor: 'divider' }}
+      >
         <PresenceAvatar
           name={profile?.name ?? ''}
           color={profile?.color}
@@ -52,7 +81,9 @@ export default function ThreadList({
           onClick={onSettings}
         />
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography noWrap sx={{ fontSize: 15, fontWeight: 500, lineHeight: 1.2 }}>{profile?.name ?? ' '}</Typography>
+          <Typography noWrap sx={{ fontSize: 15, fontWeight: 500, lineHeight: 1.2 }}>
+            {profile?.name ?? ' '}
+          </Typography>
           <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>● Active</Typography>
         </Box>
         <IconButton onClick={onCompose} aria-label="New conversation" title="New conversation">
@@ -64,7 +95,9 @@ export default function ThreadList({
           aria-haspopup="true"
           title="Notifications"
         >
-          <Badge color="error" badgeContent={unreadTotal}><NotificationsIcon fontSize="small" /></Badge>
+          <Badge color="error" badgeContent={unreadTotal}>
+            <NotificationsIcon fontSize="small" />
+          </Badge>
         </IconButton>
         <IconButton onClick={onSettings} aria-label="Profile and settings" title="Settings">
           <SettingsIcon fontSize="small" />
@@ -82,7 +115,13 @@ export default function ThreadList({
       </Box>
 
       {/* Mutually exclusive filters, so they are a radiogroup rather than loose buttons. */}
-      <Stack direction="row" spacing={1} sx={{ px: 1.5, pb: 1.25 }} role="radiogroup" aria-label="Filter conversations">
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{ px: 1.5, pb: 1.25 }}
+        role="radiogroup"
+        aria-label="Filter conversations"
+      >
         {TABS.map(([k, label]) => (
           <Chip
             key={k}
@@ -95,7 +134,16 @@ export default function ThreadList({
             role="radio"
             aria-checked={tab === k}
             variant={tab === k ? 'filled' : 'outlined'}
-            sx={tab === k ? { bgcolor: 'background.selected', color: 'primary.main', borderColor: 'primary.main', border: 1 } : undefined}
+            sx={
+              tab === k
+                ? {
+                    bgcolor: 'background.selected',
+                    color: 'primary.main',
+                    borderColor: 'primary.main',
+                    border: 1,
+                  }
+                : undefined
+            }
           />
         ))}
       </Stack>
@@ -129,30 +177,43 @@ export default function ThreadList({
           </List>
         )}
 
-        {!loading && threads.length === 0 && (() => {
-          const filterEmpty = !query && EMPTY[tab];
-          const title = query ? 'No results' : filterEmpty ? filterEmpty.title : 'No conversations yet';
-          const body = query
-            ? `Nothing matches “${query}”. Try a name or a phrase from a message.`
-            : filterEmpty
-              ? filterEmpty.body
-              : 'Start a thread with a teammate and it will show up here.';
-          const showAction = !query && !filterEmpty;
+        {!loading &&
+          threads.length === 0 &&
+          (() => {
+            const filterEmpty = !query && EMPTY[tab];
+            const title = query
+              ? 'No results'
+              : filterEmpty
+                ? filterEmpty.title
+                : 'No conversations yet';
+            const body = query
+              ? `Nothing matches “${query}”. Try a name or a phrase from a message.`
+              : filterEmpty
+                ? filterEmpty.body
+                : 'Start a thread with a teammate and it will show up here.';
+            const showAction = !query && !filterEmpty;
 
-          return (
-            <EmptyState
-              dense
-              icon={query ? <SearchOffIcon /> : <ForumIcon />}
-              title={title}
-              body={body}
-              action={showAction && (
-                <Button variant="contained" startIcon={<AddIcon />} onClick={onCompose} sx={{ mt: 1, borderRadius: 20 }}>
-                  Start a conversation
-                </Button>
-              )}
-            />
-          );
-        })()}
+            return (
+              <EmptyState
+                dense
+                icon={query ? <SearchOffIcon /> : <ForumIcon />}
+                title={title}
+                body={body}
+                action={
+                  showAction && (
+                    <Button
+                      variant="contained"
+                      startIcon={<AddIcon />}
+                      onClick={onCompose}
+                      sx={{ mt: 1, borderRadius: 20 }}
+                    >
+                      Start a conversation
+                    </Button>
+                  )
+                }
+              />
+            );
+          })()}
       </Box>
       <Divider />
 

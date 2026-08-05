@@ -24,10 +24,14 @@ export default function ConfirmEmail({ token, onConfirm, onDone, onBackToLogin }
   const [state, setState] = useState(() => (token ? 'working' : 'invalid'));
 
   const confirm = useRef(onConfirm);
-  useEffect(() => { confirm.current = onConfirm; }, [onConfirm]);
+  useEffect(() => {
+    confirm.current = onConfirm;
+  }, [onConfirm]);
 
   const done = useRef(onDone);
-  useEffect(() => { done.current = onDone; }, [onDone]);
+  useEffect(() => {
+    done.current = onDone;
+  }, [onDone]);
 
   useEffect(() => {
     if (!token) return undefined;
@@ -44,15 +48,25 @@ export default function ConfirmEmail({ token, onConfirm, onDone, onBackToLogin }
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   return (
-    <Box sx={{
-      minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2,
-    }}
+    <Box
+      sx={{
+        minHeight: '100dvh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        p: 2,
+      }}
     >
-      <Paper elevation={0} sx={{ p: 4, maxWidth: 460, width: '100%', borderRadius: 4, textAlign: 'center' }}>
+      <Paper
+        elevation={0}
+        sx={{ p: 4, maxWidth: 460, width: '100%', borderRadius: 4, textAlign: 'center' }}
+      >
         {state === 'working' && (
           <>
             <CircularProgress size={32} sx={{ mb: 2 }} />
@@ -63,22 +77,30 @@ export default function ConfirmEmail({ token, onConfirm, onDone, onBackToLogin }
         {state === 'done' && (
           <>
             <CheckCircleIcon sx={{ fontSize: 44, color: 'success.main', mb: 1 }} />
-            <Typography variant="h5" sx={{ fontWeight: 600 }}>You&apos;re in</Typography>
-            <Typography sx={{ color: 'text.secondary', mt: 1 }}>Taking you to your messages…</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 600 }}>
+              You&apos;re in
+            </Typography>
+            <Typography sx={{ color: 'text.secondary', mt: 1 }}>
+              Taking you to your messages…
+            </Typography>
           </>
         )}
 
         {state === 'invalid' && (
           <>
             <ErrorOutlineIcon sx={{ fontSize: 44, color: 'error.main', mb: 1 }} />
-            <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>This link no longer works</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
+              This link no longer works
+            </Typography>
             {/* One message for expired, already-used and malformed. The endpoint does not
                 distinguish them either, and the action is the same in every case. */}
             <Alert severity="info" sx={{ textAlign: 'left', mb: 3 }}>
-              Activation links last 24 hours and can be used once. If you have already
-              activated, just sign in.
+              Activation links last 24 hours and can be used once. If you have already activated,
+              just sign in.
             </Alert>
-            <Button fullWidth variant="contained" onClick={onBackToLogin}>Go to sign in</Button>
+            <Button fullWidth variant="contained" onClick={onBackToLogin}>
+              Go to sign in
+            </Button>
           </>
         )}
       </Paper>

@@ -1,19 +1,51 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { makeStore } from './store';
 import {
-  threadSelected, queryChanged, filterChanged, searchToggled, searchQueryChanged,
-  settingsOpened, settingsClosed, notified, notificationDismissed,
-  selectActiveThreadId, selectFilter, selectSearchOpen, selectSearchQuery,
-  selectSettingsOpen, selectPane, selectSnack,
+  threadSelected,
+  queryChanged,
+  filterChanged,
+  searchToggled,
+  searchQueryChanged,
+  settingsOpened,
+  settingsClosed,
+  notified,
+  notificationDismissed,
+  selectActiveThreadId,
+  selectFilter,
+  selectSearchOpen,
+  selectSearchQuery,
+  selectSettingsOpen,
+  selectPane,
+  selectSnack,
 } from '@/features/ui/uiSlice';
 import {
-  draftChanged, attachmentAdded, composerCleared, registerDraftFile, takeDraftFile,
-  selectDraft, selectReplyTo, selectAttachment, selectCanSend,
+  draftChanged,
+  attachmentAdded,
+  composerCleared,
+  registerDraftFile,
+  takeDraftFile,
+  selectDraft,
+  selectReplyTo,
+  selectAttachment,
+  selectCanSend,
 } from '@/features/composer/composerSlice';
-import { signedIn, signedOut, selectUserId, selectIsAuthenticated, selectUser } from '@/features/auth/authSlice';
 import {
-  threadPatched, opponentTyping, unreadBumped, unreadCleared, allUnreadCleared, realtimeReset,
-  selectLivePatches, selectUnread, selectTypingIn,
+  signedIn,
+  signedOut,
+  selectUserId,
+  selectIsAuthenticated,
+  selectUser,
+} from '@/features/auth/authSlice';
+import {
+  threadPatched,
+  opponentTyping,
+  unreadBumped,
+  unreadCleared,
+  allUnreadCleared,
+  realtimeReset,
+  selectLivePatches,
+  selectUnread,
+  selectTypingIn,
 } from '@/features/realtime/realtimeSlice';
 
 const session = { token: 'jwt', tokenExpirationTime: 1, id: 'u1' };

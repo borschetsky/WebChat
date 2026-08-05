@@ -34,7 +34,12 @@ const run = async <T>(fn: () => Promise<T>): Promise<Result<T>> => {
     return { data: await fn() };
   } catch (error) {
     const err = error as { message?: string; response?: { status?: number; data?: unknown } };
-    return { error: { status: err.response?.status ?? 'CUSTOM_ERROR', data: err.response?.data ?? err.message } };
+    return {
+      error: {
+        status: err.response?.status ?? 'CUSTOM_ERROR',
+        data: err.response?.data ?? err.message,
+      },
+    };
   }
 };
 
@@ -99,16 +104,18 @@ export const chatApi = createApi({
 
     sendMessage: build.mutation<Message, SendArgs>({
       queryFn: (args, api) =>
-        run(() => chat.sendMessage(
-          {
-            threadId: args.threadId,
-            text: args.text,
-            username: args.username,
-            replyTo: args.replyTo ?? null,
-            file: args.file ?? null,
-          },
-          tokenOf(api.getState),
-        )),
+        run(() =>
+          chat.sendMessage(
+            {
+              threadId: args.threadId,
+              text: args.text,
+              username: args.username,
+              replyTo: args.replyTo ?? null,
+              file: args.file ?? null,
+            },
+            tokenOf(api.getState),
+          ),
+        ),
 
       /**
        * Optimistic insert, with the row left in place and marked failed on error so the UI
@@ -116,7 +123,8 @@ export const chatApi = createApi({
        * reference app had no failure state at all.
        */
       async onQueryStarted(args, { dispatch, queryFulfilled, getState }) {
-        const tempId = args.retryOf ?? `pending-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        const tempId =
+          args.retryOf ?? `pending-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         const me = (getState() as RootState).auth.user;
 
         const optimistic: Message = {
@@ -144,16 +152,20 @@ export const chatApi = createApi({
         try {
           const { data: sent } = await queryFulfilled;
           // Swap the placeholder for the server's message, which carries the real id.
-          dispatch(chatApi.util.updateQueryData('getMessages', args.threadId, (draft) => {
-            messagesAdapter.removeOne(draft, tempId);
-            messagesAdapter.upsertOne(draft, { ...sent, status: 'sent' });
-          }));
+          dispatch(
+            chatApi.util.updateQueryData('getMessages', args.threadId, (draft) => {
+              messagesAdapter.removeOne(draft, tempId);
+              messagesAdapter.upsertOne(draft, { ...sent, status: 'sent' });
+            }),
+          );
         } catch {
           // Keep the row so the text is not lost, and flag it for retry.
           patch.undo();
-          dispatch(chatApi.util.updateQueryData('getMessages', args.threadId, (draft) => {
-            messagesAdapter.upsertOne(draft, { ...optimistic, status: 'failed' });
-          }));
+          dispatch(
+            chatApi.util.updateQueryData('getMessages', args.threadId, (draft) => {
+              messagesAdapter.upsertOne(draft, { ...optimistic, status: 'failed' });
+            }),
+          );
         }
       },
       invalidatesTags: ['Threads'],
@@ -165,7 +177,8 @@ export const chatApi = createApi({
     }),
 
     startGroup: build.mutation<{ threadId: string }, { name: string; members: DirectoryEntry[] }>({
-      queryFn: ({ name, members }, api) => run(() => chat.startGroup(name, members, tokenOf(api.getState))),
+      queryFn: ({ name, members }, api) =>
+        run(() => chat.startGroup(name, members, tokenOf(api.getState))),
       invalidatesTags: ['Threads'],
     }),
 
@@ -174,16 +187,21 @@ export const chatApi = createApi({
       invalidatesTags: ['Profile'],
     }),
 
-    toggleReaction: build.mutation<Message['reactions'], { threadId: string; messageId: string; emoji: string }>({
+    toggleReaction: build.mutation<
+      Message['reactions'],
+      { threadId: string; messageId: string; emoji: string }
+    >({
       // MOCK: no reaction endpoint - see services/mocks. Patched into the cache directly,
       // so the UI path is identical to a real one.
       queryFn: ({ messageId, emoji }) => run(() => chat.toggleReaction(messageId, emoji)),
       async onQueryStarted({ threadId, messageId }, { dispatch, queryFulfilled }) {
         try {
           const { data: reactions } = await queryFulfilled;
-          dispatch(chatApi.util.updateQueryData('getMessages', threadId, (draft) => {
-            messagesAdapter.updateOne(draft, { id: messageId, changes: { reactions } });
-          }));
+          dispatch(
+            chatApi.util.updateQueryData('getMessages', threadId, (draft) => {
+              messagesAdapter.updateOne(draft, { id: messageId, changes: { reactions } });
+            }),
+          );
         } catch {
           /* the mock cannot fail; nothing to roll back */
         }

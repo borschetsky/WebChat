@@ -1,5 +1,14 @@
 import React from 'react';
-import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Chip, Stack, Typography } from '@mui/material';
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  Alert,
+  Box,
+  Chip,
+  Stack,
+  Typography,
+} from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ScienceIcon from '@mui/icons-material/Science';
 import { MOCK_FEATURES } from '@/services/chat-service';
@@ -24,7 +33,17 @@ const LABELS = {
  */
 export default function MockDisclosure() {
   return (
-    <Accordion disableGutters elevation={0} sx={{ mt: 2.5, border: 1, borderColor: 'divider', borderRadius: 2, '&:before': { display: 'none' } }}>
+    <Accordion
+      disableGutters
+      elevation={0}
+      sx={{
+        mt: 2.5,
+        border: 1,
+        borderColor: 'divider',
+        borderRadius: 2,
+        '&:before': { display: 'none' },
+      }}
+    >
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
           <ScienceIcon fontSize="small" sx={{ color: 'warning.main' }} />
@@ -39,8 +58,12 @@ export default function MockDisclosure() {
         <Stack spacing={1.25}>
           {MOCK_FEATURES.map((f) => (
             <Box key={f.key}>
-              <Typography sx={{ fontSize: 13, fontWeight: 500 }}>{LABELS[f.key] ?? f.key}</Typography>
-              <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>Needs: {f.needs}</Typography>
+              <Typography sx={{ fontSize: 13, fontWeight: 500 }}>
+                {LABELS[f.key] ?? f.key}
+              </Typography>
+              <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>
+                Needs: {f.needs}
+              </Typography>
             </Box>
           ))}
         </Stack>

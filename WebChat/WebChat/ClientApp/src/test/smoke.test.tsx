@@ -9,13 +9,20 @@ import { ThemeModeProvider } from '@/theme/ThemeModeProvider';
 vi.mock('@microsoft/signalr', () => ({
   HubConnectionState: { Connected: 'Connected' },
   HubConnectionBuilder: class {
-    withUrl() { return this; }
-    withAutomaticReconnect() { return this; }
+    withUrl() {
+      return this;
+    }
+    withAutomaticReconnect() {
+      return this;
+    }
     build() {
       return {
         state: 'Disconnected',
-        on() {}, off() {},
-        onreconnecting() {}, onreconnected() {}, onclose() {},
+        on() {},
+        off() {},
+        onreconnecting() {},
+        onreconnected() {},
+        onclose() {},
         start: () => Promise.resolve(),
         stop: () => Promise.resolve(),
         invoke: () => Promise.resolve(),
@@ -29,7 +36,13 @@ vi.mock('@/services/chat-service', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/services/chat-service')>();
   return {
     ...actual,
-    loadProfile: vi.fn().mockResolvedValue({ id: 'me', name: 'Test User', email: 't@e.com', avatarFileName: null, color: '#1976d2' }),
+    loadProfile: vi.fn().mockResolvedValue({
+      id: 'me',
+      name: 'Test User',
+      email: 't@e.com',
+      avatarFileName: null,
+      color: '#1976d2',
+    }),
     loadThreads: vi.fn().mockResolvedValue([]),
     loadMessages: vi.fn().mockResolvedValue([]),
   };
@@ -60,7 +73,10 @@ describe('app boot', () => {
   });
 
   it('renders the chat shell when a session exists', async () => {
-    localStorage.setItem('user-data', JSON.stringify({ token: 'jwt', tokenExpirationTime: 1, id: 'me' }));
+    localStorage.setItem(
+      'user-data',
+      JSON.stringify({ token: 'jwt', tokenExpirationTime: 1, id: 'me' }),
+    );
     renderApp();
     // The thread list header shows the signed-in user once the profile query resolves.
     expect(await screen.findByText('Test User')).toBeInTheDocument();
@@ -69,7 +85,10 @@ describe('app boot', () => {
   });
 
   it('shows the empty state with no threads', async () => {
-    localStorage.setItem('user-data', JSON.stringify({ token: 'jwt', tokenExpirationTime: 1, id: 'me' }));
+    localStorage.setItem(
+      'user-data',
+      JSON.stringify({ token: 'jwt', tokenExpirationTime: 1, id: 'me' }),
+    );
     renderApp();
     expect(await screen.findByText('No conversations yet')).toBeInTheDocument();
     expect(screen.getByText('No conversation selected')).toBeInTheDocument();

@@ -6,7 +6,15 @@ import { createTheme, alpha } from '@mui/material/styles';
 
 export const PRESENCE = { online: '#2e7d32', away: '#f9a825', offline: '#9aa0a6' };
 
-export const AVATAR_PALETTE = ['#1976d2', '#7b1fa2', '#2e7d32', '#ef6c00', '#c2185b', '#00838f', '#5d4037'];
+export const AVATAR_PALETTE = [
+  '#1976d2',
+  '#7b1fa2',
+  '#2e7d32',
+  '#ef6c00',
+  '#c2185b',
+  '#00838f',
+  '#5d4037',
+];
 
 /** Deterministic avatar colour so a given user keeps the same colour across sessions. */
 export const avatarColor = (key = '') => {
@@ -18,7 +26,13 @@ export const avatarColor = (key = '') => {
 };
 
 export const initials = (name = '') =>
-  name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+  name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase();
 
 /** density: 'comfortable' | 'compact' */
 export const densityTokens = (density) =>
@@ -57,7 +71,10 @@ export const buildTheme = (mode) => {
     },
     components: {
       MuiPaper: { styleOverrides: { root: { backgroundImage: 'none' } } },
-      MuiButton: { defaultProps: { disableElevation: false }, styleOverrides: { root: { borderRadius: 8, minHeight: 42 } } },
+      MuiButton: {
+        defaultProps: { disableElevation: false },
+        styleOverrides: { root: { borderRadius: 8, minHeight: 42 } },
+      },
       MuiListItemButton: { styleOverrides: { root: { borderRadius: 12 } } },
       MuiChip: { styleOverrides: { root: { fontWeight: 500 } } },
       MuiTooltip: { defaultProps: { arrow: false } },

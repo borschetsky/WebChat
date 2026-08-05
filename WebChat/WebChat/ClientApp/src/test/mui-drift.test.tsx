@@ -22,7 +22,10 @@ describe('MUI v9 API drift', () => {
     // Written the wrong way on purpose: this is what the handoff code looked like.
     const { container } = withTheme(
       // @ts-expect-error - deliberately passing props v9's Stack does not accept
-      <Stack direction="row" gap={2} alignItems="center" data-testid="s"><span>a</span><span>b</span></Stack>,
+      <Stack direction="row" gap={2} alignItems="center" data-testid="s">
+        <span>a</span>
+        <span>b</span>
+      </Stack>,
     );
     const el = container.querySelector('[data-testid="s"]') as HTMLElement;
     const style = getComputedStyle(el);
@@ -42,7 +45,8 @@ describe('MUI v9 API drift', () => {
   it('applies spacing and alignItems when written the supported way', () => {
     const { container } = withTheme(
       <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }} data-testid="s">
-        <span>a</span><span>b</span>
+        <span>a</span>
+        <span>b</span>
       </Stack>,
     );
     const el = container.querySelector('[data-testid="s"]') as HTMLElement;
@@ -80,12 +84,16 @@ describe('PresenceAvatar', () => {
     render(<ThemeProvider theme={buildTheme('light')}>{ui}</ThemeProvider>);
 
   it('falls back to initials with no uploaded image', () => {
-    const { getByText } = withTheme(<PresenceAvatar name="Maya Rodriguez" color="#7b1fa2" showPresence={false} />);
+    const { getByText } = withTheme(
+      <PresenceAvatar name="Maya Rodriguez" color="#7b1fa2" showPresence={false} />,
+    );
     expect(getByText('MR')).toBeInTheDocument();
   });
 
   it('renders the uploaded avatar when one exists', () => {
-    const { container } = withTheme(<PresenceAvatar name="Maya" avatarFileName="a.png" showPresence={false} />);
+    const { container } = withTheme(
+      <PresenceAvatar name="Maya" avatarFileName="a.png" showPresence={false} />,
+    );
     expect(container.querySelector('img')?.getAttribute('src')).toContain('images/a.png');
   });
 

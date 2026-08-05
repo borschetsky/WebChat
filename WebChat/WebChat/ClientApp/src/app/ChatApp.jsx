@@ -3,9 +3,17 @@ import { Snackbar } from '@mui/material';
 import AppShell, { useIsMobile } from '@/app/AppShell';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import {
-  useGetProfileQuery, useGetThreadsQuery, useGetMessagesQuery, useSearchThreadQuery,
-  useLazySearchDirectoryQuery, useSendMessageMutation, useStartThreadMutation, useStartGroupMutation,
-  useSaveProfileMutation, useToggleReactionMutation, messagesAdapter,
+  useGetProfileQuery,
+  useGetThreadsQuery,
+  useGetMessagesQuery,
+  useSearchThreadQuery,
+  useLazySearchDirectoryQuery,
+  useSendMessageMutation,
+  useStartThreadMutation,
+  useStartGroupMutation,
+  useSaveProfileMutation,
+  useToggleReactionMutation,
+  messagesAdapter,
 } from '@/app/api/chatApi';
 import ThreadList from '@/features/threads/ThreadList';
 import ConversationPane from '@/features/messages/ConversationPane';
@@ -16,16 +24,36 @@ import { uploadAvatar } from '@/services';
 import { markThreadRead, markAllThreadsRead, readReceiptFor } from '@/services/chat-service';
 import { invokeHub } from '@/features/realtime/signalrMiddleware';
 import {
-  realtimeStarted, unreadCleared, allUnreadCleared,
-  selectLivePatches, selectUnread, selectTypingIn,
+  realtimeStarted,
+  unreadCleared,
+  allUnreadCleared,
+  selectLivePatches,
+  selectUnread,
+  selectTypingIn,
 } from '@/features/realtime/realtimeSlice';
 import { composerCleared, replyStarted, takeDraftFile } from '@/features/composer/composerSlice';
 import {
-  threadSelected, queryChanged, filterChanged, searchToggled, searchQueryChanged,
-  settingsOpened, settingsClosed, composeOpened, composeClosed,
-  paneChanged, notified, notificationDismissed,
-  selectActiveThreadId, selectQuery, selectFilter, selectSearchOpen, selectSearchQuery,
-  selectSettingsOpen, selectComposeOpen, selectPane, selectSnack,
+  threadSelected,
+  queryChanged,
+  filterChanged,
+  searchToggled,
+  searchQueryChanged,
+  settingsOpened,
+  settingsClosed,
+  composeOpened,
+  composeClosed,
+  paneChanged,
+  notified,
+  notificationDismissed,
+  selectActiveThreadId,
+  selectQuery,
+  selectFilter,
+  selectSearchOpen,
+  selectSearchQuery,
+  selectSettingsOpen,
+  selectComposeOpen,
+  selectPane,
+  selectSnack,
 } from '@/features/ui/uiSlice';
 
 const TYPING_IDLE_MS = 3000;
@@ -65,10 +93,15 @@ export default function ChatApp({ user, onSignOut }) {
 
   // --- server data ----------------------------------------------------------
   const { data: profile } = useGetProfileQuery(undefined, { skip: !user });
-  const { data: threads = [], isLoading: loadingThreads, isError: threadsFailed } =
-    useGetThreadsQuery(undefined, { skip: !user });
-  const { data: messageCache = EMPTY_MESSAGES, isFetching: loadingMessages } =
-    useGetMessagesQuery(activeId, { skip: !activeId });
+  const {
+    data: threads = [],
+    isLoading: loadingThreads,
+    isError: threadsFailed,
+  } = useGetThreadsQuery(undefined, { skip: !user });
+  const { data: messageCache = EMPTY_MESSAGES, isFetching: loadingMessages } = useGetMessagesQuery(
+    activeId,
+    { skip: !activeId },
+  );
 
   const term = searchQuery.trim();
   const { data: searchResults } = useSearchThreadQuery(
@@ -87,7 +120,9 @@ export default function ChatApp({ user, onSignOut }) {
   const notify = useCallback((msg) => dispatch(notified(msg)), [dispatch]);
 
   // Open the hub for a session restored from storage; sign-in connects via its own action.
-  useEffect(() => { if (user) dispatch(realtimeStarted()); }, [user, dispatch]);
+  useEffect(() => {
+    if (user) dispatch(realtimeStarted());
+  }, [user, dispatch]);
 
   // A failed thread load means the token is no longer good.
   //
@@ -95,7 +130,9 @@ export default function ChatApp({ user, onSignOut }) {
   // loop: an unstable onSignOut would re-run the effect on every render and sign out
   // repeatedly for as long as threadsFailed held. It is safe only because App.jsx wraps
   // signOut in useCallback - so that wrapping is load-bearing, not tidiness.
-  useEffect(() => { if (threadsFailed) onSignOut(); }, [threadsFailed, onSignOut]);
+  useEffect(() => {
+    if (threadsFailed) onSignOut();
+  }, [threadsFailed, onSignOut]);
 
   const messages = useMemo(() => selectAllMessages(messageCache), [messageCache]);
 
@@ -106,12 +143,15 @@ export default function ChatApp({ user, onSignOut }) {
   const active = decorated.find((t) => t.id === activeId) ?? null;
 
   // --- actions --------------------------------------------------------------
-  const selectThread = useCallback(async (id) => {
-    dispatch(threadSelected(id));
-    dispatch(composerCleared());
-    await markThreadRead(id);
-    dispatch(unreadCleared(id));
-  }, [dispatch]);
+  const selectThread = useCallback(
+    async (id) => {
+      dispatch(threadSelected(id));
+      dispatch(composerCleared());
+      await markThreadRead(id);
+      dispatch(unreadCleared(id));
+    },
+    [dispatch],
+  );
 
   // ComposeDialog runs its search from an effect that lists this among its dependencies, so
   // an inline arrow here re-triggers that effect on every render - and because the effect
@@ -127,33 +167,52 @@ export default function ChatApp({ user, onSignOut }) {
   // Everything below is wrapped in useCallback because it is handed to memoized rows.
   // Without stable identities React.memo compares a fresh function every render, so the
   // whole message list re-renders anyway and the memo is decorative.
-  const handleTyping = useCallback((value) => {
-    if (!activeId) return;
-    if (!value) { invokeHub('OnStopTyping', activeId); return; }
-    invokeHub('OnTyping', activeId);
-    clearTimeout(stopTypingTimer.current);
-    stopTypingTimer.current = setTimeout(() => invokeHub('OnStopTyping', activeId), TYPING_IDLE_MS);
-  }, [activeId]);
+  const handleTyping = useCallback(
+    (value) => {
+      if (!activeId) return;
+      if (!value) {
+        invokeHub('OnStopTyping', activeId);
+        return;
+      }
+      invokeHub('OnTyping', activeId);
+      clearTimeout(stopTypingTimer.current);
+      stopTypingTimer.current = setTimeout(
+        () => invokeHub('OnStopTyping', activeId),
+        TYPING_IDLE_MS,
+      );
+    },
+    [activeId],
+  );
 
   /** Payload comes from Composer so this component never subscribes to the draft. */
-  const handleSend = useCallback(({ text, replyTo, attachment }) => {
-    if (!activeId || (!text && !attachment)) return;
-    const file = attachment ? takeDraftFile(attachment.key) : null;
-    dispatch(composerCleared());
-    invokeHub('OnStopTyping', activeId);
-    // A failure leaves the row in the cache marked 'failed' with a Retry, so nothing to catch.
-    sendMessage({ threadId: activeId, text, username: profile?.name, replyTo, file }).unwrap().catch(() => {});
-  }, [activeId, dispatch, profile?.name, sendMessage]);
+  const handleSend = useCallback(
+    ({ text, replyTo, attachment }) => {
+      if (!activeId || (!text && !attachment)) return;
+      const file = attachment ? takeDraftFile(attachment.key) : null;
+      dispatch(composerCleared());
+      invokeHub('OnStopTyping', activeId);
+      // A failure leaves the row in the cache marked 'failed' with a Retry, so nothing to catch.
+      sendMessage({ threadId: activeId, text, username: profile?.name, replyTo, file })
+        .unwrap()
+        .catch(() => {});
+    },
+    [activeId, dispatch, profile?.name, sendMessage],
+  );
 
-  const handleRetry = useCallback((message) => {
-    sendMessage({
-      threadId: message.threadId,
-      text: message.text,
-      username: profile?.name,
-      replyTo: message.quote,
-      retryOf: message.id,
-    }).unwrap().catch(() => {});
-  }, [profile?.name, sendMessage]);
+  const handleRetry = useCallback(
+    (message) => {
+      sendMessage({
+        threadId: message.threadId,
+        text: message.text,
+        username: profile?.name,
+        replyTo: message.quote,
+        retryOf: message.id,
+      })
+        .unwrap()
+        .catch(() => {});
+    },
+    [profile?.name, sendMessage],
+  );
 
   const handleReact = useCallback(
     (messageId, emoji) => toggleReaction({ threadId: activeId, messageId, emoji }),
@@ -170,9 +229,11 @@ export default function ChatApp({ user, onSignOut }) {
     try {
       const { threadId, existed } = await startThread(person).unwrap();
       await selectThread(threadId);
-      notify(existed
-        ? `You already had a conversation with ${person.name}`
-        : `Conversation with ${person.name} started`);
+      notify(
+        existed
+          ? `You already had a conversation with ${person.name}`
+          : `Conversation with ${person.name} started`,
+      );
     } catch {
       notify('Could not start that conversation.');
     }
@@ -210,12 +271,15 @@ export default function ChatApp({ user, onSignOut }) {
   const q = query.trim().toLowerCase();
   const visibleThreads = decorated
     .filter((t) => (filter === 'unread' ? t.unread > 0 : filter === 'groups' ? t.group : true))
-    .filter((t) => !q || t.name.toLowerCase().includes(q) || (t.preview ?? '').toLowerCase().includes(q));
+    .filter(
+      (t) => !q || t.name.toLowerCase().includes(q) || (t.preview ?? '').toLowerCase().includes(q),
+    );
 
   const shown = term && searchResults ? searchResults : messages;
   const lastOwn = [...shown].reverse().find((m) => m.own && !m.status);
   const receiptInfo = readReceiptFor(active);
-  const receipt = lastOwn && receiptInfo ? { messageId: lastOwn.id, label: receiptInfo.label } : null;
+  const receipt =
+    lastOwn && receiptInfo ? { messageId: lastOwn.id, label: receiptInfo.label } : null;
 
   return (
     <>

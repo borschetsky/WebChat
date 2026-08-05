@@ -20,13 +20,27 @@ interface SearchFieldProps {
  * and the compose dialog. Each had its own copy with slightly different heights.
  */
 export default function SearchField({
-  value, onChange, placeholder, icon, height = 44, autoFocus = false, loading = false, label,
+  value,
+  onChange,
+  placeholder,
+  icon,
+  height = 44,
+  autoFocus = false,
+  loading = false,
+  label,
 }: SearchFieldProps) {
   return (
     <Stack
       direction="row"
       spacing={1.25}
-      sx={{ alignItems: 'center', flex: 1, height, px: 1.75, borderRadius: height / 2, bgcolor: 'background.field' }}
+      sx={{
+        alignItems: 'center',
+        flex: 1,
+        height,
+        px: 1.75,
+        borderRadius: height / 2,
+        bgcolor: 'background.field',
+      }}
     >
       {icon}
       <InputBase

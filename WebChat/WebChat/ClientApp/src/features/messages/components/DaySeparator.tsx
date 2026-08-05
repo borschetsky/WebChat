@@ -14,7 +14,14 @@ export default function DaySeparator({ dayKey }: { dayKey: string }) {
         // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
         role="separator"
         aria-label={label}
-        sx={{ fontSize: 11, px: 1.5, py: 0.4, borderRadius: 10, bgcolor: 'background.field', color: 'text.secondary' }}
+        sx={{
+          fontSize: 11,
+          px: 1.5,
+          py: 0.4,
+          borderRadius: 10,
+          bgcolor: 'background.field',
+          color: 'text.secondary',
+        }}
       >
         {label}
       </Typography>

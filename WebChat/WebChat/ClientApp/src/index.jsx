@@ -19,5 +19,5 @@ root.render(
       <CssBaseline />
       <App />
     </ThemeModeProvider>
-  </Provider>
+  </Provider>,
 );

@@ -2,7 +2,8 @@ import { createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
 import type { Thread } from '@/types/models';
 
-export type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'failed';
+export type ConnectionStatus =
+  'idle' | 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'failed';
 
 /**
  * State that only the hub can produce.
@@ -69,8 +70,14 @@ const realtimeSlice = createSlice({
 });
 
 export const {
-  realtimeStarted, connectionStatusChanged, threadPatched, opponentTyping,
-  unreadBumped, unreadCleared, allUnreadCleared, realtimeReset,
+  realtimeStarted,
+  connectionStatusChanged,
+  threadPatched,
+  opponentTyping,
+  unreadBumped,
+  unreadCleared,
+  allUnreadCleared,
+  realtimeReset,
 } = realtimeSlice.actions;
 
 export const { selectConnectionStatus, selectLivePatches, selectUnread, selectTypingIn } =

@@ -42,13 +42,17 @@ export function ThemeModeProvider({ children }) {
   // null means "never chosen" - follow the OS until the user picks explicitly.
   const [storedMode, setStoredMode] = useState(() => read(STORAGE.mode, ['light', 'dark'], null));
   const [density, setDensityState] = useState(() =>
-    read(STORAGE.density, ['comfortable', 'compact'], 'comfortable'));
+    read(STORAGE.density, ['comfortable', 'compact'], 'comfortable'),
+  );
 
   const mode = storedMode ?? (prefersDark ? 'dark' : 'light');
 
   // Memoized so the context value below can depend on them honestly. Without this they are
   // new functions every render, and listing them in the useMemo deps would defeat it.
-  const setMode = useCallback((next) => { setStoredMode(next); write(STORAGE.mode, next); }, []);
+  const setMode = useCallback((next) => {
+    setStoredMode(next);
+    write(STORAGE.mode, next);
+  }, []);
   const setDensity = useCallback((next) => {
     setDensityState(next);
     write(STORAGE.density, next);
