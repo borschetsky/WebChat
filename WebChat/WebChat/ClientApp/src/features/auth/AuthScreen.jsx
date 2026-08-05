@@ -11,7 +11,7 @@ import ForumIcon from '@mui/icons-material/Forum';
  * The handoff also drew a "Continue with SSO" button. There is no SSO on the server, so it
  * is left out rather than rendered as a button that cannot work.
  */
-export default function AuthScreen({ mode, onSubmit, onSwitch, busy, onNeedsConfirmation }) {
+export default function AuthScreen({ mode, onSubmit, onSwitch, busy, onNeedsConfirmation, onForgotPassword }) {
   const isRegister = mode === 'register';
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -100,6 +100,18 @@ export default function AuthScreen({ mode, onSubmit, onSwitch, busy, onNeedsConf
           <Button type="submit" variant="contained" size="large" disabled={busy}>
             {busy ? 'Please wait…' : isRegister ? 'Create account' : 'Sign in'}
           </Button>
+
+          {/* Sign-in only. On the register form there is no account to recover yet, and the
+              link would read as an invitation to go and fail at it. */}
+          {!isRegister && onForgotPassword && (
+            <Link
+              component="button" type="button" underline="hover"
+              onClick={onForgotPassword}
+              sx={{ fontSize: 14, alignSelf: 'center' }}
+            >
+              Forgot your password?
+            </Link>
+          )}
 
           <Divider sx={{ fontSize: 13, color: 'text.secondary' }}>OR</Divider>
 

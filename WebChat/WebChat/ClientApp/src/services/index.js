@@ -17,7 +17,7 @@ import {
     uploadAvatar,
     searchForUsers,
     login,
-    register, confirmEmail, resendConfirmation,
+    register, confirmEmail, resendConfirmation, forgotPassword, resetPassword,
     searchForMessageInThread,
     updateUsersProfile,
 } from './api-service';
@@ -33,7 +33,7 @@ export {
     uploadAvatar,
     searchForUsers,
     login,
-    register, confirmEmail, resendConfirmation,
+    register, confirmEmail, resendConfirmation, forgotPassword, resetPassword,
     searchForMessageInThread,
     updateUsersProfile,
 };
