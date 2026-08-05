@@ -54,7 +54,13 @@ export interface ThreadDto {
   id: string;
   owner: string | null;
   lastMessage: LastMessageDto | null;
+  /** The other person. Null for a group, which is named rather than defined by who is not you. */
   oponentVM: OpponentDto | null;
+  isGroup?: boolean;
+  /** Group name. Null for a direct thread. */
+  name?: string | null;
+  /** Everyone but the caller: one person for a direct thread, the rest for a group. */
+  members?: OpponentDto[] | null;
 }
 
 export interface MessageDto {

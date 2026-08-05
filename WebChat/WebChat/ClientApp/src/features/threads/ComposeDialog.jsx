@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Box, Button, Dialog, DialogActions, DialogContent, DialogTitle,
-  List, ListItemButton, Typography,
+  Box, Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
+  List, ListItemButton, TextField, Typography,
 } from '@mui/material';
 import PersonSearchIcon from '@mui/icons-material/PersonSearch';
 import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
+import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import PresenceAvatar from '@/components/PresenceAvatar';
 import SearchField from '@/components/SearchField';
 
@@ -12,13 +13,34 @@ import SearchField from '@/components/SearchField';
  * New-conversation dialog. Unlike the handoff, which filtered a local fixture array, this
  * queries /api/users/search - so it debounces and shows a loading state.
  *
- * The handoff's "New group" action is omitted: Thread has a single OponentId, so there is
- * nothing a group button could actually create. See mocks.js (groupThreads).
+ * Two modes. Direct starts a thread as soon as someone is picked, because there is nothing
+ * else to decide. Group collects people first and needs a name, so it only creates on
+ * submit - the handoff's "New group" action, which used to be omitted because Thread had a
+ * single OponentId and there was nothing a group button could create.
  */
-export default function ComposeDialog({ open, onClose, onStart, onSearch, fullScreen }) {
+export default function ComposeDialog({ open, onClose, onStart, onStartGroup, onSearch, fullScreen }) {
   const [q, setQ] = useState('');
   const [people, setPeople] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [isGroup, setIsGroup] = useState(false);
+  const [groupName, setGroupName] = useState('');
+  const [picked, setPicked] = useState([]);
+  const [creating, setCreating] = useState(false);
+
+  const toggle = (person) => setPicked((current) => (
+    current.some((p) => p.id === person.id)
+      ? current.filter((p) => p.id !== person.id)
+      : [...current, person]
+  ));
+
+  const createGroup = async () => {
+    setCreating(true);
+    try {
+      await onStartGroup(groupName.trim(), picked);
+    } finally {
+      setCreating(false);
+    }
+  };
 
   // Held in a ref so the effect below does not depend on its identity. Listing onSearch as a
   // dependency makes this component only as stable as its caller: an inline arrow prop
@@ -50,16 +72,42 @@ export default function ComposeDialog({ open, onClose, onStart, onSearch, fullSc
     return () => { cancelled = true; clearTimeout(t); };
   }, [q, open]);
 
-  useEffect(() => { if (!open) { setQ(''); setPeople([]); } }, [open]);
+  // Everything resets on close, including the mode. Reopening into a half-built group with
+  // people selected from last time would be a surprising place to land.
+  useEffect(() => {
+    if (!open) {
+      setQ(''); setPeople([]); setIsGroup(false); setGroupName(''); setPicked([]);
+    }
+  }, [open]);
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs" fullScreen={fullScreen} slotProps={{ paper: { sx: { borderRadius: fullScreen ? 0 : 4 } } }}>
       <DialogTitle sx={{ pb: 0.5 }}>
-        New conversation
-        <Typography sx={{ fontSize: 13, color: 'text.secondary', mt: 0.5 }}>Search for someone to start talking to.</Typography>
+        {isGroup ? 'New group' : 'New conversation'}
+        <Typography sx={{ fontSize: 13, color: 'text.secondary', mt: 0.5 }}>
+          {isGroup
+            ? 'Name it, then pick who should be in it.'
+            : 'Search for someone to start talking to.'}
+        </Typography>
       </DialogTitle>
 
       <DialogContent sx={{ pt: 1.5 }}>
+        {isGroup && (
+          <TextField
+            label="Group name" fullWidth size="small" autoFocus
+            value={groupName} onChange={(e) => setGroupName(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+        )}
+
+        {isGroup && picked.length > 0 && (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mb: 2 }}>
+            {picked.map((p) => (
+              <Chip key={p.id} label={p.name} size="small" onDelete={() => toggle(p)} />
+            ))}
+          </Box>
+        )}
+
         <SearchField
           value={q}
           onChange={setQ}
@@ -72,13 +120,22 @@ export default function ComposeDialog({ open, onClose, onStart, onSearch, fullSc
 
         <List disablePadding>
           {people.map((p) => (
-            <ListItemButton key={p.id} onClick={() => onStart(p)} sx={{ gap: 1.5, borderRadius: 2.5 }}>
+            <ListItemButton
+              key={p.id}
+              // Direct mode starts the thread immediately; group mode only toggles
+              // selection, because a group is not created until it has a name.
+              onClick={() => (isGroup ? toggle(p) : onStart(p))}
+              selected={isGroup && picked.some((s) => s.id === p.id)}
+              sx={{ gap: 1.5, borderRadius: 2.5 }}
+            >
               <PresenceAvatar name={p.name} color={p.color} avatarFileName={p.avatarFileName} size={38} presence={p.presence} />
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Typography noWrap sx={{ fontSize: 14 }}>{p.name}</Typography>
                 <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>{p.role}</Typography>
               </Box>
-              <ChatBubbleIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+              {isGroup
+                ? <Checkbox edge="end" checked={picked.some((s) => s.id === p.id)} tabIndex={-1} disableRipple />
+                : <ChatBubbleIcon fontSize="small" sx={{ color: 'text.secondary' }} />}
             </ListItemButton>
           ))}
         </List>
@@ -96,7 +153,29 @@ export default function ComposeDialog({ open, onClose, onStart, onSearch, fullSc
       </DialogContent>
 
       <DialogActions sx={{ px: 2.5, pb: 2 }}>
+        {/* Only offered when a caller supplied the handler, so the button cannot appear
+            somewhere that has no way to create a group. */}
+        {onStartGroup && (
+          <Button
+            startIcon={<GroupAddIcon />}
+            onClick={() => setIsGroup((v) => !v)}
+            sx={{ mr: 'auto' }}
+          >
+            {isGroup ? 'Direct message' : 'New group'}
+          </Button>
+        )}
+
         <Button onClick={onClose}>Cancel</Button>
+
+        {isGroup && (
+          <Button
+            variant="contained"
+            onClick={createGroup}
+            disabled={creating || !groupName.trim() || picked.length === 0}
+          >
+            {creating ? 'Creating…' : `Create${picked.length ? ` (${picked.length})` : ''}`}
+          </Button>
+        )}
       </DialogActions>
     </Dialog>
   );

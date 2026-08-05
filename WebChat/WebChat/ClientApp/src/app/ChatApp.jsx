@@ -4,7 +4,7 @@ import AppShell, { useIsMobile } from '@/app/AppShell';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import {
   useGetProfileQuery, useGetThreadsQuery, useGetMessagesQuery, useSearchThreadQuery,
-  useLazySearchDirectoryQuery, useSendMessageMutation, useStartThreadMutation,
+  useLazySearchDirectoryQuery, useSendMessageMutation, useStartThreadMutation, useStartGroupMutation,
   useSaveProfileMutation, useToggleReactionMutation, messagesAdapter,
 } from '@/app/api/chatApi';
 import ThreadList from '@/features/threads/ThreadList';
@@ -79,6 +79,7 @@ export default function ChatApp({ user, onSignOut }) {
   const [triggerDirectory] = useLazySearchDirectoryQuery();
   const [sendMessage] = useSendMessageMutation();
   const [startThread] = useStartThreadMutation();
+  const [startGroup] = useStartGroupMutation();
   const [saveProfile] = useSaveProfileMutation();
   const [toggleReaction] = useToggleReactionMutation();
 
@@ -174,6 +175,17 @@ export default function ChatApp({ user, onSignOut }) {
         : `Conversation with ${person.name} started`);
     } catch {
       notify('Could not start that conversation.');
+    }
+  };
+
+  const handleStartGroup = async (name, members) => {
+    dispatch(composeClosed());
+    try {
+      const { threadId } = await startGroup({ name, members }).unwrap();
+      await selectThread(threadId);
+      notify(`Group “${name}” created`);
+    } catch {
+      notify('Could not create that group.');
     }
   };
 
@@ -274,6 +286,7 @@ export default function ChatApp({ user, onSignOut }) {
         open={composeOpen}
         onClose={() => dispatch(composeClosed())}
         onStart={handleStartThread}
+        onStartGroup={handleStartGroup}
         onSearch={handleSearchDirectory}
         fullScreen={isMobile}
       />

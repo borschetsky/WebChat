@@ -14,8 +14,6 @@ import type {
 import type { DirectoryEntry, Message, Profile, Thread } from '@/types/models';
 import {
   mockThreadUnread,
-  mockThreadIsGroup,
-  mockThreadMembers,
   mockMessageReactions,
   mockMessageQuote,
   mockMessageAttachment,
@@ -33,8 +31,8 @@ export const currentUserId = (): string | null => {
 /**
  * ThreadViewModel -> thread row.
  *
- * REAL: id, name, avatarFileName, presence (binary), preview, time, opponentId
- * MOCK: group, unread, members
+ * REAL: id, name, avatarFileName, presence (binary), preview, time, opponentId, group, members
+ * MOCK: unread
  */
 export const toThread = (vm: ThreadDto): Thread => {
   const opponent = vm.oponentVM ?? null;
@@ -44,9 +42,9 @@ export const toThread = (vm: ThreadDto): Thread => {
   return {
     id: vm.id,
     opponentId: opponent?.id,
-    name: opponent?.username ?? 'Unknown',
-    avatarFileName: opponent?.avatarFileName ?? null,
-    color: avatarColor(opponent?.id ?? vm.id),
+    name: vm.isGroup ? (vm.name ?? 'Group') : (opponent?.username ?? 'Unknown'),
+    avatarFileName: vm.isGroup ? null : (opponent?.avatarFileName ?? null),
+    color: avatarColor(vm.isGroup ? vm.id : (opponent?.id ?? vm.id)),
 
     // The API exposes online/offline only. The design also has an 'away' state, which
     // nothing on the server can currently produce.
@@ -57,9 +55,20 @@ export const toThread = (vm: ThreadDto): Thread => {
     time: hasMessages && last?.time ? getDateInfoForThread(last.time) : '',
     lastMessageAt: hasMessages ? (last?.time ?? null) : null,
 
-    group: mockThreadIsGroup(),
+    group: !!vm.isGroup,
     unread: mockThreadUnread(vm.id),
-    members: mockThreadMembers(vm.id, opponent),
+
+    // Real members now. The server sends everyone but the caller, so a direct thread has
+    // one and a group has the rest - and `role` stays empty because nothing on the server
+    // has a concept of one yet. Inventing "Member" here would look like data.
+    members: (vm.members ?? [])
+      .filter(Boolean)
+      .map((m) => ({
+        id: m.id,
+        name: m.username ?? 'Unknown',
+        role: '',
+        presence: m.isOnline ? ('online' as const) : ('offline' as const),
+      })),
   };
 };
 

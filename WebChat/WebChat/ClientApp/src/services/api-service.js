@@ -76,6 +76,18 @@ const getThreads = async (token) => {
     return await result;
 };
 
+// The creator is added by the server, so only the other members are sent - a client cannot
+// create a group it is not in, and therefore cannot create one it has no right to read.
+const createGroup = async (name, memberIds, token) => {
+    const result = await Axios.post(`${_baseUrl}hey/creategroup`, {
+        Name: name,
+        MemberIds: memberIds
+    }, {
+        headers: authHeader(token)
+    });
+    return await result;
+};
+
 const createThread = async (oponentViewModel, token) => {
     const result = await Axios.post(`${_baseUrl}hey/createthread`, {
         OponentVM: oponentViewModel
@@ -107,4 +119,4 @@ const updateUsersProfile = async (token, user) => {
     return await result;
 };
 
-export { getProfile, getMessages, getThreads, createThread, sendMessageToApi, uploadAvatar, searchForUsers, login, register, confirmEmail, resendConfirmation, forgotPassword, resetPassword, searchForMessageInThread, updateUsersProfile } ;
+export { getProfile, getMessages, getThreads, createThread, createGroup, sendMessageToApi, uploadAvatar, searchForUsers, login, register, confirmEmail, resendConfirmation, forgotPassword, resetPassword, searchForMessageInThread, updateUsersProfile } ;

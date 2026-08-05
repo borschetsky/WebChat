@@ -41,6 +41,7 @@ function Harness({ onSearch }: { onSearch: (t: string) => Promise<unknown> }) {
         fullScreen={false}
         onClose={() => {}}
         onStart={() => {}}
+        onStartGroup={async () => {}}
         // Inline arrow, recreated on every parent render - what ChatApp used to pass.
         onSearch={(t: string) => search(t)}
       />

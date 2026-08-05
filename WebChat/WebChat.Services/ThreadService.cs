@@ -102,6 +102,20 @@ namespace WebChat.Services
         }
 
         /// <summary>
+        /// Persists an already-built group thread.
+        ///
+        /// Separate from AddThread, which maps from a ThreadViewModel and exists to serve the
+        /// direct-thread path. A group is constructed by the caller because it carries a name
+        /// and no opponent, and routing it through the view-model mapper would mean teaching
+        /// that mapper about a shape it otherwise never sees.
+        /// </summary>
+        public void AddGroupThread(Thread thread)
+        {
+            ctx.Thread.Add(thread);
+            ctx.SaveChanges();
+        }
+
+        /// <summary>
         /// Records who is in a thread. Call after the thread row exists - these rows carry a
         /// foreign key to it.
         /// </summary>
