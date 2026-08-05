@@ -12,6 +12,14 @@
 name: webchat
 region: fra
 
+# DNS lives at the registrar rather than DigitalOcean, so there is deliberately no `zone:`
+# here - with one, DigitalOcean expects to manage the zone itself. Instead it waits for an
+# externally-managed CNAME (`chat` -> the app's ondigitalocean.app hostname) and issues a
+# Let's Encrypt certificate once it verifies.
+domains:
+  - domain: chat.vtechsolutions.site
+    type: PRIMARY
+
 services:
   - name: web
     github:
@@ -68,6 +76,14 @@ services:
       - key: Cors__AllowedOrigins__0
         value: ${APP_URL}
 
+      # The custom domain is a separate origin. SignalR sends credentials, so the policy uses
+      # AllowCredentials() and a wildcard is not permitted - an unlisted origin fails to
+      # connect and presents as "chat is broken" rather than as a CORS error. The
+      # ondigitalocean.app origin stays listed: it remains valid, and removing it while
+      # testing is an easy way to lock yourself out of a working URL.
+      - key: Cors__AllowedOrigins__1
+        value: https://chat.vtechsolutions.site
+
       # Npgsql wants key/value, while the database component exposes a postgresql:// URI -
       # hence composing it from the parts. Managed Postgres requires TLS.
       - key: ConnectionStrings__DefaultConnection
@@ -106,13 +122,20 @@ services:
         scope: RUN_TIME
         type: SECRET
         value: REPLACE_ME
+      # Must be on a domain authenticated with the provider. A gmail.com sender relayed
+      # through Brevo fails both SPF and DKIM alignment - nothing but Google can authenticate
+      # as gmail.com - so DMARC fails and the mail lands in spam. Verified from this address:
+      # SPF, DKIM and DMARC all pass, and it reaches the inbox.
       - key: Email__FromAddress
         scope: RUN_TIME
-        value: REPLACE_ME
+        value: noreply@vtechsolutions.site
 
-      # Base for the confirmation link. Must be the public address, or every link 404s.
+      # Base for the confirmation link. Set explicitly rather than left as ${APP_URL}: if that
+      # does not follow the PRIMARY domain, every activation and reset link keeps pointing at
+      # the ondigitalocean.app hostname - which works, and quietly undoes the point of having
+      # a domain at all.
       - key: App__PublicUrl
-        value: ${APP_URL}
+        value: https://chat.vtechsolutions.site
 
 databases:
   - name: db

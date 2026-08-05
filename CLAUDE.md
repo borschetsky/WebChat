@@ -105,6 +105,18 @@ and fill it in, or the command stops naming the variable it wanted.
   instead of reading that directory. `IncludeSpaOutput` now fails the publish when `dist` is
   empty. Docker passes `-p:SkipSpaBuild=true` and builds the SPA in a Node stage, because
   the .NET SDK image has no Node.
+- **The app runs at `https://chat.vtechsolutions.site`** on DigitalOcean App Platform, with
+  `.do/app.yaml` as the source of truth for its configuration. DNS is at the registrar, not
+  DigitalOcean. Two settings are load-bearing and easy to miss when adding an origin:
+  `Cors__AllowedOrigins__n` must list it, or SignalR silently fails to connect — the policy
+  uses `AllowCredentials()`, so a wildcard is not permitted, and it presents as "chat is
+  broken" rather than as a CORS error. And `App__PublicUrl` is what activation and reset
+  links are built from, so it must be the address a browser can reach.
+- **Outbound mail must come from an authenticated domain.** A `gmail.com` sender relayed
+  through Brevo fails SPF and DKIM alignment — nothing but Google can authenticate as
+  gmail.com — so DMARC fails and activation email lands in spam. Sending from
+  `noreply@vtechsolutions.site` with Brevo's DKIM records published passes all three. Never
+  set `Email__FromAddress` to an address on a domain someone else controls.
 - **Behind a TLS-terminating proxy, set `ForwardedHeaders__Enabled=true` and point the
   platform's health check at `/health`.** The platform answers HTTPS and forwards plain
   HTTP, so `UseHttpsRedirection` sees `http`, redirects to `https`, and the proxy forwards
