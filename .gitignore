@@ -336,4 +336,10 @@ appsettings.Secrets.json
 
 # Read automatically by docker compose from WebChat/. Holds the real database password, JWT
 # signing key and R2 credentials; WebChat/.env.example is the committed template.
+#
+# The glob matters as much as the bare name. A plain `.env` entry does not cover .env.bak,
+# .env.local or .env.save - and a backup taken while swapping credentials around is exactly
+# as secret as the original. One was committed once; only the example is exempt.
 .env
+.env.*
+!.env.example

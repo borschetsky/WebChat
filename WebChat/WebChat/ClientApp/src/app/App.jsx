@@ -93,6 +93,7 @@ function AppRoutes() {
             busy={busy}
             onSubmit={signIn}
             onSwitch={() => navigate('/register')}
+            onForgotPassword={() => navigate('/forgot-password')}
             onNeedsConfirmation={(email) => {
               // The API answered 403 email_not_confirmed. Reuse the post-registration
               // screen: the situation and the way out of it are identical.
