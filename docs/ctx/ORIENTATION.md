@@ -263,10 +263,18 @@ both profiles point at a Postgres on `localhost:5432`.
 
 ```bash
 cd WebChat/WebChat/ClientApp
-npm test          # vitest — 56 tests, 6 files
+npm run verify    # lint, format:check, typecheck, test — the whole gate, in that order
+npm test          # vitest — 61 tests, 7 files
 npm run typecheck # tsc --noEmit
+npm run lint      # oxlint --deny-warnings (warnings fail, matching the .NET 0-warning bar)
+npm run format    # prettier --write .
 npm run build
 ```
+
+The linter is **oxlint, not ESLint**, and that is not a preference: `typescript-eslint`
+refuses TypeScript 7, which the client runs, so ESLint cannot parse two thirds of `src`.
+oxlint brings its own parser and hosts `eslint-plugin-react-hooks` through its `jsPlugins`
+bridge, which is where the React Compiler rules come from.
 
 > **There is no .NET test project.** All six projects are production code. Backend changes in
 > this repo have been verified by curl, SQL queries and throwaway console tools — none of
@@ -286,6 +294,7 @@ By task:
 | Touch avatars, uploads, image handling, or R2 | [R2 avatar storage](2026-08-03-r2-avatar-storage.md) |
 | Touch migrations, seeding, or startup | [Code-first DB bootstrap](2026-08-02-code-first-db-bootstrap.md) |
 | Upgrade a client dependency | [ClientApp modernization](2026-08-02-clientapp-dependency-update.md) |
+| Change lint rules, formatting, or a suppression | [Client lint and format](2026-08-06-client-lint-and-format.md) |
 | Upgrade a NuGet package or the framework | [.NET 10 upgrade](2026-08-02-dotnet-10-upgrade.md) |
 
 The .NET 10 note also catalogues pre-existing bugs that were deliberately left in place —
