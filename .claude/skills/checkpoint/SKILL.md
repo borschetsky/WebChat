@@ -1,6 +1,6 @@
 ---
 name: checkpoint
-description: Close out a completed code change by updating CLAUDE.md when a fact in it has gone stale or a new trap is worth the context cost, and capturing a ctx note for back-tracking. Use after EVERY completed change - feature, refactor, upgrade, bug fix, dependency bump, config or infrastructure change - before reporting the work as done. Also use when the user says "checkpoint", "wrap this up", "update the docs", or asks whether CLAUDE.md is still accurate.
+description: Run BEFORE COMMITTING any non-trivial change. Audits CLAUDE.md and ORIENTATION.md for claims the change made untrue, captures a ctx note for back-tracking, and makes sure the note is referenced from the index so it can be found. Use for every feature, refactor, upgrade, bug fix, dependency bump, config or infrastructure change. Also use when the user says "checkpoint", "wrap this up", "update the docs", asks whether CLAUDE.md is still accurate, or asks whether ctx was updated.
 ---
 
 # checkpoint — close out a change
