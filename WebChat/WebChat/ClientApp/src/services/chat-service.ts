@@ -5,25 +5,46 @@
 // feature gains a backend, only this file and ./mocks change.
 
 import {
-  getThreads, getMessages, searchForMessageInThread, sendMessageToApi,
-  searchForUsers, createThread, createGroup, getProfile, updateUsersProfile,
+  getThreads,
+  getMessages,
+  searchForMessageInThread,
+  sendMessageToApi,
+  searchForUsers,
+  createThread,
+  createGroup,
+  getProfile,
+  updateUsersProfile,
 } from './api-service';
 
 import {
-  toThreads, toMessageList, toMessage, toDirectory, toProfile, currentUserId,
+  toThreads,
+  toMessageList,
+  toMessage,
+  toDirectory,
+  toProfile,
+  currentUserId,
 } from './adapters';
 
 import {
-  mockToggleReaction, mockAttachQuote, mockAttachFile,
-  mockMarkThreadRead, mockMarkAllRead, mockBumpUnread,
-  mockReadReceipt, mockNotifications, MOCK_FEATURES,
+  mockToggleReaction,
+  mockAttachQuote,
+  mockAttachFile,
+  mockMarkThreadRead,
+  mockMarkAllRead,
+  mockBumpUnread,
+  mockReadReceipt,
+  mockNotifications,
+  MOCK_FEATURES,
 } from './mocks';
 
 import type { DirectoryEntry, Message, Profile, Quote, Reaction, Thread } from '@/types/models';
 
 export { MOCK_FEATURES };
 
-interface AxiosLike<T> { status: number; data: T }
+interface AxiosLike<T> {
+  status: number;
+  data: T;
+}
 
 /** getthreads answers 204 No Content when the user has no threads. */
 const dataOrEmpty = <T>(res: AxiosLike<T> | undefined, fallback: T): T =>
@@ -37,7 +58,11 @@ export const loadThreads = async (token: string): Promise<Thread[]> =>
 export const loadMessages = async (threadId: string, token: string): Promise<Message[]> =>
   toMessageList(dataOrEmpty(await getMessages(threadId, token), {}));
 
-export const searchInThread = async (threadId: string, term: string, token: string): Promise<Message[]> =>
+export const searchInThread = async (
+  threadId: string,
+  term: string,
+  token: string,
+): Promise<Message[]> =>
   toMessageList(dataOrEmpty(await searchForMessageInThread(token, { term, threadId }), {}));
 
 export const searchDirectory = async (term: string, token: string): Promise<DirectoryEntry[]> =>
@@ -89,7 +114,11 @@ export const startGroup = async (
   members: DirectoryEntry[],
   token: string,
 ): Promise<{ threadId: string }> => {
-  const res = await createGroup(name, members.map((m) => m.id), token);
+  const res = await createGroup(
+    name,
+    members.map((m) => m.id),
+    token,
+  );
   return { threadId: res.data?.threadId ?? res.data?.ThreadId };
 };
 
@@ -129,7 +158,8 @@ export const sendMessage = async (
 export const toggleReaction = async (messageId: string, emoji: string): Promise<Reaction[]> =>
   mockToggleReaction(messageId, emoji);
 
-export const markThreadRead = async (threadId: string): Promise<void> => mockMarkThreadRead(threadId);
+export const markThreadRead = async (threadId: string): Promise<void> =>
+  mockMarkThreadRead(threadId);
 export const markAllThreadsRead = async (): Promise<void> => mockMarkAllRead();
 export const noteIncomingMessage = (threadId: string): number => mockBumpUnread(threadId);
 export const readReceiptFor = (thread: Thread | null | undefined) => mockReadReceipt(thread);

@@ -1,6 +1,15 @@
 import React, { useState } from 'react';
 import {
-  Alert, Avatar, Box, Button, Divider, Link, Paper, Stack, TextField, Typography,
+  Alert,
+  Avatar,
+  Box,
+  Button,
+  Divider,
+  Link,
+  Paper,
+  Stack,
+  TextField,
+  Typography,
 } from '@mui/material';
 import ForumIcon from '@mui/icons-material/Forum';
 
@@ -17,9 +26,17 @@ const FRIENDLY = [
   { field: 'email', match: /required/i, text: 'Enter your email address.' },
   { field: 'email', match: /valid e-?mail/i, text: 'That does not look like an email address.' },
   { field: 'username', match: /required/i, text: 'Choose a username.' },
-  { field: 'username', match: /minimum length|string or array/i, text: 'Usernames are 3 to 60 characters.' },
+  {
+    field: 'username',
+    match: /minimum length|string or array/i,
+    text: 'Usernames are 3 to 60 characters.',
+  },
   { field: 'password', match: /required/i, text: 'Enter your password.' },
-  { field: 'password', match: /minimum length|string or array/i, text: 'Passwords are at least 6 characters.' },
+  {
+    field: 'password',
+    match: /minimum length|string or array/i,
+    text: 'Passwords are at least 6 characters.',
+  },
 ];
 
 const friendly = (field, raw) =>
@@ -32,7 +49,14 @@ const friendly = (field, raw) =>
  * The handoff also drew a "Continue with SSO" button. There is no SSO on the server, so it
  * is left out rather than rendered as a button that cannot work.
  */
-export default function AuthScreen({ mode, onSubmit, onSwitch, busy, onNeedsConfirmation, onForgotPassword }) {
+export default function AuthScreen({
+  mode,
+  onSubmit,
+  onSwitch,
+  busy,
+  onNeedsConfirmation,
+  onForgotPassword,
+}) {
   const isRegister = mode === 'register';
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -51,7 +75,10 @@ export default function AuthScreen({ mode, onSubmit, onSwitch, busy, onNeedsConf
       // ProblemDetails validation payload ({errors: {Email: [...]}}). A network failure
       // has no response at all.
       const data = err?.response?.data;
-      if (!data) { setErrors({ form: 'Cannot reach the server. Is the API running?' }); return; }
+      if (!data) {
+        setErrors({ form: 'Cannot reach the server. Is the API running?' });
+        return;
+      }
 
       // 403 email_not_confirmed is not a form error - the credentials were right and there
       // is nothing on this screen to correct. Hand it to the caller, which shows the
@@ -82,14 +109,45 @@ export default function AuthScreen({ mode, onSubmit, onSwitch, busy, onNeedsConf
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', bgcolor: 'background.default', p: 3 }}>
-      <Paper elevation={0} component="form" onSubmit={submit} sx={{ width: 420, maxWidth: '100%', p: 4.5, borderRadius: 4, border: 1, borderColor: 'divider' }}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'grid',
+        placeItems: 'center',
+        bgcolor: 'background.default',
+        p: 3,
+      }}
+    >
+      <Paper
+        elevation={0}
+        component="form"
+        onSubmit={submit}
+        sx={{
+          width: 420,
+          maxWidth: '100%',
+          p: 4.5,
+          borderRadius: 4,
+          border: 1,
+          borderColor: 'divider',
+        }}
+      >
         <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mb: 3.5 }}>
-          <Avatar variant="rounded" sx={{ width: 44, height: 44, bgcolor: 'primary.main', color: 'primary.contrastText', borderRadius: 3 }}>
+          <Avatar
+            variant="rounded"
+            sx={{
+              width: 44,
+              height: 44,
+              bgcolor: 'primary.main',
+              color: 'primary.contrastText',
+              borderRadius: 3,
+            }}
+          >
             <ForumIcon />
           </Avatar>
           <Box>
-            <Typography sx={{ fontSize: 20, fontWeight: 500 }}>{isRegister ? 'Create your account' : 'Welcome back'}</Typography>
+            <Typography sx={{ fontSize: 20, fontWeight: 500 }}>
+              {isRegister ? 'Create your account' : 'Welcome back'}
+            </Typography>
             <Typography sx={{ fontSize: 14, color: 'text.secondary' }}>
               {isRegister ? 'Join the conversation on WebChat' : 'Sign in to continue to WebChat'}
             </Typography>
@@ -97,13 +155,22 @@ export default function AuthScreen({ mode, onSubmit, onSwitch, busy, onNeedsConf
         </Stack>
 
         <Stack spacing={2.25}>
-          {errors.form && <Alert severity="error" sx={{ fontSize: 13 }}>{errors.form}</Alert>}
+          {errors.form && (
+            <Alert severity="error" sx={{ fontSize: 13 }}>
+              {errors.form}
+            </Alert>
+          )}
 
           {isRegister && (
             <TextField
-              label="Username" fullWidth required autoComplete="username"
-              value={username} onChange={(e) => setUsername(e.target.value)}
-              error={!!errors.username} helperText={errors.username}
+              label="Username"
+              fullWidth
+              required
+              autoComplete="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              error={!!errors.username}
+              helperText={errors.username}
             />
           )}
 
@@ -115,16 +182,22 @@ export default function AuthScreen({ mode, onSubmit, onSwitch, busy, onNeedsConf
             fullWidth
             required
             autoComplete={isRegister ? 'email' : 'username'}
-            value={email} onChange={(e) => setEmail(e.target.value)}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             error={!!(errors.email || errors.identifier)}
             helperText={errors.email || errors.identifier}
           />
 
           <TextField
-            label="Password" type="password" fullWidth required
+            label="Password"
+            type="password"
+            fullWidth
+            required
             autoComplete={isRegister ? 'new-password' : 'current-password'}
-            value={password} onChange={(e) => setPassword(e.target.value)}
-            error={!!errors.password} helperText={errors.password}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            error={!!errors.password}
+            helperText={errors.password}
           />
 
           <Button type="submit" variant="contained" size="large" disabled={busy}>
@@ -135,7 +208,9 @@ export default function AuthScreen({ mode, onSubmit, onSwitch, busy, onNeedsConf
               link would read as an invitation to go and fail at it. */}
           {!isRegister && onForgotPassword && (
             <Link
-              component="button" type="button" underline="hover"
+              component="button"
+              type="button"
+              underline="hover"
               onClick={onForgotPassword}
               sx={{ fontSize: 14, alignSelf: 'center' }}
             >
@@ -147,7 +222,13 @@ export default function AuthScreen({ mode, onSubmit, onSwitch, busy, onNeedsConf
 
           <Typography sx={{ fontSize: 14, textAlign: 'center', color: 'text.secondary' }}>
             {isRegister ? 'Already have an account? ' : 'New here? '}
-            <Link component="button" type="button" underline="hover" onClick={onSwitch} sx={{ fontSize: 14 }}>
+            <Link
+              component="button"
+              type="button"
+              underline="hover"
+              onClick={onSwitch}
+              sx={{ fontSize: 14 }}
+            >
               {isRegister ? 'Sign in' : 'Create an account'}
             </Link>
           </Typography>

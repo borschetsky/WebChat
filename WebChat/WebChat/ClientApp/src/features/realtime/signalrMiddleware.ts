@@ -8,8 +8,12 @@ import { noteIncomingMessage } from '@/services/chat-service';
 import { signedIn, signedOut } from '@/features/auth/authSlice';
 import type { AvatarBroadcastDto, MessageDto, ProfileDto, TypingStatusDto } from '@/types/dto';
 import {
-  realtimeStarted, realtimeReset, connectionStatusChanged,
-  threadPatched, opponentTyping, unreadBumped,
+  realtimeStarted,
+  realtimeReset,
+  connectionStatusChanged,
+  threadPatched,
+  opponentTyping,
+  unreadBumped,
 } from './realtimeSlice';
 
 /**
@@ -37,9 +41,16 @@ const teardown = async () => {
   const c = connection;
   connection = null;
   if (c) {
-    ['ReciveMessage', 'ReviceThread', 'ReciveTypingStatus', 'ReciveStopTypingStatus',
-      'ReciveConnectedStatus', 'ReciveDisconnectedStatus', 'ReciveAvatar',
-      'ReviceUpdatedOpponentProfile'].forEach((e) => c.off(e));
+    [
+      'ReciveMessage',
+      'ReviceThread',
+      'ReciveTypingStatus',
+      'ReciveStopTypingStatus',
+      'ReciveConnectedStatus',
+      'ReciveDisconnectedStatus',
+      'ReciveAvatar',
+      'ReviceUpdatedOpponentProfile',
+    ].forEach((e) => c.off(e));
     await c.stop().catch(() => {});
   }
 };
@@ -57,8 +68,7 @@ const connect = async (token: string, dispatch: AppDispatch, getState: () => Roo
   connection = c;
 
   /** The thread a hub event refers to, from the currently cached thread list. */
-  const threadsOf = () =>
-    chatApi.endpoints.getThreads.select()(getState()).data ?? [];
+  const threadsOf = () => chatApi.endpoints.getThreads.select()(getState()).data ?? [];
 
   c.on('ReciveMessage', (payload: MessageDto) => {
     const me = getState().auth.user?.id ?? null;
@@ -66,27 +76,38 @@ const connect = async (token: string, dispatch: AppDispatch, getState: () => Roo
     const activeId = getState().ui.activeThreadId;
     const isActive = incoming.threadId === activeId;
 
-    dispatch(threadPatched({
-      threadId: incoming.threadId,
-      patch: { preview: incoming.text, time: incoming.time, isTyping: false },
-    }));
+    dispatch(
+      threadPatched({
+        threadId: incoming.threadId,
+        patch: { preview: incoming.text, time: incoming.time, isTyping: false },
+      }),
+    );
 
     if (!isActive && !incoming.own) {
       // MOCK: no server watermark, but the trigger is a real hub event.
-      dispatch(unreadBumped({ threadId: incoming.threadId, count: noteIncomingMessage(incoming.threadId) }));
+      dispatch(
+        unreadBumped({
+          threadId: incoming.threadId,
+          count: noteIncomingMessage(incoming.threadId),
+        }),
+      );
     }
 
     if (isActive) {
       // O(1) upsert, and idempotent - the hub echoes the sender's own message back, so
       // this and the mutation's optimistic insert can be the same message.
-      dispatch(chatApi.util.updateQueryData('getMessages', incoming.threadId, (draft) => {
-        messagesAdapter.upsertOne(draft, incoming);
-      }));
+      dispatch(
+        chatApi.util.updateQueryData('getMessages', incoming.threadId, (draft) => {
+          messagesAdapter.upsertOne(draft, incoming);
+        }),
+      );
       dispatch(opponentTyping({ threadId: incoming.threadId, typing: false }));
     }
   });
 
-  c.on('ReviceThread', () => { dispatch(chatApi.util.invalidateTags(['Threads'])); });
+  c.on('ReviceThread', () => {
+    dispatch(chatApi.util.invalidateTags(['Threads']));
+  });
 
   c.on('ReciveTypingStatus', ({ userId, threadId, UserId, ThreadId }: TypingStatusDto) => {
     const uid = userId ?? UserId;
@@ -114,7 +135,9 @@ const connect = async (token: string, dispatch: AppDispatch, getState: () => Roo
     const fileName = typeof body === 'string' ? body : body?.value;
     threadsOf()
       .filter((t) => t.opponentId === uploaderId)
-      .forEach((t) => dispatch(threadPatched({ threadId: t.id, patch: { avatarFileName: fileName ?? null } })));
+      .forEach((t) =>
+        dispatch(threadPatched({ threadId: t.id, patch: { avatarFileName: fileName ?? null } })),
+      );
     if (getState().auth.user?.id === uploaderId) dispatch(chatApi.util.invalidateTags(['Profile']));
   });
 
@@ -122,7 +145,9 @@ const connect = async (token: string, dispatch: AppDispatch, getState: () => Roo
     if (!p) return;
     threadsOf()
       .filter((t) => t.opponentId === p.id)
-      .forEach((t) => dispatch(threadPatched({ threadId: t.id, patch: { name: p.username ?? 'Unknown' } })));
+      .forEach((t) =>
+        dispatch(threadPatched({ threadId: t.id, patch: { name: p.username ?? 'Unknown' } })),
+      );
     if (getState().auth.user?.id === p.id) dispatch(chatApi.util.invalidateTags(['Profile']));
   });
 

@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
-import {
-  Box, Button, Paper, Typography, TextField, Alert, Stack,
-} from '@mui/material';
+import { Box, Button, Paper, Typography, TextField, Alert, Stack } from '@mui/material';
 import LockResetIcon from '@mui/icons-material/LockReset';
 
 /**
@@ -32,8 +30,9 @@ export default function ResetPassword({ token, onReset, onDone, onBackToLogin })
     } catch (err) {
       const data = err?.response?.data;
       setError(
-        data?.message
-          ?? (data ? 'That did not work. Request a new link and try again.'
+        data?.message ??
+          (data
+            ? 'That did not work. Request a new link and try again.'
             : 'Could not reach the server. Try again.'),
       );
       setBusy(false);
@@ -46,14 +45,18 @@ export default function ResetPassword({ token, onReset, onDone, onBackToLogin })
         <Alert severity="error" sx={{ mb: 3 }}>
           This link is missing its token. Request a new one.
         </Alert>
-        <Button fullWidth variant="contained" onClick={onBackToLogin}>Back to sign in</Button>
+        <Button fullWidth variant="contained" onClick={onBackToLogin}>
+          Back to sign in
+        </Button>
       </Shell>
     );
   }
 
   return (
     <Shell onSubmit={submit}>
-      <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>Choose a new password</Typography>
+      <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
+        Choose a new password
+      </Typography>
       <Typography sx={{ color: 'text.secondary', mb: 3 }}>
         You&apos;ll be signed in once it&apos;s set.
       </Typography>
@@ -62,9 +65,14 @@ export default function ResetPassword({ token, onReset, onDone, onBackToLogin })
         {error && <Alert severity="error">{error}</Alert>}
 
         <TextField
-          label="New password" type="password" fullWidth required autoFocus
+          label="New password"
+          type="password"
+          fullWidth
+          required
+          autoFocus
           autoComplete="new-password"
-          value={password} onChange={(e) => setPassword(e.target.value)}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
           error={tooShort}
           helperText={tooShort ? 'At least 6 characters.' : ' '}
         />
@@ -72,15 +80,21 @@ export default function ResetPassword({ token, onReset, onDone, onBackToLogin })
         {/* Confirmation field because there is no way back: a typo here locks the account
             out until another reset, and the user never sees what they typed. */}
         <TextField
-          label="Confirm new password" type="password" fullWidth required
+          label="Confirm new password"
+          type="password"
+          fullWidth
+          required
           autoComplete="new-password"
-          value={confirm} onChange={(e) => setConfirm(e.target.value)}
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
           error={mismatch}
           helperText={mismatch ? 'These do not match.' : ' '}
         />
 
         <Button
-          type="submit" variant="contained" size="large"
+          type="submit"
+          variant="contained"
+          size="large"
           disabled={busy || !password || !confirm || mismatch || tooShort}
         >
           {busy ? 'Setting…' : 'Set password and sign in'}
@@ -94,9 +108,14 @@ export default function ResetPassword({ token, onReset, onDone, onBackToLogin })
 
 function Shell({ children, onSubmit }) {
   return (
-    <Box sx={{
-      minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2,
-    }}
+    <Box
+      sx={{
+        minHeight: '100dvh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        p: 2,
+      }}
     >
       <Paper
         elevation={0}

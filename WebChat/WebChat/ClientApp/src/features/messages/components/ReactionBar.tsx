@@ -38,8 +38,12 @@ export default function ReactionBar({ reactions, onToggle }: ReactionBarProps) {
         onClick={() => onToggle('👍')}
         aria-label="Add reaction"
         sx={{
-          height: 26, width: 34, borderRadius: 13,
-          border: '1px dashed', borderColor: 'divider', bgcolor: 'transparent',
+          height: 26,
+          width: 34,
+          borderRadius: 13,
+          border: '1px dashed',
+          borderColor: 'divider',
+          bgcolor: 'transparent',
           '& .MuiChip-label': { display: 'none' },
         }}
       />

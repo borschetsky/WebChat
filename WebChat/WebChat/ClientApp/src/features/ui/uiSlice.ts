@@ -62,17 +62,27 @@ const uiSlice = createSlice({
     searchQueryChanged(state, action: PayloadAction<string>) {
       state.searchQuery = action.payload;
     },
-    settingsOpened(state) { state.settingsOpen = true; },
-    settingsClosed(state) { state.settingsOpen = false; },
-    composeOpened(state) { state.composeOpen = true; },
-    composeClosed(state) { state.composeOpen = false; },
+    settingsOpened(state) {
+      state.settingsOpen = true;
+    },
+    settingsClosed(state) {
+      state.settingsOpen = false;
+    },
+    composeOpened(state) {
+      state.composeOpen = true;
+    },
+    composeClosed(state) {
+      state.composeOpen = false;
+    },
     paneChanged(state, action: PayloadAction<MobilePane>) {
       state.pane = action.payload;
     },
     notified(state, action: PayloadAction<string>) {
       state.snack = action.payload;
     },
-    notificationDismissed(state) { state.snack = ''; },
+    notificationDismissed(state) {
+      state.snack = '';
+    },
   },
   selectors: {
     selectActiveThreadId: (state) => state.activeThreadId,
@@ -88,16 +98,30 @@ const uiSlice = createSlice({
 });
 
 export const {
-  threadSelected, queryChanged, filterChanged,
-  searchToggled, searchQueryChanged,
-  settingsOpened, settingsClosed, composeOpened, composeClosed,
-  paneChanged, notified, notificationDismissed,
+  threadSelected,
+  queryChanged,
+  filterChanged,
+  searchToggled,
+  searchQueryChanged,
+  settingsOpened,
+  settingsClosed,
+  composeOpened,
+  composeClosed,
+  paneChanged,
+  notified,
+  notificationDismissed,
 } = uiSlice.actions;
 
 export const {
-  selectActiveThreadId, selectQuery, selectFilter,
-  selectSearchOpen, selectSearchQuery,
-  selectSettingsOpen, selectComposeOpen, selectPane, selectSnack,
+  selectActiveThreadId,
+  selectQuery,
+  selectFilter,
+  selectSearchOpen,
+  selectSearchQuery,
+  selectSettingsOpen,
+  selectComposeOpen,
+  selectPane,
+  selectSnack,
 } = uiSlice.selectors;
 
 export default uiSlice.reducer;

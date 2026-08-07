@@ -27,7 +27,13 @@ function ThreadListItem({ thread: t, selected, density, onSelect }: ThreadListIt
     <ListItemButton
       selected={selected}
       onClick={select}
-      sx={{ gap: 1.5, py: d.rowPadY, px: 2, mb: 0.25, '&.Mui-selected': { bgcolor: 'background.selected' } }}
+      sx={{
+        gap: 1.5,
+        py: d.rowPadY,
+        px: 2,
+        mb: 0.25,
+        '&.Mui-selected': { bgcolor: 'background.selected' },
+      }}
     >
       <PresenceAvatar
         name={t.name}
@@ -39,7 +45,10 @@ function ThreadListItem({ thread: t, selected, density, onSelect }: ThreadListIt
       />
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline' }}>
-          <Typography noWrap sx={{ flex: 1, fontSize: d.nameSize, fontWeight: t.unread ? 600 : 400 }}>
+          <Typography
+            noWrap
+            sx={{ flex: 1, fontSize: d.nameSize, fontWeight: t.unread ? 600 : 400 }}
+          >
             {t.name}
           </Typography>
           <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>{t.time}</Typography>

@@ -8,9 +8,7 @@
 
 import { avatarColor } from '@/theme/tokens';
 import { getDateInfoForThread, getDateInfoForMessage } from '@/lib/date-time-format';
-import type {
-  MessageDto, MessagesByDayDto, ProfileDto, ThreadDto, UserDto,
-} from '@/types/dto';
+import type { MessageDto, MessagesByDayDto, ProfileDto, ThreadDto, UserDto } from '@/types/dto';
 import type { DirectoryEntry, Message, Profile, Thread } from '@/types/models';
 import {
   mockThreadUnread,
@@ -61,14 +59,12 @@ export const toThread = (vm: ThreadDto): Thread => {
     // Real members now. The server sends everyone but the caller, so a direct thread has
     // one and a group has the rest - and `role` stays empty because nothing on the server
     // has a concept of one yet. Inventing "Member" here would look like data.
-    members: (vm.members ?? [])
-      .filter(Boolean)
-      .map((m) => ({
-        id: m.id,
-        name: m.username ?? 'Unknown',
-        role: '',
-        presence: m.isOnline ? ('online' as const) : ('offline' as const),
-      })),
+    members: (vm.members ?? []).filter(Boolean).map((m) => ({
+      id: m.id,
+      name: m.username ?? 'Unknown',
+      role: '',
+      presence: m.isOnline ? ('online' as const) : ('offline' as const),
+    })),
   };
 };
 
@@ -147,7 +143,10 @@ export const toProfile = (vm: ProfileDto): Profile => ({
  * A message arriving over SignalR ("ReciveMessage") uses the same MessageViewModel shape
  * as the REST response, so it maps identically - but it never carries day grouping.
  */
-export const toLiveMessage = (payload: MessageDto, meId: string | null = currentUserId()): Message => ({
+export const toLiveMessage = (
+  payload: MessageDto,
+  meId: string | null = currentUserId(),
+): Message => ({
   ...toMessage(payload, meId),
   dayKey: payload.date ?? null,
   startsDay: false,

@@ -2,7 +2,8 @@ import { createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
 import type { Thread } from '@/types/models';
 
-export type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'failed';
+export type ConnectionStatus =
+  'idle' | 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'failed';
 
 /**
  * State that only the hub can produce.
@@ -35,12 +36,12 @@ const realtimeSlice = createSlice({
 
     threadPatched(state, action: PayloadAction<{ threadId: string; patch: Partial<Thread> }>) {
       const { threadId, patch } = action.payload;
-      state.live[threadId] = { ...(state.live[threadId] ?? {}), ...patch };
+      state.live[threadId] = { ...state.live[threadId], ...patch };
     },
 
     opponentTyping(state, action: PayloadAction<{ threadId: string; typing: boolean }>) {
       const { threadId, typing } = action.payload;
-      state.live[threadId] = { ...(state.live[threadId] ?? {}), isTyping: typing };
+      state.live[threadId] = { ...state.live[threadId], isTyping: typing };
       if (typing) state.typingIn = threadId;
       else if (state.typingIn === threadId) state.typingIn = null;
     },
@@ -69,8 +70,14 @@ const realtimeSlice = createSlice({
 });
 
 export const {
-  realtimeStarted, connectionStatusChanged, threadPatched, opponentTyping,
-  unreadBumped, unreadCleared, allUnreadCleared, realtimeReset,
+  realtimeStarted,
+  connectionStatusChanged,
+  threadPatched,
+  opponentTyping,
+  unreadBumped,
+  unreadCleared,
+  allUnreadCleared,
+  realtimeReset,
 } = realtimeSlice.actions;
 
 export const { selectConnectionStatus, selectLivePatches, selectUnread, selectTypingIn } =

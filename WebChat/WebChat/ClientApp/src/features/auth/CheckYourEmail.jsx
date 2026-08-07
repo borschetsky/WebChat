@@ -30,9 +30,14 @@ export default function CheckYourEmail({ email, emailSent = true, onResend, onBa
   };
 
   return (
-    <Box sx={{
-      minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2,
-    }}
+    <Box
+      sx={{
+        minHeight: '100dvh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        p: 2,
+      }}
     >
       <Paper elevation={0} sx={{ p: 4, maxWidth: 460, width: '100%', borderRadius: 4 }}>
         <MarkEmailUnreadIcon sx={{ fontSize: 40, color: 'primary.main', mb: 1.5 }} />
@@ -48,8 +53,8 @@ export default function CheckYourEmail({ email, emailSent = true, onResend, onBa
           </Typography>
         ) : (
           <Alert severity="warning" sx={{ mb: 3 }}>
-            Your account was created, but we could not send the activation email just now. Try
-            again below.
+            Your account was created, but we could not send the activation email just now. Try again
+            below.
           </Alert>
         )}
 
@@ -64,11 +69,19 @@ export default function CheckYourEmail({ email, emailSent = true, onResend, onBa
           </Alert>
         )}
 
-        <Button fullWidth variant="contained" onClick={resend} disabled={resending} sx={{ mb: 1.5 }}>
+        <Button
+          fullWidth
+          variant="contained"
+          onClick={resend}
+          disabled={resending}
+          sx={{ mb: 1.5 }}
+        >
           {resending ? 'Sending…' : 'Resend the link'}
         </Button>
 
-        <Button fullWidth onClick={onBackToLogin}>Back to sign in</Button>
+        <Button fullWidth onClick={onBackToLogin}>
+          Back to sign in
+        </Button>
 
         {/* Said plainly because the alternative is a support question: the mail is far more
             likely to be filtered than lost, and there is nothing the app can do about it. */}

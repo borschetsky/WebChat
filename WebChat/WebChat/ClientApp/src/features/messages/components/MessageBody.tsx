@@ -39,12 +39,18 @@ export default function MessageBody({ text, fontSize, highlight }: MessageBodyPr
           </Box>
         ) : (
           <Fragment key={i}>{part}</Fragment>
-        )
+        ),
       );
 
   return (
     <Typography
-      sx={{ fontSize, lineHeight: 1.5, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', maxWidth: 640 }}
+      sx={{
+        fontSize,
+        lineHeight: 1.5,
+        whiteSpace: 'pre-wrap',
+        overflowWrap: 'anywhere',
+        maxWidth: 640,
+      }}
     >
       {content}
     </Typography>

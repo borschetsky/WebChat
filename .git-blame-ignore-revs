@@ -1,0 +1,14 @@
+# Commits that changed formatting only, and would otherwise sit on top of every line of
+# the client in `git blame`.
+#
+# This file is not picked up automatically. Once per clone, same as core.hooksPath:
+#
+#     git config blame.ignoreRevsFile .git-blame-ignore-revs
+#
+# GitHub honours it without any configuration.
+#
+# Only add a commit here if it changed no behaviour whatsoever - a formatter run, a
+# whitespace sweep, a rename. Anything a reader might one day need to attribute stays out.
+
+# style(client): format the client with Prettier
+b51baba90f2e9ac930b1bcaad3ad498ab8416fe5

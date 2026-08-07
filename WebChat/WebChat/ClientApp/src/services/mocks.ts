@@ -15,12 +15,18 @@ import type { Attachment, Quote, Reaction, Thread } from '@/types/models';
 
 /** What is fake, and what each needs on the server. Rendered by the dev-only mock banner. */
 export const MOCK_FEATURES = [
-  { key: 'reactions', needs: 'MessageReaction table + POST/DELETE /api/thread/messages/{id}/reactions' },
+  {
+    key: 'reactions',
+    needs: 'MessageReaction table + POST/DELETE /api/thread/messages/{id}/reactions',
+  },
   { key: 'readReceipts', needs: 'per-user read watermark per thread' },
   { key: 'unreadCounts', needs: 'the same read watermark, aggregated' },
   { key: 'attachments', needs: 'message attachment storage (only avatar upload exists today)' },
   { key: 'replyQuote', needs: 'Message.ReplyToMessageId column' },
-  { key: 'notifications', needs: 'a notification feed; presence "away" also has no server representation' },
+  {
+    key: 'notifications',
+    needs: 'a notification feed; presence "away" also has no server representation',
+  },
 ];
 
 export const isMocked = (key: string): boolean => MOCK_FEATURES.some((f) => f.key === key);
@@ -31,7 +37,8 @@ export const isMocked = (key: string): boolean => MOCK_FEATURES.some((f) => f.ke
 // ---------------------------------------------------------------------------
 const reactions = new Map<string, Reaction[]>(); // messageId -> [{ emoji, count, mine }]
 
-export const mockMessageReactions = (messageId: string): Reaction[] => reactions.get(messageId) ?? [];
+export const mockMessageReactions = (messageId: string): Reaction[] =>
+  reactions.get(messageId) ?? [];
 
 export const mockToggleReaction = (messageId: string, emoji: string): Reaction[] => {
   const current = [...(reactions.get(messageId) ?? [])];
@@ -71,9 +78,13 @@ export const mockAttachQuote = (messageId: string, quote: Quote | null): Quote |
 // ---------------------------------------------------------------------------
 const attachments = new Map<string, Attachment>(); // messageId -> { name, meta }
 
-export const mockMessageAttachment = (messageId: string): Attachment | null => attachments.get(messageId) ?? null;
+export const mockMessageAttachment = (messageId: string): Attachment | null =>
+  attachments.get(messageId) ?? null;
 
-export const mockAttachFile = (messageId: string, file: { name?: string; size?: number } | null): Attachment | null => {
+export const mockAttachFile = (
+  messageId: string,
+  file: { name?: string; size?: number } | null,
+): Attachment | null => {
   if (!file) return null;
   const kb = Math.max(1, Math.round((file.size ?? 0) / 1024));
   const meta = `${(file.name?.split('.').pop() ?? 'FILE').toUpperCase()} · ${kb >= 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb} KB`}`;
@@ -90,13 +101,17 @@ export const mockAttachFile = (messageId: string, file: { name?: string; size?: 
 const unread = new Map<string, number>(); // threadId -> number
 
 export const mockThreadUnread = (threadId: string): number => unread.get(threadId) ?? 0;
-export const mockMarkThreadRead = (threadId: string): void => { unread.set(threadId, 0); };
+export const mockMarkThreadRead = (threadId: string): void => {
+  unread.set(threadId, 0);
+};
 export const mockBumpUnread = (threadId: string): number => {
   const next = (unread.get(threadId) ?? 0) + 1;
   unread.set(threadId, next);
   return next;
 };
-export const mockMarkAllRead = () => { unread.clear(); };
+export const mockMarkAllRead = () => {
+  unread.clear();
+};
 
 // ---------------------------------------------------------------------------
 // Read receipts
@@ -107,7 +122,9 @@ export const mockMarkAllRead = () => { unread.clear(); };
 // is the most actively misleading thing this mock layer could do - it contradicts the
 // presence dot two rows above. Online is at least consistent with what the user can see.
 // ---------------------------------------------------------------------------
-export const mockReadReceipt = (thread: Thread | null | undefined): { read: boolean; label: string } | null => {
+export const mockReadReceipt = (
+  thread: Thread | null | undefined,
+): { read: boolean; label: string } | null => {
   if (!thread || thread.presence !== 'online') return null;
   return { read: true, label: `Read by ${thread.name?.split(' ')[0] ?? 'them'}` };
 };

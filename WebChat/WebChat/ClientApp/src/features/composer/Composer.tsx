@@ -7,8 +7,15 @@ import ReplyIcon from '@mui/icons-material/Reply';
 import CloseIcon from '@mui/icons-material/Close';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import {
-  attachmentAdded, attachmentRemoved, draftChanged, registerDraftFile, replyCancelled,
-  selectAttachment, selectCanSend, selectDraft, selectReplyTo,
+  attachmentAdded,
+  attachmentRemoved,
+  draftChanged,
+  registerDraftFile,
+  replyCancelled,
+  selectAttachment,
+  selectCanSend,
+  selectDraft,
+  selectReplyTo,
 } from './composerSlice';
 
 const EMOJIS = ['👍', '❤️', '😂', '🎉', '🙌', '🔥', '😮', '😢', '🚀', '✅', '👀', '🤝'];
@@ -65,16 +72,31 @@ export default function Composer({ onSend, onTyping, placeholder, disabled }: Co
         <Stack
           direction="row"
           spacing={1.25}
-          sx={{ alignItems: 'center', mb: 1.25, px: 1.5, py: 1, borderLeft: 3, borderColor: 'primary.main', bgcolor: 'background.quote', borderRadius: '0 8px 8px 0' }}
+          sx={{
+            alignItems: 'center',
+            mb: 1.25,
+            px: 1.5,
+            py: 1,
+            borderLeft: 3,
+            borderColor: 'primary.main',
+            bgcolor: 'background.quote',
+            borderRadius: '0 8px 8px 0',
+          }}
         >
           <ReplyIcon fontSize="small" color="primary" />
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography sx={{ fontSize: 12, fontWeight: 500, color: 'primary.main' }}>
               Replying to {replyTo.author}
             </Typography>
-            <Typography noWrap sx={{ fontSize: 12, color: 'text.secondary' }}>{replyTo.text}</Typography>
+            <Typography noWrap sx={{ fontSize: 12, color: 'text.secondary' }}>
+              {replyTo.text}
+            </Typography>
           </Box>
-          <IconButton size="small" onClick={() => dispatch(replyCancelled())} aria-label="Cancel reply">
+          <IconButton
+            size="small"
+            onClick={() => dispatch(replyCancelled())}
+            aria-label="Cancel reply"
+          >
             <CloseIcon fontSize="inherit" />
           </IconButton>
         </Stack>
@@ -113,7 +135,17 @@ export default function Composer({ onSend, onTyping, placeholder, disabled }: Co
         <Stack
           direction="row"
           spacing={1}
-          sx={{ alignItems: 'center', flex: 1, minHeight: 44, pl: 2, pr: 1, borderRadius: 22, bgcolor: 'background.field', border: 1, borderColor: ready ? 'primary.main' : 'transparent' }}
+          sx={{
+            alignItems: 'center',
+            flex: 1,
+            minHeight: 44,
+            pl: 2,
+            pr: 1,
+            borderRadius: 22,
+            bgcolor: 'background.field',
+            border: 1,
+            borderColor: ready ? 'primary.main' : 'transparent',
+          }}
         >
           <InputBase
             multiline
@@ -122,7 +154,10 @@ export default function Composer({ onSend, onTyping, placeholder, disabled }: Co
             disabled={disabled}
             onChange={(e) => handleChange(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                send();
+              }
             }}
             placeholder={placeholder}
             inputProps={{ 'aria-label': placeholder }}
@@ -145,7 +180,8 @@ export default function Composer({ onSend, onTyping, placeholder, disabled }: Co
           title="Send"
           disabled={disabled || !ready}
           sx={{
-            width: 44, height: 44,
+            width: 44,
+            height: 44,
             bgcolor: ready ? 'primary.main' : 'background.field',
             color: ready ? 'primary.contrastText' : 'text.disabled',
             '&:hover': { bgcolor: ready ? 'primary.dark' : 'background.field' },
@@ -168,7 +204,9 @@ export default function Composer({ onSend, onTyping, placeholder, disabled }: Co
         transformOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       >
         <Paper sx={{ p: 1.5, width: 266 }}>
-          <Typography sx={{ fontSize: 12, color: 'text.secondary', mb: 1 }}>Frequently used</Typography>
+          <Typography sx={{ fontSize: 12, color: 'text.secondary', mb: 1 }}>
+            Frequently used
+          </Typography>
           <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 0.5 }}>
             {EMOJIS.map((e) => (
               <Box
@@ -176,10 +214,19 @@ export default function Composer({ onSend, onTyping, placeholder, disabled }: Co
                 component="button"
                 type="button"
                 aria-label={`Insert ${e}`}
-                onClick={() => { handleChange(draft + e); setAnchor(null); }}
+                onClick={() => {
+                  handleChange(draft + e);
+                  setAnchor(null);
+                }}
                 sx={{
-                  height: 36, display: 'grid', placeItems: 'center', fontSize: 20,
-                  border: 0, bgcolor: 'transparent', borderRadius: 1, cursor: 'pointer',
+                  height: 36,
+                  display: 'grid',
+                  placeItems: 'center',
+                  fontSize: 20,
+                  border: 0,
+                  bgcolor: 'transparent',
+                  borderRadius: 1,
+                  cursor: 'pointer',
                   '&:hover': { bgcolor: 'action.hover' },
                 }}
               >

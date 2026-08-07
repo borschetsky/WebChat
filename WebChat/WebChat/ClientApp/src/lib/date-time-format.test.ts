@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { getDateInfoForThread, getDateInfoForMessage, getDateInfoForSeparator } from './date-time-format';
+import {
+  getDateInfoForThread,
+  getDateInfoForMessage,
+  getDateInfoForSeparator,
+} from './date-time-format';
 
 /**
  * Regression tests for a real bug.

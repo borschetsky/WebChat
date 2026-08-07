@@ -1,0 +1,39 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["react", "unicorn", "oxc", "import", "jsx-a11y", "typescript", "vitest"],
+
+  "jsPlugins": [{ "name": "rh", "specifier": "eslint-plugin-react-hooks" }],
+
+  "categories": { "correctness": "error" },
+  "env": { "browser": true, "es2024": true },
+
+  "rules": {
+    "rh/rules-of-hooks": "error",
+    "rh/set-state-in-effect": "error",
+    "rh/set-state-in-render": "error",
+    "rh/purity": "error",
+    "rh/refs": "error",
+    "rh/immutability": "error",
+    "rh/static-components": "error",
+    "rh/preserve-manual-memoization": "error",
+    "rh/error-boundaries": "error",
+    "rh/use-memo": "error",
+
+    "react-hooks/exhaustive-deps": "error",
+
+    "react/react-in-jsx-scope": "off",
+
+    "jsx-a11y/no-autofocus": "off",
+
+    "vitest/require-mock-type-parameters": "off"
+  },
+
+  "overrides": [
+    {
+      "files": ["**/*.test.{ts,tsx,js,jsx}", "**/test/**"],
+      "rules": { "rh/immutability": "off", "rh/purity": "off" }
+    }
+  ],
+
+  "ignorePatterns": ["dist", "node_modules"]
+}
