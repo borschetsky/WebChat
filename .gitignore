@@ -343,3 +343,9 @@ appsettings.Secrets.json
 .env
 .env.*
 !.env.example
+
+# Agent worktrees. `git worktree add` under .claude/ puts a second checkout of this repo
+# inside the repo, so without this every file in it reads as untracked here. The worktree
+# is a real branch checkout - it is not disposable output, and the branch it holds is
+# pushed and reviewed normally.
+.claude/worktrees/
