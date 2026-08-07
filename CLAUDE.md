@@ -108,8 +108,13 @@ and fill it in, or the command stops naming the variable it wanted.
   rather than hand-aligning anything.
 - **UI components talk to `services/chat-service.ts`, never to `api-service` or `mocks`
   directly.** That seam is what keeps mocked features indistinguishable from real ones;
-  seven features are mocked because the API cannot back them — the settings drawer lists
+  six features are mocked because the API cannot back them — the settings drawer lists
   them, and `mocks.ts` names the endpoint each would need.
+- **Porting a component from the design handoff? Translate `inputProps` to `slotProps`.**
+  The handoff predates MUI v9, which drops `inputProps` **silently** — no warning, no error,
+  the control simply loses the attributes it carried. Copying its `ComposeDialog` verbatim
+  produced a checkbox with no accessible name at all, caught only because a test queried by
+  label. Same family as the `Stack` prop-dropping bug that `theme.d.ts`'s drift test guards.
 - **Design tokens come from the handoff and are final** (`src/theme/tokens.js`). Prefer an
   existing token over a new value.
 - **After upgrading a client dependency across a major, restart the Vite dev server with
