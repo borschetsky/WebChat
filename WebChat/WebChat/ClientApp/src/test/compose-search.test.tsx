@@ -28,11 +28,14 @@ function Harness({ onSearch }: { onSearch: (t: string) => Promise<unknown> }) {
   PARENT.renders += 1;
   // Stands in for RTK Query's query-state update: calling the search re-renders this parent.
   const [, setTick] = useState(0);
-  const search = useCallback(async (t: string) => {
-    const result = await onSearch(t);
-    setTick((n) => n + 1);
-    return result;
-  }, [onSearch]);
+  const search = useCallback(
+    async (t: string) => {
+      const result = await onSearch(t);
+      setTick((n) => n + 1);
+      return result;
+    },
+    [onSearch],
+  );
 
   return (
     <ThemeModeProvider>
@@ -55,34 +58,46 @@ function type(el: HTMLElement, value: string) {
   el.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
-const flush = (ms: number) => act(async () => {
-  await vi.advanceTimersByTimeAsync(ms);
-});
+const flush = (ms: number) =>
+  act(async () => {
+    await vi.advanceTimersByTimeAsync(ms);
+  });
 
 describe('ComposeDialog search', () => {
-  beforeEach(() => { PARENT.renders = 0; vi.useFakeTimers(); });
-  afterEach(() => { vi.useRealTimers(); });
+  beforeEach(() => {
+    PARENT.renders = 0;
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
   it('issues one request per term even when every parent render remints the callback', async () => {
     const onSearch = vi.fn().mockResolvedValue([]);
     render(<Harness onSearch={onSearch} />);
 
-    await act(async () => { type(screen.getByRole('textbox'), 'test2'); });
+    await act(async () => {
+      type(screen.getByRole('textbox'), 'test2');
+    });
 
-    await flush(300);   // past the 250ms debounce - the one legitimate call
-    await flush(3000);  // a loop fires roughly once per debounce; this would add ~12 more
+    await flush(300); // past the 250ms debounce - the one legitimate call
+    await flush(3000); // a loop fires roughly once per debounce; this would add ~12 more
 
     expect(onSearch).toHaveBeenCalledTimes(1);
     expect(onSearch).toHaveBeenCalledWith('test2');
   });
 
   it('shows the result rather than discarding it', async () => {
-    const onSearch = vi.fn().mockResolvedValue([
-      { id: '701f6296', name: 'test2', role: '', presence: 'online', avatarFileName: null },
-    ]);
+    const onSearch = vi
+      .fn()
+      .mockResolvedValue([
+        { id: '701f6296', name: 'test2', role: '', presence: 'online', avatarFileName: null },
+      ]);
     render(<Harness onSearch={onSearch} />);
 
-    await act(async () => { type(screen.getByRole('textbox'), 'test2'); });
+    await act(async () => {
+      type(screen.getByRole('textbox'), 'test2');
+    });
     await flush(300);
 
     // Each re-run's cleanup set cancelled = true, so the setPeople of the request already
@@ -96,9 +111,13 @@ describe('ComposeDialog search', () => {
     render(<Harness onSearch={onSearch} />);
     const input = screen.getByRole('textbox');
 
-    await act(async () => { type(input, 'ab'); });
+    await act(async () => {
+      type(input, 'ab');
+    });
     await flush(300);
-    await act(async () => { type(input, 'abc'); });
+    await act(async () => {
+      type(input, 'abc');
+    });
     await flush(300);
     await flush(2000);
 
@@ -111,7 +130,9 @@ describe('ComposeDialog search', () => {
     const input = screen.getByRole('textbox');
 
     for (const v of ['t', 'te', 'tes', 'test']) {
-      await act(async () => { type(input, v); });
+      await act(async () => {
+        type(input, v);
+      });
       await flush(50);
     }
     await flush(300);

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Box, Button, IconButton, Skeleton, Stack, Typography } from '@mui/material';
+import { Box, Button, IconButton, Stack, Typography } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SearchIcon from '@mui/icons-material/Search';
 import InfoIcon from '@mui/icons-material/Info';
@@ -21,11 +21,26 @@ const presenceLine = (thread) => {
 };
 
 export default function ConversationPane({
-  thread, messages, loading, density, isMobile,
-  searchOpen, searchQuery, searchCount, totalCount,
-  typing, receipt,
-  onBack, onToggleSearch, onSearchQuery, onOpenSettings,
-  onSend, onTyping, onReact, onReply, onRetry,
+  thread,
+  messages,
+  loading,
+  density,
+  isMobile,
+  searchOpen,
+  searchQuery,
+  searchCount,
+  totalCount,
+  typing,
+  receipt,
+  onBack,
+  onToggleSearch,
+  onSearchQuery,
+  onOpenSettings,
+  onSend,
+  onTyping,
+  onReact,
+  onReply,
+  onRetry,
   onCompose,
 }) {
   const d = densityTokens(density);
@@ -45,7 +60,12 @@ export default function ConversationPane({
           body="Pick a thread on the left, or start a new one."
           width={320}
           action={
-            <Button variant="contained" startIcon={<AddIcon />} onClick={onCompose} sx={{ mt: 1, borderRadius: 20 }}>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={onCompose}
+              sx={{ mt: 1, borderRadius: 20 }}
+            >
               New conversation
             </Button>
           }
@@ -56,16 +76,41 @@ export default function ConversationPane({
 
   return (
     <>
-      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', p: 1.25, px: 2, bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider' }}>
+      <Stack
+        direction="row"
+        spacing={1.5}
+        sx={{
+          alignItems: 'center',
+          p: 1.25,
+          px: 2,
+          bgcolor: 'background.paper',
+          borderBottom: 1,
+          borderColor: 'divider',
+        }}
+      >
         {isMobile && (
           <IconButton onClick={onBack} aria-label="Back to conversations">
             <ArrowBackIcon />
           </IconButton>
         )}
-        <PresenceAvatar name={thread.name} color={thread.color} avatarFileName={thread.avatarFileName} size={38} showPresence={false} />
+        <PresenceAvatar
+          name={thread.name}
+          color={thread.color}
+          avatarFileName={thread.avatarFileName}
+          size={38}
+          showPresence={false}
+        />
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography noWrap sx={{ fontSize: 16, fontWeight: 500 }}>{thread.name}</Typography>
-          <Typography noWrap sx={{ fontSize: 12, color: thread.presence === 'online' ? PRESENCE.online : 'text.secondary' }}>
+          <Typography noWrap sx={{ fontSize: 16, fontWeight: 500 }}>
+            {thread.name}
+          </Typography>
+          <Typography
+            noWrap
+            sx={{
+              fontSize: 12,
+              color: thread.presence === 'online' ? PRESENCE.online : 'text.secondary',
+            }}
+          >
             {presenceLine(thread)}
           </Typography>
         </Box>
@@ -84,7 +129,18 @@ export default function ConversationPane({
       </Stack>
 
       {searchOpen && (
-        <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', p: 1.25, px: 2, bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider' }}>
+        <Stack
+          direction="row"
+          spacing={1.25}
+          sx={{
+            alignItems: 'center',
+            p: 1.25,
+            px: 2,
+            bgcolor: 'background.paper',
+            borderBottom: 1,
+            borderColor: 'divider',
+          }}
+        >
           <SearchField
             value={searchQuery}
             onChange={onSearchQuery}
@@ -125,16 +181,28 @@ export default function ConversationPane({
 
         {typing && (
           <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', px: 3, py: 1 }}>
-            <PresenceAvatar name={thread.name} color={thread.color} avatarFileName={thread.avatarFileName} size={d.avatar} showPresence={false} />
-            <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>{thread.name.split(' ')[0]} is typing…</Typography>
+            <PresenceAvatar
+              name={thread.name}
+              color={thread.color}
+              avatarFileName={thread.avatarFileName}
+              size={d.avatar}
+              showPresence={false}
+            />
+            <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+              {thread.name.split(' ')[0]} is typing…
+            </Typography>
           </Stack>
         )}
 
         {!loading && searchQuery.trim() && messages.length === 0 && (
-          <Typography sx={{ textAlign: 'center', py: 8, color: 'text.secondary' }}>No messages match “{searchQuery}”.</Typography>
+          <Typography sx={{ textAlign: 'center', py: 8, color: 'text.secondary' }}>
+            No messages match “{searchQuery}”.
+          </Typography>
         )}
         {!loading && !searchQuery.trim() && messages.length === 0 && (
-          <Typography sx={{ textAlign: 'center', py: 8, color: 'text.secondary' }}>No messages yet. Say hello.</Typography>
+          <Typography sx={{ textAlign: 'center', py: 8, color: 'text.secondary' }}>
+            No messages yet. Say hello.
+          </Typography>
         )}
 
         <div ref={endRef} />

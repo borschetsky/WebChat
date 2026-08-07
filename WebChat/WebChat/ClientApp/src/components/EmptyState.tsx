@@ -17,7 +17,14 @@ interface EmptyStateProps {
  * before it was extracted: no threads, no search results, no conversation selected, and
  * no messages in a thread.
  */
-export default function EmptyState({ icon, title, body, action, width = 240, dense = false }: EmptyStateProps) {
+export default function EmptyState({
+  icon,
+  title,
+  body,
+  action,
+  width = 240,
+  dense = false,
+}: EmptyStateProps) {
   return (
     <Stack
       sx={{
@@ -28,10 +35,14 @@ export default function EmptyState({ icon, title, body, action, width = 240, den
         gap: 1.25,
       }}
     >
-      <Avatar sx={{ width: 64, height: 64, bgcolor: 'background.field', color: 'text.secondary' }}>{icon}</Avatar>
+      <Avatar sx={{ width: 64, height: 64, bgcolor: 'background.field', color: 'text.secondary' }}>
+        {icon}
+      </Avatar>
       <Typography sx={{ fontSize: 16, fontWeight: 500 }}>{title}</Typography>
       {body && (
-        <Typography sx={{ fontSize: 13, color: 'text.secondary', maxWidth: width }}>{body}</Typography>
+        <Typography sx={{ fontSize: 13, color: 'text.secondary', maxWidth: width }}>
+          {body}
+        </Typography>
       )}
       {action}
     </Stack>

@@ -32,7 +32,15 @@ export interface MessageRowProps {
  * tested and reused independently, and so memoization has something stable to compare.
  */
 function MessageRow({
-  message: m, grouped, density, onReact, onReply, onRetry, receiptLabel, showReceipt, highlight,
+  message: m,
+  grouped,
+  density,
+  onReact,
+  onReply,
+  onRetry,
+  receiptLabel,
+  showReceipt,
+  highlight,
 }: MessageRowProps) {
   const d = densityTokens(density);
   const pending = m.status === 'sending';
@@ -54,9 +62,13 @@ function MessageRow({
       }}
     >
       {/* Avatar gutter: avatar on the first row of a group, timestamp on the rest. */}
-      <Box sx={{ width: d.avatar, flex: 'none', display: 'flex', justifyContent: 'center', pt: '2px' }}>
+      <Box
+        sx={{ width: d.avatar, flex: 'none', display: 'flex', justifyContent: 'center', pt: '2px' }}
+      >
         {grouped ? (
-          <Typography sx={{ fontSize: 11, color: 'text.disabled', fontFamily: '"Roboto Mono", monospace' }}>
+          <Typography
+            sx={{ fontSize: 11, color: 'text.disabled', fontFamily: '"Roboto Mono", monospace' }}
+          >
             {(m.time || '').replace(/\s?(AM|PM)/, '')}
           </Typography>
         ) : (
@@ -73,7 +85,9 @@ function MessageRow({
       <Box sx={{ flex: 1, minWidth: 0 }}>
         {!grouped && (
           <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline', mb: 0.25 }}>
-            <Typography sx={{ fontSize: 14, fontWeight: 500, color: m.own ? 'primary.main' : 'text.primary' }}>
+            <Typography
+              sx={{ fontSize: 14, fontWeight: 500, color: m.own ? 'primary.main' : 'text.primary' }}
+            >
               {m.author}
             </Typography>
             <Typography sx={{ fontSize: 11, color: 'text.disabled' }}>{m.time}</Typography>
@@ -99,7 +113,11 @@ function MessageRow({
         direction="row"
         sx={{ opacity: 0, transition: 'opacity .15s', flex: 'none' }}
       >
-        <IconButton size="small" aria-label={`React to message from ${m.author}`} onClick={() => onReact(m.id, '👍')}>
+        <IconButton
+          size="small"
+          aria-label={`React to message from ${m.author}`}
+          onClick={() => onReact(m.id, '👍')}
+        >
           <AddReactionIcon fontSize="inherit" />
         </IconButton>
         <IconButton size="small" aria-label={`Reply to ${m.author}`} onClick={() => onReply(m)}>

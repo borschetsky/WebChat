@@ -98,6 +98,14 @@ and fill it in, or the command stops naming the variable it wanted.
 - **The client is React 19 + MUI v9 + Redux Toolkit, built with Vite 8.** JSX must live in
   `.jsx` files — Vite does not transform JSX in `.js`. Build output is `ClientApp/dist`,
   which `AddSpaStaticFiles` points at.
+- **The client lints with oxlint, and ESLint is not an option — do not try to add it.**
+  `typescript-eslint` refuses TypeScript 7 (`"does not support TS 7.0"` at config load, and
+  an ERESOLVE before that), and the client runs TS 7, so ESLint would leave two thirds of
+  `src` unparsed. oxlint has its own parser and loads `eslint-plugin-react-hooks` through
+  `jsPlugins`, which is the only source of the React Compiler rules. `npm run verify` is the
+  whole gate — lint, format:check, typecheck, test — and warnings fail it, matching the .NET
+  side's 0-warning standard. Formatting is Prettier; run `npm run format` before committing
+  rather than hand-aligning anything.
 - **UI components talk to `services/chat-service.ts`, never to `api-service` or `mocks`
   directly.** That seam is what keeps mocked features indistinguishable from real ones;
   seven features are mocked because the API cannot back them — the settings drawer lists

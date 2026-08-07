@@ -1,7 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Box, Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
-  List, ListItemButton, TextField, Typography,
+  Box,
+  Button,
+  Checkbox,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  List,
+  ListItemButton,
+  TextField,
+  Typography,
 } from '@mui/material';
 import PersonSearchIcon from '@mui/icons-material/PersonSearch';
 import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
@@ -18,7 +28,14 @@ import SearchField from '@/components/SearchField';
  * submit - the handoff's "New group" action, which used to be omitted because Thread had a
  * single OponentId and there was nothing a group button could create.
  */
-export default function ComposeDialog({ open, onClose, onStart, onStartGroup, onSearch, fullScreen }) {
+export default function ComposeDialog({
+  open,
+  onClose,
+  onStart,
+  onStartGroup,
+  onSearch,
+  fullScreen,
+}) {
   const [q, setQ] = useState('');
   const [people, setPeople] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -27,11 +44,12 @@ export default function ComposeDialog({ open, onClose, onStart, onStartGroup, on
   const [picked, setPicked] = useState([]);
   const [creating, setCreating] = useState(false);
 
-  const toggle = (person) => setPicked((current) => (
-    current.some((p) => p.id === person.id)
-      ? current.filter((p) => p.id !== person.id)
-      : [...current, person]
-  ));
+  const toggle = (person) =>
+    setPicked((current) =>
+      current.some((p) => p.id === person.id)
+        ? current.filter((p) => p.id !== person.id)
+        : [...current, person],
+    );
 
   const createGroup = async () => {
     setCreating(true);
@@ -49,12 +67,22 @@ export default function ComposeDialog({ open, onClose, onStart, onStartGroup, on
   // following run's cleanup, so the spinner never stops and nothing is ever displayed.
   // A ref keeps the latest callback without making a re-render mean a refetch.
   const search = useRef(onSearch);
-  useEffect(() => { search.current = onSearch; }, [onSearch]);
+  useEffect(() => {
+    search.current = onSearch;
+  }, [onSearch]);
 
   useEffect(() => {
     if (!open) return undefined;
     const term = q.trim();
-    if (!term) { setPeople([]); return undefined; }
+    // Clearing results for an empty box should really be derived at render rather than set
+    // here. Left as-is deliberately: this effect is the one that caused the request loop in
+    // docs/ctx/2026-08-04-compose-search-render-loop.md, it is pinned by a regression test,
+    // and restructuring it does not belong in the change that introduced the linter.
+    if (!term) {
+      // oxlint-disable-next-line rh/set-state-in-effect
+      setPeople([]);
+      return undefined;
+    }
 
     let cancelled = false;
     setLoading(true);
@@ -69,19 +97,37 @@ export default function ComposeDialog({ open, onClose, onStart, onStartGroup, on
       }
     }, 250);
 
-    return () => { cancelled = true; clearTimeout(t); };
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
   }, [q, open]);
 
   // Everything resets on close, including the mode. Reopening into a half-built group with
   // people selected from last time would be a surprising place to land.
   useEffect(() => {
     if (!open) {
-      setQ(''); setPeople([]); setIsGroup(false); setGroupName(''); setPicked([]);
+      // The idiomatic replacement is remounting the dialog from a key at the call site,
+      // which is a change to ChatApp rather than to this file. Deferred; see the ctx note
+      // for this change.
+      // oxlint-disable-next-line rh/set-state-in-effect
+      setQ('');
+      setPeople([]);
+      setIsGroup(false);
+      setGroupName('');
+      setPicked([]);
     }
   }, [open]);
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs" fullScreen={fullScreen} slotProps={{ paper: { sx: { borderRadius: fullScreen ? 0 : 4 } } }}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullWidth
+      maxWidth="xs"
+      fullScreen={fullScreen}
+      slotProps={{ paper: { sx: { borderRadius: fullScreen ? 0 : 4 } } }}
+    >
       <DialogTitle sx={{ pb: 0.5 }}>
         {isGroup ? 'New group' : 'New conversation'}
         <Typography sx={{ fontSize: 13, color: 'text.secondary', mt: 0.5 }}>
@@ -94,8 +140,12 @@ export default function ComposeDialog({ open, onClose, onStart, onStartGroup, on
       <DialogContent sx={{ pt: 1.5 }}>
         {isGroup && (
           <TextField
-            label="Group name" fullWidth size="small" autoFocus
-            value={groupName} onChange={(e) => setGroupName(e.target.value)}
+            label="Group name"
+            fullWidth
+            size="small"
+            autoFocus
+            value={groupName}
+            onChange={(e) => setGroupName(e.target.value)}
             sx={{ mb: 2 }}
           />
         )}
@@ -128,14 +178,29 @@ export default function ComposeDialog({ open, onClose, onStart, onStartGroup, on
               selected={isGroup && picked.some((s) => s.id === p.id)}
               sx={{ gap: 1.5, borderRadius: 2.5 }}
             >
-              <PresenceAvatar name={p.name} color={p.color} avatarFileName={p.avatarFileName} size={38} presence={p.presence} />
+              <PresenceAvatar
+                name={p.name}
+                color={p.color}
+                avatarFileName={p.avatarFileName}
+                size={38}
+                presence={p.presence}
+              />
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography noWrap sx={{ fontSize: 14 }}>{p.name}</Typography>
+                <Typography noWrap sx={{ fontSize: 14 }}>
+                  {p.name}
+                </Typography>
                 <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>{p.role}</Typography>
               </Box>
-              {isGroup
-                ? <Checkbox edge="end" checked={picked.some((s) => s.id === p.id)} tabIndex={-1} disableRipple />
-                : <ChatBubbleIcon fontSize="small" sx={{ color: 'text.secondary' }} />}
+              {isGroup ? (
+                <Checkbox
+                  edge="end"
+                  checked={picked.some((s) => s.id === p.id)}
+                  tabIndex={-1}
+                  disableRipple
+                />
+              ) : (
+                <ChatBubbleIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+              )}
             </ListItemButton>
           ))}
         </List>

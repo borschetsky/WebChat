@@ -1,5 +1,14 @@
 import React from 'react';
-import { Box, Button, Divider, List, ListItemButton, Popover, Stack, Typography } from '@mui/material';
+import {
+  Box,
+  Button,
+  Divider,
+  List,
+  ListItemButton,
+  Popover,
+  Stack,
+  Typography,
+} from '@mui/material';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import NotificationsOffIcon from '@mui/icons-material/NotificationsOff';
 import PresenceAvatar from '@/components/PresenceAvatar';
@@ -26,7 +35,14 @@ export default function NotificationsMenu({ anchorEl, onClose, threads, onSelect
       <Stack direction="row" sx={{ alignItems: 'center', px: 2, py: 1.5 }}>
         <Typography sx={{ flex: 1, fontSize: 15, fontWeight: 500 }}>Notifications</Typography>
         {unread.length > 0 && (
-          <Button size="small" startIcon={<DoneAllIcon />} onClick={() => { onMarkAllRead(); onClose(); }}>
+          <Button
+            size="small"
+            startIcon={<DoneAllIcon />}
+            onClick={() => {
+              onMarkAllRead();
+              onClose();
+            }}
+          >
             Mark all read
           </Button>
         )}
@@ -44,13 +60,32 @@ export default function NotificationsMenu({ anchorEl, onClose, threads, onSelect
       ) : (
         <List disablePadding sx={{ py: 0.5, maxHeight: 340, overflowY: 'auto' }}>
           {unread.map((t) => (
-            <ListItemButton key={t.id} onClick={() => { onSelect(t.id); onClose(); }} sx={{ gap: 1.5, px: 2, py: 1.25 }}>
-              <PresenceAvatar name={t.name} color={t.color} avatarFileName={t.avatarFileName} size={34} presence={t.presence} />
+            <ListItemButton
+              key={t.id}
+              onClick={() => {
+                onSelect(t.id);
+                onClose();
+              }}
+              sx={{ gap: 1.5, px: 2, py: 1.25 }}
+            >
+              <PresenceAvatar
+                name={t.name}
+                color={t.color}
+                avatarFileName={t.avatarFileName}
+                size={34}
+                presence={t.presence}
+              />
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography noWrap sx={{ fontSize: 14, fontWeight: 500 }}>{t.name}</Typography>
-                <Typography noWrap sx={{ fontSize: 12, color: 'text.secondary' }}>{t.preview}</Typography>
+                <Typography noWrap sx={{ fontSize: 14, fontWeight: 500 }}>
+                  {t.name}
+                </Typography>
+                <Typography noWrap sx={{ fontSize: 12, color: 'text.secondary' }}>
+                  {t.preview}
+                </Typography>
               </Box>
-              <Typography sx={{ fontSize: 12, color: 'primary.main', fontWeight: 600 }}>{t.unread}</Typography>
+              <Typography sx={{ fontSize: 12, color: 'primary.main', fontWeight: 600 }}>
+                {t.unread}
+              </Typography>
             </ListItemButton>
           ))}
         </List>

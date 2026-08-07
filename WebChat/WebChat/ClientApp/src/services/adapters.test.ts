@@ -1,5 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { toThread, toThreads, toMessage, toMessageList, toDirectory, toProfile, toLiveMessage } from './adapters';
+import {
+  toThread,
+  toThreads,
+  toMessage,
+  toMessageList,
+  toDirectory,
+  toProfile,
+  toLiveMessage,
+} from './adapters';
 import type { MessageDto, MessagesByDayDto, ThreadDto } from '@/types/dto';
 
 /**
@@ -14,15 +22,23 @@ const threadDto = (over: Partial<ThreadDto> = {}): ThreadDto => ({
   owner: 'me',
   lastMessage: { text: 'hello there', time: '2026-08-03T10:00:00', senderId: 'u2' },
   oponentVM: {
-    id: 'u2', username: 'Maya', email: 'm@e.com',
-    avatarFileName: 'a.png', isOnline: true, isTyping: false,
+    id: 'u2',
+    username: 'Maya',
+    email: 'm@e.com',
+    avatarFileName: 'a.png',
+    isOnline: true,
+    isTyping: false,
   },
   ...over,
 });
 
 const messageDto = (over: Partial<MessageDto> = {}): MessageDto => ({
-  id: 'm1', senderId: 'u2', text: 'hi', threadId: 't1',
-  username: 'Maya', time: '2026-08-03T10:00:00',
+  id: 'm1',
+  senderId: 'u2',
+  text: 'hi',
+  threadId: 't1',
+  username: 'Maya',
+  time: '2026-08-03T10:00:00',
   ...over,
 });
 
@@ -37,11 +53,15 @@ describe('toThread', () => {
 
   it('maps isOnline to the presence union', () => {
     expect(toThread(threadDto()).presence).toBe('online');
-    expect(toThread(threadDto({ oponentVM: { ...threadDto().oponentVM!, isOnline: false } })).presence).toBe('offline');
+    expect(
+      toThread(threadDto({ oponentVM: { ...threadDto().oponentVM!, isOnline: false } })).presence,
+    ).toBe('offline');
   });
 
   it('treats the "No messages" sentinel as having no messages', () => {
-    const t = toThread(threadDto({ lastMessage: { text: 'No messages', time: null, senderId: null } }));
+    const t = toThread(
+      threadDto({ lastMessage: { text: 'No messages', time: null, senderId: null } }),
+    );
     expect(t.preview).toBe('No messages yet');
     expect(t.time).toBe('');
     expect(t.lastMessageAt).toBeNull();
@@ -76,8 +96,22 @@ describe('toThread', () => {
       isGroup: true,
       name: 'Team standup',
       members: [
-        { id: 'u1', username: 'sam', email: null, isOnline: true, isTyping: false, avatarFileName: null },
-        { id: 'u2', username: 'jo', email: null, isOnline: false, isTyping: false, avatarFileName: null },
+        {
+          id: 'u1',
+          username: 'sam',
+          email: null,
+          isOnline: true,
+          isTyping: false,
+          avatarFileName: null,
+        },
+        {
+          id: 'u2',
+          username: 'jo',
+          email: null,
+          isOnline: false,
+          isTyping: false,
+          avatarFileName: null,
+        },
       ],
     });
 
@@ -131,7 +165,9 @@ describe('toMessageList', () => {
   });
 
   it('sorts within a day too', () => {
-    const ids = toMessageList(dict, 'me').filter((m) => m.dayKey === '2026-08-03T00:00:00').map((m) => m.id);
+    const ids = toMessageList(dict, 'me')
+      .filter((m) => m.dayKey === '2026-08-03T00:00:00')
+      .map((m) => m.id);
     expect(ids).toEqual(['b', 'c']);
   });
 
@@ -155,7 +191,9 @@ describe('toLiveMessage', () => {
 
 describe('toDirectory and toProfile', () => {
   it('maps a directory entry with a presence-derived role', () => {
-    const [entry] = toDirectory([{ id: 'u3', username: 'Ben', isOnline: true, avatarFileName: null }]);
+    const [entry] = toDirectory([
+      { id: 'u3', username: 'Ben', isOnline: true, avatarFileName: null },
+    ]);
     expect(entry.name).toBe('Ben');
     expect(entry.role).toBe('Online');
   });

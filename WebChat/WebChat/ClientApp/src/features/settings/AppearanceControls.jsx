@@ -13,7 +13,17 @@ export default function AppearanceControls() {
 
   return (
     <>
-      <Typography sx={{ px: 2, pt: 2, pb: 0.5, fontSize: 12, fontWeight: 500, color: 'text.secondary', letterSpacing: '.04em' }}>
+      <Typography
+        sx={{
+          px: 2,
+          pt: 2,
+          pb: 0.5,
+          fontSize: 12,
+          fontWeight: 500,
+          color: 'text.secondary',
+          letterSpacing: '.04em',
+        }}
+      >
         APPEARANCE
       </Typography>
       <List disablePadding>
@@ -27,7 +37,9 @@ export default function AppearanceControls() {
             />
           }
         >
-          <ListItemIcon sx={{ minWidth: 40 }}><DarkModeIcon fontSize="small" /></ListItemIcon>
+          <ListItemIcon sx={{ minWidth: 40 }}>
+            <DarkModeIcon fontSize="small" />
+          </ListItemIcon>
           <ListItemText
             primary="Dark mode"
             secondary={followsSystem ? 'Following system' : null}
@@ -45,7 +57,9 @@ export default function AppearanceControls() {
             />
           }
         >
-          <ListItemIcon sx={{ minWidth: 40 }}><DensitySmallIcon fontSize="small" /></ListItemIcon>
+          <ListItemIcon sx={{ minWidth: 40 }}>
+            <DensitySmallIcon fontSize="small" />
+          </ListItemIcon>
           <ListItemText
             primary="Compact density"
             secondary="Tighter rows and smaller avatars"
