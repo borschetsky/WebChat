@@ -19,6 +19,7 @@ import ThreadList from '@/features/threads/ThreadList';
 import ConversationPane from '@/features/messages/ConversationPane';
 import SettingsDrawer from '@/features/settings/SettingsDrawer';
 import ComposeDialog from '@/features/threads/ComposeDialog';
+import { deriveGroupName } from '@/features/threads/groupName';
 import { useThemeMode } from '@/theme/ThemeModeProvider';
 import { uploadAvatar } from '@/services';
 import { markThreadRead, markAllThreadsRead, readReceiptFor } from '@/services/chat-service';
@@ -240,12 +241,15 @@ export default function ChatApp({ user, onSignOut }) {
     }
   };
 
-  const handleStartGroup = async (name, members) => {
+  // The dialog collects people and nothing else - the handoff has no group-name field, so
+  // the name is derived from the members here rather than typed.
+  const handleStartGroup = async (members) => {
     dispatch(composeClosed());
+    const name = deriveGroupName(members);
     try {
       const { threadId } = await startGroup({ name, members }).unwrap();
       await selectThread(threadId);
-      notify(`Group “${name}” created`);
+      notify(`Group created with ${members.length} people`);
     } catch {
       notify('Could not create that group.');
     }

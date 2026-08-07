@@ -207,10 +207,10 @@ in-flight query.
 
 ### The mock seam
 
-Seven features have no backend. Every one is served from `services/mocks.ts` behind the same
+Six features have no backend. Every one is served from `services/mocks.ts` behind the same
 call signature the real thing would have, each with a `MOCK BECAUSE:` note naming the missing
-endpoint. Mocked: reactions, reply/quote, attachments, unread counts, read receipts, groups
-(is-group + members), notifications.
+endpoint. Mocked: reactions, reply/quote, attachments, unread counts, read receipts,
+notifications. **Groups are no longer mocked** — issue #37 made them real.
 
 > **Components must talk to `services/chat-service`, never to `api-service` or `mocks`
 > directly.** That seam is the whole reason mocked features are indistinguishable from real
@@ -274,7 +274,7 @@ both profiles point at a Postgres on `localhost:5432`.
 ```bash
 cd WebChat/WebChat/ClientApp
 npm run verify    # lint, format:check, typecheck, test — the whole gate, in that order
-npm test          # vitest — 61 tests, 7 files
+npm test          # vitest — 71 tests, 9 files
 npm run typecheck # tsc --noEmit
 npm run lint      # oxlint --deny-warnings (warnings fail, matching the .NET 0-warning bar)
 npm run format    # prettier --write .

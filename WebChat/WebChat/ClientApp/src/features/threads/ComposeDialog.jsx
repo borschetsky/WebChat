@@ -8,9 +8,10 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  IconButton,
   List,
   ListItemButton,
-  TextField,
+  Stack,
   Typography,
 } from '@mui/material';
 import PersonSearchIcon from '@mui/icons-material/PersonSearch';
@@ -20,13 +21,20 @@ import PresenceAvatar from '@/components/PresenceAvatar';
 import SearchField from '@/components/SearchField';
 
 /**
- * New-conversation dialog. Unlike the handoff, which filtered a local fixture array, this
- * queries /api/users/search - so it debounces and shows a loading state.
+ * New-conversation dialog, following the design handoff exactly.
  *
- * Two modes. Direct starts a thread as soon as someone is picked, because there is nothing
- * else to decide. Group collects people first and needs a name, so it only creates on
- * submit - the handoff's "New group" action, which used to be omitted because Thread had a
- * single OponentId and there was nothing a group button could create.
+ * It is modeless: one list serves both outcomes. Ticking a row selects someone for a group,
+ * and the chat-bubble button on the row opens a direct message straight away. The earlier
+ * version had two modes behind a toggle and made a group cost a mode switch, a typed name
+ * and a submit; this reaches a group in two ticks and one press.
+ *
+ * There is deliberately no group-name field - the handoff derives the name from the members
+ * (see deriveGroupName in ChatApp). That is why the minimum is two people rather than the
+ * one the API accepts: a nameless two-person group would be indistinguishable from a direct
+ * thread, which is the whole argument CreateGroupViewModel makes for allowing one.
+ *
+ * Unlike the handoff, which filtered a local fixture array, this queries /api/users/search -
+ * so it keeps a debounce, a loading state and a prompt before anything is typed.
  */
 export default function ComposeDialog({
   open,
@@ -39,8 +47,6 @@ export default function ComposeDialog({
   const [q, setQ] = useState('');
   const [people, setPeople] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [isGroup, setIsGroup] = useState(false);
-  const [groupName, setGroupName] = useState('');
   const [picked, setPicked] = useState([]);
   const [creating, setCreating] = useState(false);
 
@@ -51,10 +57,15 @@ export default function ComposeDialog({
         : [...current, person],
     );
 
+  const startDirect = (person) => {
+    setPicked([]);
+    onStart(person);
+  };
+
   const createGroup = async () => {
     setCreating(true);
     try {
-      await onStartGroup(groupName.trim(), picked);
+      await onStartGroup(picked);
     } finally {
       setCreating(false);
     }
@@ -77,7 +88,7 @@ export default function ComposeDialog({
     // Clearing results for an empty box should really be derived at render rather than set
     // here. Left as-is deliberately: this effect is the one that caused the request loop in
     // docs/ctx/2026-08-04-compose-search-render-loop.md, it is pinned by a regression test,
-    // and restructuring it does not belong in the change that introduced the linter.
+    // and restructuring it does not belong in a change to the dialog's layout.
     if (!term) {
       // oxlint-disable-next-line rh/set-state-in-effect
       setPeople([]);
@@ -103,18 +114,15 @@ export default function ComposeDialog({
     };
   }, [q, open]);
 
-  // Everything resets on close, including the mode. Reopening into a half-built group with
-  // people selected from last time would be a surprising place to land.
+  // Everything resets on close. Reopening into a half-built group with people selected from
+  // last time would be a surprising place to land.
   useEffect(() => {
     if (!open) {
       // The idiomatic replacement is remounting the dialog from a key at the call site,
-      // which is a change to ChatApp rather than to this file. Deferred; see the ctx note
-      // for this change.
+      // which is a change to ChatApp rather than to this file. Deferred; see the ctx note.
       // oxlint-disable-next-line rh/set-state-in-effect
       setQ('');
       setPeople([]);
-      setIsGroup(false);
-      setGroupName('');
       setPicked([]);
     }
   }, [open]);
@@ -129,118 +137,134 @@ export default function ComposeDialog({
       slotProps={{ paper: { sx: { borderRadius: fullScreen ? 0 : 4 } } }}
     >
       <DialogTitle sx={{ pb: 0.5 }}>
-        {isGroup ? 'New group' : 'New conversation'}
+        New conversation
         <Typography sx={{ fontSize: 13, color: 'text.secondary', mt: 0.5 }}>
-          {isGroup
-            ? 'Name it, then pick who should be in it.'
-            : 'Search for someone to start talking to.'}
+          Tick two or more people to start a group, or open a direct message.
         </Typography>
       </DialogTitle>
 
       <DialogContent sx={{ pt: 1.5 }}>
-        {isGroup && (
-          <TextField
-            label="Group name"
-            fullWidth
-            size="small"
+        <Box sx={{ mb: 1 }}>
+          <SearchField
+            value={q}
+            onChange={setQ}
+            placeholder="Search directory"
+            label="Search the directory for someone to message"
+            icon={<PersonSearchIcon fontSize="small" sx={{ color: 'text.secondary' }} />}
+            loading={loading}
             autoFocus
-            value={groupName}
-            onChange={(e) => setGroupName(e.target.value)}
-            sx={{ mb: 2 }}
           />
-        )}
+        </Box>
 
-        {isGroup && picked.length > 0 && (
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mb: 2 }}>
+        {picked.length > 0 && (
+          <Stack direction="row" flexWrap="wrap" gap={0.75} sx={{ mb: 1.25 }}>
             {picked.map((p) => (
-              <Chip key={p.id} label={p.name} size="small" onDelete={() => toggle(p)} />
+              <Chip
+                key={p.id}
+                size="medium"
+                label={p.name.split(' ')[0]}
+                onDelete={() => toggle(p)}
+                avatar={
+                  <PresenceAvatar
+                    name={p.name}
+                    color={p.color}
+                    avatarFileName={p.avatarFileName}
+                    size={24}
+                    showPresence={false}
+                  />
+                }
+              />
             ))}
-          </Box>
+          </Stack>
         )}
-
-        <SearchField
-          value={q}
-          onChange={setQ}
-          placeholder="Search directory"
-          label="Search the directory for someone to message"
-          icon={<PersonSearchIcon fontSize="small" sx={{ color: 'text.secondary' }} />}
-          loading={loading}
-          autoFocus
-        />
 
         <List disablePadding>
-          {people.map((p) => (
-            <ListItemButton
-              key={p.id}
-              // Direct mode starts the thread immediately; group mode only toggles
-              // selection, because a group is not created until it has a name.
-              onClick={() => (isGroup ? toggle(p) : onStart(p))}
-              selected={isGroup && picked.some((s) => s.id === p.id)}
-              sx={{ gap: 1.5, borderRadius: 2.5 }}
-            >
-              <PresenceAvatar
-                name={p.name}
-                color={p.color}
-                avatarFileName={p.avatarFileName}
-                size={38}
-                presence={p.presence}
-              />
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography noWrap sx={{ fontSize: 14 }}>
-                  {p.name}
-                </Typography>
-                <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>{p.role}</Typography>
-              </Box>
-              {isGroup ? (
+          {people.map((p) => {
+            const on = picked.some((s) => s.id === p.id);
+            return (
+              <ListItemButton
+                key={p.id}
+                selected={on}
+                onClick={() => toggle(p)}
+                sx={{
+                  gap: 1.5,
+                  borderRadius: 2.5,
+                  py: 1,
+                  '&.Mui-selected': { bgcolor: 'background.selected' },
+                }}
+              >
+                {/* slotProps, not the handoff's inputProps: MUI v9 drops the latter
+                    silently, leaving the checkbox with no accessible name at all. */}
                 <Checkbox
-                  edge="end"
-                  checked={picked.some((s) => s.id === p.id)}
+                  edge="start"
+                  checked={on}
                   tabIndex={-1}
                   disableRipple
+                  sx={{ p: 0 }}
+                  slotProps={{ input: { 'aria-label': `Select ${p.name}` } }}
                 />
-              ) : (
-                <ChatBubbleIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-              )}
-            </ListItemButton>
-          ))}
+                <PresenceAvatar
+                  name={p.name}
+                  color={p.color}
+                  avatarFileName={p.avatarFileName}
+                  size={38}
+                  showPresence={false}
+                />
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography noWrap sx={{ fontSize: 14 }}>
+                    {p.name}
+                  </Typography>
+                  <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>{p.role}</Typography>
+                </Box>
+                {/* stopPropagation, or selecting the row would race the direct message. */}
+                <IconButton
+                  size="small"
+                  aria-label={`Direct message ${p.name}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    startDirect(p);
+                  }}
+                >
+                  <ChatBubbleIcon fontSize="small" />
+                </IconButton>
+              </ListItemButton>
+            );
+          })}
         </List>
 
         {!loading && q.trim() && people.length === 0 && (
-          <Typography sx={{ py: 3, textAlign: 'center', fontSize: 13, color: 'text.secondary' }}>
-            Nobody matches “{q.trim()}”.
+          <Typography sx={{ textAlign: 'center', py: 4.5, fontSize: 13, color: 'text.secondary' }}>
+            Nobody in the directory matches “{q.trim()}”.
           </Typography>
         )}
         {!q.trim() && (
-          <Typography sx={{ py: 3, textAlign: 'center', fontSize: 13, color: 'text.secondary' }}>
+          <Typography sx={{ textAlign: 'center', py: 4.5, fontSize: 13, color: 'text.secondary' }}>
             Start typing a name.
           </Typography>
         )}
       </DialogContent>
 
-      <DialogActions sx={{ px: 2.5, pb: 2 }}>
-        {/* Only offered when a caller supplied the handler, so the button cannot appear
-            somewhere that has no way to create a group. */}
-        {onStartGroup && (
-          <Button
-            startIcon={<GroupAddIcon />}
-            onClick={() => setIsGroup((v) => !v)}
-            sx={{ mr: 'auto' }}
-          >
-            {isGroup ? 'Direct message' : 'New group'}
-          </Button>
-        )}
-
+      <DialogActions sx={{ px: 2.5, pb: 2, gap: 1 }}>
+        <Typography sx={{ flex: 1, fontSize: 13, color: 'text.secondary' }}>
+          {picked.length === 0
+            ? 'No one selected'
+            : picked.length === 1
+              ? '1 selected · pick one more for a group'
+              : `${picked.length} selected`}
+        </Typography>
         <Button onClick={onClose}>Cancel</Button>
-
-        {isGroup && (
-          <Button
-            variant="contained"
-            onClick={createGroup}
-            disabled={creating || !groupName.trim() || picked.length === 0}
-          >
-            {creating ? 'Creating…' : `Create${picked.length ? ` (${picked.length})` : ''}`}
-          </Button>
-        )}
+        <Button
+          variant="contained"
+          startIcon={<GroupAddIcon />}
+          disabled={creating || picked.length < 2}
+          onClick={createGroup}
+        >
+          {creating
+            ? 'Creating…'
+            : picked.length > 1
+              ? `Create group (${picked.length})`
+              : 'Create group'}
+        </Button>
       </DialogActions>
     </Dialog>
   );
