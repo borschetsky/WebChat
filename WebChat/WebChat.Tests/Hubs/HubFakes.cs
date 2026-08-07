@@ -118,7 +118,10 @@ public sealed class FakeDirectory : IHubDirectory
     public IReadOnlyList<string> GetParticipantIds(string threadId) =>
         this.Threads.TryGetValue(threadId ?? string.Empty, out var ids) ? ids : new List<string>();
 
-    public string GetUserNameById(string userId) =>
+    // string?, because an unknown id genuinely has no name and the hub has to cope with that.
+    // IHubDirectory declares plain `string` - WebChat.Hubs has no nullable context, so the
+    // annotation is only meaningful here, where it stops a CS8603 rather than hiding one.
+    public string? GetUserNameById(string userId) =>
         this.Names.TryGetValue(userId ?? string.Empty, out var name) ? name : null;
 
     public IReadOnlyList<string> GetPeerIds(string userId) =>
