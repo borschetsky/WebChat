@@ -22,6 +22,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- No FrameworkReference for Microsoft.AspNetCore.App is needed to test the hub: it
+         flows transitively through the WebChat.Hubs project reference below. Verified both
+         ways rather than assumed. -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WebChat.Hub\WebChat.Hubs.csproj" />
     <ProjectReference Include="..\WebChat.Services\WebChat.Services.csproj" />
     <ProjectReference Include="..\WebChat.Data\WebChat.Models.csproj" />
     <ProjectReference Include="..\WebChat.Connection\WebChat.Connection.csproj" />

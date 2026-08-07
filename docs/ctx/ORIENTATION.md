@@ -113,6 +113,16 @@ Server → client (eight): `ReciveMessage`, `ReciveAvatar`, `ReciveConnectedStat
 The misspellings (`Recive`, `Revice`) are in the wire protocol. **Do not "fix" them** without
 changing both sides together.
 
+**Nothing goes to `Clients.All`.** Typing is addressed to the thread's own participants minus
+the typist, and refused outright when the caller is not one of them — `threadId` arrives from
+the client, so that check is authorization, not tidiness. Presence goes to peers, meaning
+people who share at least one thread. The hub cannot look either up itself: `WebChat.Services`
+references `WebChat.Hubs`, so the dependency is inverted through `IHubDirectory`, declared in
+the hub project and implemented in Services, exactly as `IConnectionMapping` is.
+
+`ReciveTypingStatus` carries `Username` as well as `UserId` and `ThreadId`, because a group
+has to name who is typing and the client has no lookup for an arbitrary user id.
+
 ### Serialization
 
 **Newtonsoft.Json is deliberate.** Some endpoints return `Dictionary<DateTime, …>`; the

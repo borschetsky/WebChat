@@ -29,7 +29,8 @@ import {
   allUnreadCleared,
   selectLivePatches,
   selectUnread,
-  selectTypingIn,
+  selectTyping,
+  selectTypingUsersIn,
 } from '@/features/realtime/realtimeSlice';
 import { composerCleared, replyStarted, takeDraftFile } from '@/features/composer/composerSlice';
 import {
@@ -89,7 +90,7 @@ export default function ChatApp({ user, onSignOut }) {
   // --- realtime overlay -----------------------------------------------------
   const live = useAppSelector(selectLivePatches);
   const unread = useAppSelector(selectUnread);
-  const typingIn = useAppSelector(selectTypingIn);
+  const typing = useAppSelector(selectTyping);
 
   // --- server data ----------------------------------------------------------
   const { data: profile } = useGetProfileQuery(undefined, { skip: !user });
@@ -319,7 +320,7 @@ export default function ChatApp({ user, onSignOut }) {
           searchQuery={searchQuery}
           searchCount={shown.length}
           totalCount={messages.length}
-          typing={typingIn === activeId && !!activeId}
+          typingUsers={selectTypingUsersIn(typing, activeId)}
           receipt={receipt}
           onBack={() => dispatch(paneChanged('list'))}
           onToggleSearch={() => dispatch(searchToggled())}

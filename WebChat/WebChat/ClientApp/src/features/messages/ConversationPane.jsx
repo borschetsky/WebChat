@@ -13,10 +13,13 @@ import Composer from '@/features/composer/Composer';
 import { PRESENCE, densityTokens } from '@/theme/tokens';
 import EmptyState from '@/components/EmptyState';
 import SearchField from '@/components/SearchField';
+import { typingLabel } from '@/features/realtime/realtimeSlice';
 
-const presenceLine = (thread) => {
+const presenceLine = (thread, typingUsers) => {
   if (!thread) return '';
-  if (thread.isTyping) return 'typing…';
+  const typing = typingLabel(typingUsers, !!thread.group);
+  if (typing) return typing;
+  if (thread.group) return `${thread.members?.length ?? 0} members`;
   return thread.presence === 'online' ? 'Active now' : 'Offline';
 };
 
@@ -30,7 +33,7 @@ export default function ConversationPane({
   searchQuery,
   searchCount,
   totalCount,
-  typing,
+  typingUsers = [],
   receipt,
   onBack,
   onToggleSearch,
@@ -49,7 +52,7 @@ export default function ConversationPane({
   // Follow the conversation as it grows, and on thread switch.
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'end' });
-  }, [messages.length, thread?.id, typing]);
+  }, [messages.length, thread?.id, typingUsers.length]);
 
   if (!thread) {
     return (
@@ -111,7 +114,7 @@ export default function ConversationPane({
               color: thread.presence === 'online' ? PRESENCE.online : 'text.secondary',
             }}
           >
-            {presenceLine(thread)}
+            {presenceLine(thread, typingUsers)}
           </Typography>
         </Box>
         <IconButton
@@ -179,17 +182,20 @@ export default function ConversationPane({
           threadId={thread.id}
         />
 
-        {typing && (
+        {typingUsers.length > 0 && (
           <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', px: 3, py: 1 }}>
+            {/* The typist's avatar and name, not the thread's. On a group those are not the
+                same thing, and using the thread's meant a group called "Design Guild"
+                announced that "Design is typing…". */}
             <PresenceAvatar
-              name={thread.name}
-              color={thread.color}
-              avatarFileName={thread.avatarFileName}
+              name={typingUsers[0].name}
+              color={thread.group ? undefined : thread.color}
+              avatarFileName={thread.group ? null : thread.avatarFileName}
               size={d.avatar}
               showPresence={false}
             />
             <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
-              {thread.name.split(' ')[0]} is typing…
+              {typingLabel(typingUsers, !!thread.group) ?? ''}
             </Typography>
           </Stack>
         )}
@@ -211,7 +217,9 @@ export default function ConversationPane({
       <Composer
         onSend={onSend}
         onTyping={onTyping}
-        placeholder={`Message ${thread.name.split(' ')[0]}`}
+        // A group's name is not a person's name - splitting it turned "Design Guild" into
+        // "Message Design".
+        placeholder={`Message ${thread.group ? thread.name : thread.name.split(' ')[0]}`}
       />
     </>
   );
