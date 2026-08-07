@@ -164,6 +164,9 @@ namespace WebChat.Services
                                  Id = m.Id,
                                  SenderId = m.SenderId,
                                  Username = u.Username,
+                                 // Free: this query already joins User for the username, so
+                                 // the avatar is one more column rather than one more query.
+                                 AvatarFileName = u.AvatarFileName,
                                  Text = m.Text,
                                  ThreadId = m.ThreadId,
                                  Time = m.CreatedOn

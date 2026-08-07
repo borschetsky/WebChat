@@ -31,7 +31,18 @@ namespace WebChat.Services
             await ctx.Message.AddAsync(messageToAdd);
             await ctx.SaveChangesAsync();
 
-            return mappingService.MapMessageModelToMessageViewModel(messageToAdd);
+            var viewModel = mappingService.MapMessageModelToMessageViewModel(messageToAdd);
+
+            // The send response and the hub echo are what the sender's own row and every
+            // recipient's row are built from. Without this the message drawn on send has no
+            // avatar and the one drawn after a reload does, which reads as the avatar
+            // appearing at random. One lookup by primary key.
+            viewModel.AvatarFileName = ctx.User
+                .Where(u => u.Id == messageToAdd.SenderId)
+                .Select(u => u.AvatarFileName)
+                .FirstOrDefault();
+
+            return viewModel;
         }
 
         public MessageViewModel CreateMessageViewModel(string userId, string text, string threadId)

@@ -82,6 +82,10 @@ export const toMessage = (vm: MessageDto, meId: string | null = currentUserId())
   threadId: vm.threadId,
   authorId: vm.senderId,
   author: vm.username ?? 'Unknown',
+  // Null, not undefined: PresenceAvatar reads it as "draw initials", and Message declares
+  // `string | null`. Absent here entirely until #45 - which is why every message row showed
+  // initials while the same person's avatar rendered fine in the thread list.
+  avatarFileName: vm.avatarFileName ?? null,
   color: avatarColor(vm.senderId ?? ''),
   own: vm.senderId === meId,
   text: vm.text ?? '',
