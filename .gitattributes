@@ -1,0 +1,33 @@
+# Line endings.
+#
+# Every blob in this repo is already stored with LF - `git ls-files --eol` reports
+# `i/lf` for all 233 tracked text files - so this file changes no committed content.
+# `git add --renormalize .` against it is a no-op, and there is no formatting commit
+# to add to .git-blame-ignore-revs.
+#
+# What it changes is the *working tree*. Without it, git falls back to each clone's
+# `core.autocrlf`, which is `true` by default on Windows: LF blobs get checked out as
+# CRLF. Prettier's `endOfLine` defaults to `"lf"`, so `npm run format:check` - and
+# therefore `npm run verify` - fails on all 77 client files on a Windows clone while
+# passing on a Linux CI runner, where autocrlf is off. The same command has to mean
+# the same thing in both places or CI is not a gate, it is a second opinion.
+#
+# `eol=lf` also matches .editorconfig, which has declared `end_of_line = lf` for every
+# file since before this file existed, and it stops a clone with `core.autocrlf=false`
+# from committing CRLF blobs that would then fail CI for everyone else.
+#
+# An existing working tree does not re-convert on its own. Once per clone:
+#
+#     git rm --cached -r .
+#     git reset --hard
+#
+* text=auto eol=lf
+
+# Not text, whatever the content heuristic decides. Never touch these.
+*.gif  binary
+*.ico  binary
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.webp binary
+*.pdf  binary
