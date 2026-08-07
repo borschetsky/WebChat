@@ -147,6 +147,30 @@ describe('toMessage', () => {
     expect(m.quote).toBeNull();
     expect(m.attachment).toBeNull();
   });
+
+  /**
+   * The adapter has always read this field; the server only started sending it with #45, so
+   * until then it was undefined on every message and every row fell back to initials. These
+   * pin the contract from the client side so a server that stops sending it is caught here
+   * rather than by someone noticing their face is missing.
+   */
+  it('carries the sender avatar through', () => {
+    const m = toMessage(messageDto({ avatarFileName: 'alex-avatar.png' }), 'me');
+    expect(m.avatarFileName).toBe('alex-avatar.png');
+  });
+
+  it('maps a sender with no avatar to null, not undefined', () => {
+    // PresenceAvatar treats null as "draw initials". undefined would work by accident today
+    // and is not what the type promises.
+    expect(toMessage(messageDto(), 'me').avatarFileName).toBeNull();
+    expect(toMessage(messageDto({ avatarFileName: null }), 'me').avatarFileName).toBeNull();
+  });
+
+  it('carries it on the hub echo too, not just the REST read', () => {
+    // The optimistic row and the echo have to agree, or the avatar appears to arrive late.
+    const m = toLiveMessage(messageDto({ avatarFileName: 'sam-avatar.png' }), 'me');
+    expect(m.avatarFileName).toBe('sam-avatar.png');
+  });
 });
 
 describe('toMessageList', () => {

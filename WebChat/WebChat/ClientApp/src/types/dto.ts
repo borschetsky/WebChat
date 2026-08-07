@@ -69,6 +69,12 @@ export interface MessageDto {
   text: string;
   threadId: string;
   username: string | null;
+  /**
+   * The sender's avatar. `adapters.ts` has read this since the MUI redesign, but the server
+   * only started sending it with issue #45 - until then it was `undefined` on every message
+   * and every row fell back to initials.
+   */
+  avatarFileName?: string | null;
   /** ISO 8601 timestamp of the message. */
   time: string;
   /**
