@@ -260,6 +260,10 @@ namespace WebChat
             services.AddTransient<IMappingService, MappingService>();
             services.AddTransient<IValidator, Validator>();
             services.AddSingleton(typeof(IConnectionMapping<string>), typeof(ConnectionMapping<string>));
+
+            // Lets ChatHub ask who is in a thread without referencing WebChat.Services, which
+            // it cannot do - that reference runs the other way and would be a cycle.
+            services.AddTransient<IHubDirectory, HubDirectory>();
             services.AddTransient<IImageHandler, ImageHandler>();
             AddAvatarStorage(services);
             AddEmail(services);

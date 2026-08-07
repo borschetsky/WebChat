@@ -95,6 +95,9 @@ export interface AvatarBroadcastDto {
 export interface TypingStatusDto {
   userId?: string;
   threadId?: string;
+  /** Who is typing. A group has to name them; "typing…" alone says nothing there. */
+  username?: string;
   UserId?: string;
   ThreadId?: string;
+  Username?: string;
 }

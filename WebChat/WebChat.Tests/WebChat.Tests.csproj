@@ -22,6 +22,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- ChatHub lives on SignalR types (Hub, IHubCallerClients, HubCallerContext), which ship
+         in the ASP.NET Core shared framework rather than a package. Without this the hub
+         tests do not compile. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WebChat.Hub\WebChat.Hubs.csproj" />
     <ProjectReference Include="..\WebChat.Services\WebChat.Services.csproj" />
     <ProjectReference Include="..\WebChat.Data\WebChat.Models.csproj" />
     <ProjectReference Include="..\WebChat.Connection\WebChat.Connection.csproj" />
