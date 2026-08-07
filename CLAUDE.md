@@ -14,11 +14,20 @@ needed facts from outside it — providers, pricing, protocols, standards. Writt
 Before exploring a subsystem or starting a change, check the index for a note covering that
 area — it will usually save you the investigation. **Before committing** any non-trivial
 change, run the **`checkpoint`** skill — and enable the reminder that catches it when you
-forget, which is once per clone because hooks are not cloned:
+forget.
+
+**Three settings are per-clone and none of them are cloned.** Run all three once, in a fresh
+checkout, or the tooling quietly misbehaves rather than complaining:
 
 ```bash
-git config core.hooksPath .githooks
+git config core.hooksPath .githooks                       # the checkpoint reminder
+git config blame.ignoreRevsFile .git-blame-ignore-revs    # skip the Prettier sweep in blame
+git rm --cached -r . && git reset --hard                  # apply .gitattributes to an existing tree
 ```
+
+The third is only needed in a clone made *before* `.gitattributes` existed, and it converts
+the working tree to LF without changing a single committed byte. Skip it and `npm run
+verify` fails locally on every client file — see the note on line endings below.
 
 Fixing a reported defect has its own
 pipeline: the **`fix-flow`** skill (`.claude/skills/fix-flow/SKILL.md`), whose load-bearing
@@ -98,6 +107,15 @@ and fill it in, or the command stops naming the variable it wanted.
 - **The client is React 19 + MUI v9 + Redux Toolkit, built with Vite 8.** JSX must live in
   `.jsx` files — Vite does not transform JSX in `.js`. Build output is `ClientApp/dist`,
   which `AddSpaStaticFiles` points at.
+- **CI runs on every PR, and `.gitattributes` is what makes it mean anything.**
+  `.github/workflows/ci.yml` runs two jobs, `api` (build at `-warnaserror`, then the xUnit
+  suite) and `client` (`npm run verify`). Those two names are what branch protection
+  requires, so **renaming a job silently un-requires it**, and a `paths:` filter would leave
+  a docs-only PR waiting forever on a check that never runs. Every blob here is LF and
+  `.gitattributes` pins the working tree to LF everywhere, because Prettier's `endOfLine`
+  defaults to `lf`: without it a Windows clone checks out CRLF and `format:check` fails on
+  every client file locally while passing in CI — the same command meaning two different
+  things.
 - **The client lints with oxlint, and ESLint is not an option — do not try to add it.**
   `typescript-eslint` refuses TypeScript 7 (`"does not support TS 7.0"` at config load, and
   an ERESOLVE before that), and the client runs TS 7, so ESLint would leave two thirds of

@@ -1,0 +1,122 @@
+# The three gates that were manual until now: a warning-free build, the xUnit suite, and
+# the client's `verify` script. See issue #41.
+#
+# Two independent jobs on purpose. They do not `needs:` each other, so a broken API and a
+# broken client both report on the same run instead of the second hiding behind the first,
+# and the merge box names which half failed.
+#
+# The job names below - `api` and `client` - are what appear as status checks in the UI and
+# what branch protection has to require *exactly*. Renaming a job silently un-requires it.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+# Read-only: nothing here publishes, comments, or deploys. Deployment is DigitalOcean's
+# `deploy_on_push`, which fires after the merge and is not a gate.
+permissions:
+  contents: read
+
+# A second push to the same PR makes the first run irrelevant. Runs on master are kept,
+# because master's history is what the badge and any later bisect refer to.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  api:
+    name: api
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          # There is no global.json, so the version has to be stated here. All seven
+          # projects target net10.0.
+          dotnet-version: '10.0.x'
+
+      # setup-dotnet's own `cache: true` keys on packages.lock.json, and this repo has no
+      # lock files, so it is done by hand. The csproj files hold every PackageReference
+      # version, so their hash is a sound key; restore-keys lets a near-miss reuse most of
+      # the packages and download only what moved.
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('WebChat/**/*.csproj') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      # Restore is deliberately its own step, without -warnaserror. NuGet emits warnings
+      # for transient source trouble (NU1900 and friends); promoting those to errors would
+      # turn a nuget.org hiccup into a red PR that says nothing about the code.
+      - name: Restore
+        run: dotnet restore WebChat/WebChat.sln
+
+      # -warnaserror is the point of this job, not a flourish: the 0-warning standard was
+      # upheld by habit until now. --no-incremental because an incremental build has
+      # already hidden a real CS8603 in this repo once; a fresh checkout has no obj/ to
+      # skip anyway, so it costs nothing here and stays correct if that ever changes.
+      #
+      # `build` and not `publish`: the IncludeSpaOutput target fails a publish when
+      # ClientApp/dist is empty, and there is no Node in this job. Building the SPA is the
+      # `client` job's business.
+      - name: Build (0 warnings enforced)
+        run: >-
+          dotnet build WebChat/WebChat.sln
+          --configuration Release --no-restore --no-incremental -warnaserror
+
+      # --no-build so the suite runs against the exact binaries the step above vetted.
+      #
+      # Expect "Passed: 63, Skipped: 2, Total: 65". The two skips are
+      # SmtpEmailSenderIntegrationTests, which send through a real relay and skip unless
+      # Email__SmtpUser / __SmtpKey / __FromAddress / __TestRecipient are all set. They are
+      # the only conditional tests in the suite. A run reporting more than 2 skipped means
+      # something stopped executing, not that something was deliberately excluded.
+      - name: Test
+        run: >-
+          dotnet test WebChat/WebChat.Tests
+          --configuration Release --no-build --no-restore
+
+  client:
+    name: client
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: WebChat/WebChat/ClientApp
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          # Vite 8 needs >= 20.19, so 20 is the floor; 22 is what the client Dockerfile
+          # already runs, and CI matching the image is worth more than being current.
+          node-version: '22'
+          cache: npm
+          # `defaults.run.working-directory` applies to `run:` steps only - an action's
+          # inputs are still resolved from the repository root, so this path is full.
+          cache-dependency-path: WebChat/WebChat/ClientApp/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      # One step, not four, because `verify` is the repo's own definition of "the client is
+      # OK" (oxlint --deny-warnings, prettier --check, tsc --noEmit, vitest run). Splitting
+      # it here would create a second definition that drifts. It is &&-chained, so it stops
+      # at the first failure and the log names which sub-script that was.
+      #
+      # prettier --check depends on the checkout having LF line endings: its endOfLine
+      # default is "lf". Every blob in this repo is LF and .gitattributes now pins the
+      # working tree to LF on every platform, so this passes here and on Windows alike.
+      - name: Verify (lint, format, typecheck, test)
+        run: npm run verify
