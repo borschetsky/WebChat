@@ -109,18 +109,33 @@ const connect = async (token: string, dispatch: AppDispatch, getState: () => Roo
     dispatch(chatApi.util.invalidateTags(['Threads']));
   });
 
-  c.on('ReciveTypingStatus', ({ userId, threadId, UserId, ThreadId }: TypingStatusDto) => {
-    const uid = userId ?? UserId;
-    const tid = threadId ?? ThreadId;
-    if (!tid) return;
-    const t = threadsOf().find((x) => x.id === tid);
-    if (t && t.opponentId !== uid) return;
-    dispatch(opponentTyping({ threadId: tid, typing: true }));
-  });
+  // The server now sends typing only to the thread's own participants and never echoes it
+  // to the typist, so there is nothing left to filter here. The previous version compared
+  // the sender against `t.opponentId`, which is undefined on a group thread - so every
+  // group typing event was silently discarded and no group ever showed an indicator.
+  c.on(
+    'ReciveTypingStatus',
+    ({ userId, threadId, username, UserId, ThreadId, Username }: TypingStatusDto) => {
+      const tid = threadId ?? ThreadId;
+      const uid = userId ?? UserId;
+      if (!tid || !uid) return;
+      dispatch(
+        opponentTyping({
+          threadId: tid,
+          typing: true,
+          userId: uid,
+          username: username ?? Username,
+        }),
+      );
+    },
+  );
 
-  c.on('ReciveStopTypingStatus', ({ threadId, ThreadId }: TypingStatusDto) => {
+  c.on('ReciveStopTypingStatus', ({ userId, threadId, UserId, ThreadId }: TypingStatusDto) => {
     const tid = threadId ?? ThreadId;
-    if (tid) dispatch(opponentTyping({ threadId: tid, typing: false }));
+    const uid = userId ?? UserId;
+    // Without a user id this clears the whole thread, which is the right fallback: better a
+    // dropped indicator than one stuck on forever.
+    if (tid) dispatch(opponentTyping({ threadId: tid, typing: false, userId: uid }));
   });
 
   const presence = (id: string, value: 'online' | 'offline') => {

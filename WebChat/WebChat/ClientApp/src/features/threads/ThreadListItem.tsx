@@ -1,6 +1,7 @@
 import { memo, useCallback } from 'react';
 import { Badge, Box, ListItemButton, Stack, Typography } from '@mui/material';
 import PresenceAvatar from '@/components/PresenceAvatar';
+import AvatarStack from '@/components/AvatarStack';
 import { densityTokens } from '@/theme/tokens';
 import type { Density, Thread } from '@/types/models';
 
@@ -35,14 +36,25 @@ function ThreadListItem({ thread: t, selected, density, onSelect }: ThreadListIt
         '&.Mui-selected': { bgcolor: 'background.selected' },
       }}
     >
-      <PresenceAvatar
-        name={t.name}
-        color={t.color}
-        avatarFileName={t.avatarFileName}
-        size={d.avatar}
-        presence={t.presence}
-        showPresence={!t.group}
-      />
+      {/* The members list from the server already excludes the caller, so unlike the
+          handoff - whose fixture filtered out its own user by name - there is nothing to
+          strip here. */}
+      {t.group ? (
+        <AvatarStack
+          members={t.members}
+          size={d.avatar}
+          fallbackName={t.name}
+          fallbackColor={t.color}
+        />
+      ) : (
+        <PresenceAvatar
+          name={t.name}
+          color={t.color}
+          avatarFileName={t.avatarFileName}
+          size={d.avatar}
+          presence={t.presence}
+        />
+      )}
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline' }}>
           <Typography

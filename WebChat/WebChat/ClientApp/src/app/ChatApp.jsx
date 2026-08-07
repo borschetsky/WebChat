@@ -19,6 +19,7 @@ import ThreadList from '@/features/threads/ThreadList';
 import ConversationPane from '@/features/messages/ConversationPane';
 import SettingsDrawer from '@/features/settings/SettingsDrawer';
 import ComposeDialog from '@/features/threads/ComposeDialog';
+import { deriveGroupName } from '@/features/threads/groupName';
 import { useThemeMode } from '@/theme/ThemeModeProvider';
 import { uploadAvatar } from '@/services';
 import { markThreadRead, markAllThreadsRead, readReceiptFor } from '@/services/chat-service';
@@ -29,7 +30,8 @@ import {
   allUnreadCleared,
   selectLivePatches,
   selectUnread,
-  selectTypingIn,
+  selectTyping,
+  selectTypingUsersIn,
 } from '@/features/realtime/realtimeSlice';
 import { composerCleared, replyStarted, takeDraftFile } from '@/features/composer/composerSlice';
 import {
@@ -89,7 +91,7 @@ export default function ChatApp({ user, onSignOut }) {
   // --- realtime overlay -----------------------------------------------------
   const live = useAppSelector(selectLivePatches);
   const unread = useAppSelector(selectUnread);
-  const typingIn = useAppSelector(selectTypingIn);
+  const typing = useAppSelector(selectTyping);
 
   // --- server data ----------------------------------------------------------
   const { data: profile } = useGetProfileQuery(undefined, { skip: !user });
@@ -239,12 +241,15 @@ export default function ChatApp({ user, onSignOut }) {
     }
   };
 
-  const handleStartGroup = async (name, members) => {
+  // The dialog collects people and nothing else - the handoff has no group-name field, so
+  // the name is derived from the members here rather than typed.
+  const handleStartGroup = async (members) => {
     dispatch(composeClosed());
+    const name = deriveGroupName(members);
     try {
       const { threadId } = await startGroup({ name, members }).unwrap();
       await selectThread(threadId);
-      notify(`Group “${name}” created`);
+      notify(`Group created with ${members.length} people`);
     } catch {
       notify('Could not create that group.');
     }
@@ -319,7 +324,7 @@ export default function ChatApp({ user, onSignOut }) {
           searchQuery={searchQuery}
           searchCount={shown.length}
           totalCount={messages.length}
-          typing={typingIn === activeId && !!activeId}
+          typingUsers={selectTypingUsersIn(typing, activeId)}
           receipt={receipt}
           onBack={() => dispatch(paneChanged('list'))}
           onToggleSearch={() => dispatch(searchToggled())}

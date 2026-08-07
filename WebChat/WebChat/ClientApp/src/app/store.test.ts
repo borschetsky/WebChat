@@ -45,7 +45,8 @@ import {
   realtimeReset,
   selectLivePatches,
   selectUnread,
-  selectTypingIn,
+  selectTyping,
+  selectTypingUsersIn,
 } from '@/features/realtime/realtimeSlice';
 
 const session = { token: 'jwt', tokenExpirationTime: 1, id: 'u1' };
@@ -171,12 +172,30 @@ describe('realtimeSlice', () => {
     expect(selectLivePatches(store.getState()).t1).toEqual({ presence: 'online', preview: 'hey' });
   });
 
-  it('tracks which thread the opponent is typing in', () => {
+  it('tracks who is typing, per thread', () => {
     const store = makeStore();
-    store.dispatch(opponentTyping({ threadId: 't1', typing: true }));
-    expect(selectTypingIn(store.getState())).toBe('t1');
-    store.dispatch(opponentTyping({ threadId: 't1', typing: false }));
-    expect(selectTypingIn(store.getState())).toBeNull();
+    store.dispatch(
+      opponentTyping({ threadId: 't1', typing: true, userId: 'u1', username: 'Maya' }),
+    );
+    expect(selectTypingUsersIn(selectTyping(store.getState()), 't1')).toEqual([
+      { id: 'u1', name: 'Maya' },
+    ]);
+
+    // A group can have two people typing at once, which the old single-thread-id state
+    // could not represent at all.
+    store.dispatch(
+      opponentTyping({ threadId: 't1', typing: true, userId: 'u2', username: 'Tomás' }),
+    );
+    expect(selectTypingUsersIn(selectTyping(store.getState()), 't1')).toHaveLength(2);
+
+    store.dispatch(opponentTyping({ threadId: 't1', typing: false, userId: 'u1' }));
+    expect(selectTypingUsersIn(selectTyping(store.getState()), 't1')).toEqual([
+      { id: 'u2', name: 'Tomás' },
+    ]);
+
+    store.dispatch(opponentTyping({ threadId: 't1', typing: false, userId: 'u2' }));
+    expect(selectTypingUsersIn(selectTyping(store.getState()), 't1')).toEqual([]);
+    expect(selectLivePatches(store.getState()).t1?.isTyping).toBe(false);
   });
 
   it('clears unread per thread and in bulk', () => {
