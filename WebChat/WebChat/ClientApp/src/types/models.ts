@@ -29,6 +29,8 @@ export interface ThreadMember {
   name: string;
   role: string;
   presence: Presence;
+  /** Uploaded avatar filename; null draws initials. Sent by getthreads for every member. */
+  avatarFileName: string | null;
 }
 
 export interface Thread {

@@ -4,13 +4,15 @@
    would leave an aria-label on a bare div, which screen readers ignore. Disabled for the
    file rather than the line because Prettier reflows JSX attributes and has already
    detached a line-addressed suppression once; see the client lint ctx note. */
-import { Avatar, AvatarGroup } from '@mui/material';
+import { AvatarGroup } from '@mui/material';
 import PresenceAvatar from '@/components/PresenceAvatar';
-import { avatarColor, initials } from '@/theme/tokens';
+import { avatarColor } from '@/theme/tokens';
 
 export interface AvatarStackMember {
   id?: string;
   name: string;
+  /** Uploaded avatar filename; initials when absent. */
+  avatarFileName?: string | null;
 }
 
 export interface AvatarStackProps {
@@ -100,12 +102,25 @@ export default function AvatarStack({
       }}
     >
       {people.map((m) => (
+        // PresenceAvatar rather than a bare Avatar: it already resolves a filename to a URL
+        // and falls back to initials both when there is no file and when the file 404s -
+        // an avatar row can outlive its object in R2. With showPresence={false} it renders
+        // a bare Avatar, so it is still a direct AvatarGroup child and the surplus maths and
+        // the `& .MuiAvatar-root` geometry overrides above still apply. AvatarGroup clones
+        // each child with its own className, which PresenceAvatar does not forward; nothing
+        // styles `.MuiAvatarGroup-avatar` here, since the overrides target the Avatar itself.
+        //
         // Colour comes from the member id, as it does everywhere else in the app, so one
         // person is the same colour here as on their own avatar. The handoff keys it off
         // name length, which its fixtures used consistently and this app does not.
-        <Avatar key={m.id ?? m.name} sx={{ bgcolor: avatarColor(m.id ?? m.name), color: '#fff' }}>
-          {initials(m.name)}
-        </Avatar>
+        <PresenceAvatar
+          key={m.id ?? m.name}
+          name={m.name}
+          color={avatarColor(m.id ?? m.name)}
+          avatarFileName={m.avatarFileName}
+          size={cell}
+          showPresence={false}
+        />
       ))}
     </AvatarGroup>
   );

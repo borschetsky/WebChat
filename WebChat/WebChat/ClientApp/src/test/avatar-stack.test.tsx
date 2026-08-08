@@ -96,4 +96,69 @@ describe('AvatarStack', () => {
     expect(first).toHaveStyle({ width: '31px', height: '31px' });
     expect(second).toHaveStyle({ marginLeft: '-9px' });
   });
+
+  /**
+   * #47: the faces were always initials, whatever the members had uploaded, because
+   * `toThread` discarded `avatarFileName` before it ever reached here. With the mapping
+   * fixed the stack has to actually draw the file.
+   */
+  it('draws an uploaded avatar for a member who has one', () => {
+    const { container } = draw(
+      <AvatarStack
+        members={[
+          { id: 'u1', name: 'Sam Ray', avatarFileName: 'sam-avatar.png' },
+          { id: 'u2', name: 'Jo Lin', avatarFileName: 'jo-avatar.png' },
+        ]}
+        size={40}
+      />,
+    );
+
+    const srcs = Array.from(container.querySelectorAll('img')).map((i) => i.getAttribute('src'));
+    // AvatarGroup renders its children in reverse DOM order for the stacking, so compare
+    // as a set rather than in order.
+    expect(srcs).toHaveLength(2);
+    expect(srcs.join(' ')).toContain('images/sam-avatar.png');
+    expect(srcs.join(' ')).toContain('images/jo-avatar.png');
+    // An avatar drawn from a file replaces the initials, it does not sit behind them.
+    expect(container.textContent).toBe('');
+  });
+
+  it('still draws initials for a member with no avatar', () => {
+    const { container } = draw(
+      <AvatarStack
+        members={[
+          { id: 'u1', name: 'Sam Ray', avatarFileName: null },
+          { id: 'u2', name: 'Jo Lin', avatarFileName: null },
+        ]}
+        size={40}
+      />,
+    );
+
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.textContent).toBe('JLSR');
+  });
+
+  it('mixes faces and initials in one group, keeping the geometry', () => {
+    const { container } = draw(
+      <AvatarStack
+        members={[
+          { id: 'u1', name: 'Sam Ray', avatarFileName: 'sam-avatar.png' },
+          { id: 'u2', name: 'Jo Lin', avatarFileName: null },
+          { id: 'u3', name: 'Ada Vine', avatarFileName: 'ada-avatar.png' },
+        ]}
+        size={40}
+      />,
+    );
+
+    expect(container.querySelectorAll('img')).toHaveLength(2);
+    // The one without an avatar still shows initials.
+    expect(container.textContent).toBe('JL');
+
+    // An avatar rendered from a file is still an AvatarGroup child, so the group's own
+    // geometry overrides have to land on it: cell = round(40 * 0.62) = 25, overlap = -14.
+    const circles = avatars(container);
+    expect(circles).toHaveLength(3);
+    expect(circles[0]).toHaveStyle({ width: '25px', height: '25px', marginLeft: '0px' });
+    expect(circles[1]).toHaveStyle({ width: '25px', height: '25px', marginLeft: '-14px' });
+  });
 });
