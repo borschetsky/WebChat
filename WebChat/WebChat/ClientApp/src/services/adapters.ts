@@ -64,6 +64,10 @@ export const toThread = (vm: ThreadDto): Thread => {
       name: m.username ?? 'Unknown',
       role: '',
       presence: m.isOnline ? ('online' as const) : ('offline' as const),
+      // Null, not undefined: PresenceAvatar reads null as "draw initials" and ThreadMember
+      // declares `string | null`. The server has always sent this; dropping it here is why
+      // every face in a group stack was initials until #47.
+      avatarFileName: m.avatarFileName ?? null,
     })),
   };
 };

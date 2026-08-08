@@ -123,6 +123,63 @@ describe('toThread', () => {
     expect(t.avatarFileName).toBeNull();
   });
 
+  /**
+   * getthreads has always sent avatarFileName on every member; the mapping dropped it, so
+   * AvatarStack had nothing to pass and every face in a group stack was initials (#47).
+   * Same shape as #45 one level over, hence a test pinning it from the client side.
+   */
+  it("carries each member's avatar through", () => {
+    const t = toThread({
+      ...threadDto(),
+      isGroup: true,
+      name: 'Team standup',
+      members: [
+        {
+          id: 'u1',
+          username: 'sam',
+          email: null,
+          isOnline: true,
+          isTyping: false,
+          avatarFileName: 'sam-avatar.png',
+        },
+        {
+          id: 'u2',
+          username: 'jo',
+          email: null,
+          isOnline: false,
+          isTyping: false,
+          avatarFileName: 'jo-avatar.png',
+        },
+      ],
+    });
+
+    expect(t.members.map((m) => m.avatarFileName)).toEqual(['sam-avatar.png', 'jo-avatar.png']);
+  });
+
+  it('maps a member with no avatar to null, not undefined', () => {
+    // PresenceAvatar reads null as "draw initials", and ThreadMember declares `string | null`.
+    // undefined would work by accident and is not what the type promises.
+    const t = toThread({
+      ...threadDto(),
+      isGroup: true,
+      name: 'Team standup',
+      members: [
+        { id: 'u1', username: 'sam', email: null, isOnline: true, isTyping: false },
+        {
+          id: 'u2',
+          username: 'jo',
+          email: null,
+          isOnline: false,
+          isTyping: false,
+          avatarFileName: null,
+        },
+      ] as ThreadDto['members'],
+    });
+
+    expect(t.members[0].avatarFileName).toBeNull();
+    expect(t.members[1].avatarFileName).toBeNull();
+  });
+
   it('returns an empty array for a 204 or a non-array', () => {
     expect(toThreads(null)).toEqual([]);
     expect(toThreads(undefined)).toEqual([]);
