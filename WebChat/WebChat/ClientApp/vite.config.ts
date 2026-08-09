@@ -47,6 +47,61 @@ export default defineConfig({
   build: {
     // Matches AddSpaStaticFiles(RootPath = "ClientApp/dist") in Startup.cs.
     outDir: 'dist',
-    sourcemap: true,
+    // Off by default. A production sourcemap here is not merely large (it was 4 MB against
+    // an 845 kB bundle) - dist is served as static files, so it made the entire client
+    // source readable to anyone who asked for it.
+    //
+    // 'hidden' would not have helped: it still writes the .map into dist, and the csproj's
+    // IncludeSpaOutput target publishes dist wholesale, so the file would still be deployed
+    // and still be fetchable by name. It only removes the //# sourceMappingURL comment.
+    // Dropping it is the only option that keeps the map off the server; there is no error
+    // tracker to upload it to yet.
+    //
+    // Set VITE_SOURCEMAP=true to get one back for a local investigation. The dev server is
+    // unaffected either way - this setting only applies to `vite build`.
+    sourcemap: process.env.VITE_SOURCEMAP === 'true',
+    rolldownOptions: {
+      output: {
+        // Vendor splitting. This does NOT make the first load smaller - the same bytes are
+        // still fetched, just in more files. What it buys is cache reuse: react-dom and MUI
+        // do not change between deploys, so a release that only touches src no longer
+        // invalidates 400 kB of library code along with it.
+        //
+        // `tags: ['$initial']` is what makes this safe, and it is the whole trick. A plain
+        // `test: /@mui/` group would be a regression: MUI straddles the lazy boundary (the
+        // auth screens use a dozen components, ChatApp another few dozen), and merging all
+        // of it into one group would drag the chat-only half back into the chunk the login
+        // screen has to download. `$initial` restricts each group to modules that are
+        // already in the entry's static import chain, so a group can only ever rearrange
+        // the eager payload, never grow it. Anything reachable only through
+        // `import('@/app/ChatApp')` stays in the lazy chunk.
+        codeSplitting: {
+          groups: [
+            {
+              name: 'vendor-react',
+              test: /node_modules[\\/](react|react-dom|react-is|scheduler|react-router|react-router-dom|use-sync-external-store)[\\/]/,
+              tags: ['$initial'],
+            },
+            {
+              name: 'vendor-mui',
+              test: /node_modules[\\/](@mui[\\/]|@emotion[\\/]|stylis[\\/])/,
+              tags: ['$initial'],
+            },
+            {
+              name: 'vendor-state',
+              test: /node_modules[\\/](@reduxjs[\\/]|react-redux[\\/]|redux[\\/]|redux-thunk[\\/]|immer[\\/]|reselect[\\/])/,
+              tags: ['$initial'],
+            },
+            {
+              // axios serves every REST call and signalr the hub. Grouped together because
+              // both are transport, both are stable, and neither is touched by app changes.
+              name: 'vendor-net',
+              test: /node_modules[\\/](axios[\\/]|@microsoft[\\/]signalr[\\/])/,
+              tags: ['$initial'],
+            },
+          ],
+        },
+      },
+    },
   },
 });
