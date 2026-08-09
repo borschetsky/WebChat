@@ -35,14 +35,17 @@ export default function SettingsDrawer({
   members,
   threadName,
   onSaveProfile,
+  saving = false,
+  saveError = null,
   onUploadAvatar,
   onLogout,
   fullWidth,
 }) {
+  // The two text fields stay local on purpose - they are controlled inputs, and a keystroke
+  // that reached the store would re-render everything subscribed to it. `saving` and `error`
+  // used to live here too, as a second copy of state the mutation already tracks.
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     // Same "reset the form when the prop changes" shape as ComposeDialog: the idiomatic fix
@@ -50,22 +53,15 @@ export default function SettingsDrawer({
     // oxlint-disable-next-line rh/set-state-in-effect
     setName(profile?.name ?? '');
     setEmail(profile?.email ?? '');
-    setError('');
   }, [profile, open]);
 
   const dirty = profile && (name !== profile.name || email !== profile.email);
 
-  const save = async () => {
-    setSaving(true);
-    setError('');
-    try {
-      await onSaveProfile({ ...profile, name, email });
-    } catch (err) {
-      setError(err?.response?.data?.title ?? 'Could not save your profile.');
-    } finally {
-      setSaving(false);
-    }
-  };
+  // The API's problem-details body, or a fallback. Derived rather than stored: there is only
+  // one failure to describe and the mutation is already holding it.
+  const error = saveError ? (saveError.data?.title ?? 'Could not save your profile.') : '';
+
+  const save = () => onSaveProfile({ ...profile, name, email });
 
   return (
     <Drawer

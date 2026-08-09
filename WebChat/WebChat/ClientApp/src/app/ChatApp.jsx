@@ -115,7 +115,10 @@ export default function ChatApp({ user, onSignOut }) {
   const [sendMessage] = useSendMessageMutation();
   const [startThread] = useStartThreadMutation();
   const [startGroup] = useStartGroupMutation();
-  const [saveProfile] = useSaveProfileMutation();
+  // The mutation's own result is the source of truth for "saving" and "what went wrong" -
+  // SettingsDrawer used to keep a second copy of both in local state and derive the message
+  // from a caught exception.
+  const [saveProfile, saveProfileState] = useSaveProfileMutation();
   const [toggleReaction] = useToggleReactionMutation();
 
   const stopTypingTimer = useRef(null);
@@ -255,9 +258,11 @@ export default function ChatApp({ user, onSignOut }) {
     }
   };
 
+  // Deliberately not `.unwrap()`: unwrapping rethrows, which is what forced the drawer to
+  // catch and keep its own error copy. The failure is already on saveProfileState.
   const handleSaveProfile = async (next) => {
-    await saveProfile(next).unwrap();
-    notify('Profile updated');
+    const result = await saveProfile(next);
+    if (!result.error) notify('Profile updated');
   };
 
   const handleUploadAvatar = async (file) => {
@@ -341,7 +346,14 @@ export default function ChatApp({ user, onSignOut }) {
 
       <SettingsDrawer
         open={settingsOpen}
-        onClose={() => dispatch(settingsClosed())}
+        // Resetting the mutation here rather than clearing an error flag in the drawer: the
+        // failure lives on the mutation, so closing the drawer is what should discard it.
+        onClose={() => {
+          dispatch(settingsClosed());
+          saveProfileState.reset();
+        }}
+        saving={saveProfileState.isLoading}
+        saveError={saveProfileState.error}
         profile={profile}
         members={active?.members ?? []}
         threadName={active?.name}
