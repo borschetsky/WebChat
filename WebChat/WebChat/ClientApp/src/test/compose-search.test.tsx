@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
+import { Provider } from 'react-redux';
 import { ThemeModeProvider } from '@/theme/ThemeModeProvider';
 import ComposeDialog from '@/features/threads/ComposeDialog';
 
@@ -9,46 +10,65 @@ import ComposeDialog from '@/features/threads/ComposeDialog';
  * typing a name issued /api/users/search forever, the spinner never stopped, and no result
  * was ever shown - while the API answered every single request correctly.
  *
- * The mechanism needs both halves to be reproduced, which is easy to get wrong:
+ * The original mechanism needed two halves: the dialog listed an `onSearch` prop among its
+ * effect's dependencies, and `ChatApp` passed a fresh arrow around an RTK Query trigger whose
+ * call re-rendered the parent. Each search re-rendered the parent, which minted a new callback
+ * identity, which re-ran the effect, which searched again.
  *
- *   1. ComposeDialog listed the onSearch prop among its effect's dependencies.
- *   2. ChatApp passed `(t) => triggerDirectory(t).unwrap()` - a new function each render -
- *      and triggerDirectory is an RTK Query lazy trigger, so calling it updates query state
- *      and re-renders ChatApp.
- *
- * So each search re-rendered the parent, which minted a new callback identity, which re-ran
- * the effect, which searched again. A test whose parent never re-renders keeps one stable
- * identity and passes against the bug, proving nothing - the parent below therefore
- * re-renders on every call, exactly as the RTK Query hook did.
+ * **That shape no longer exists.** The dialog runs `useSearchDirectoryQuery` itself, so there
+ * is no effect, no callback prop, and nothing whose identity a parent can destabilise - the
+ * bug is gone structurally rather than fixed. These tests therefore no longer *reproduce* it;
+ * they pin the guarantees it violated, against the implementation that replaced it, so a
+ * rewrite back toward hand-rolled fetching fails here. The parent still re-renders on every
+ * search for exactly that reason: a harness with a static parent could not tell the difference.
  */
+
+const RESULT = [
+  { id: '701f6296', name: 'test2', role: '', presence: 'online', avatarFileName: null },
+];
+
+const searchDirectory = vi.fn();
+
+vi.mock('@/services/chat-service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/services/chat-service')>()),
+  searchDirectory: (term: string, token: string) => searchDirectory(term, token),
+}));
+
+const { makeStore } = await import('@/app/store');
+
+// The query reads the token from the store, so a session must be present or every search
+// fails as "Not authenticated" and the list stays empty for the wrong reason.
+const session = { token: 'jwt', tokenExpirationTime: 9e9, id: 'me' };
 
 const PARENT = { renders: 0 };
 
-function Harness({ onSearch }: { onSearch: (t: string) => Promise<unknown> }) {
+/**
+ * Re-renders on every search, the way ChatApp did when the RTK Query trigger updated query
+ * state. If the dialog ever becomes sensitive to its parent's render count again, this catches
+ * it. The store is built once per mount so the query cache behaves as it does in the app.
+ */
+function Harness() {
   PARENT.renders += 1;
-  // Stands in for RTK Query's query-state update: calling the search re-renders this parent.
   const [, setTick] = useState(0);
-  const search = useCallback(
-    async (t: string) => {
-      const result = await onSearch(t);
-      setTick((n) => n + 1);
-      return result;
-    },
-    [onSearch],
-  );
+  const [store] = useState(() => makeStore({ user: session, busy: false }));
+
+  searchDirectory.mockImplementation(async (term: string) => {
+    setTick((n) => n + 1);
+    return term === 'test2' ? RESULT : [];
+  });
 
   return (
-    <ThemeModeProvider>
-      <ComposeDialog
-        open
-        fullScreen={false}
-        onClose={() => {}}
-        onStart={() => {}}
-        onStartGroup={async () => {}}
-        // Inline arrow, recreated on every parent render - what ChatApp used to pass.
-        onSearch={(t: string) => search(t)}
-      />
-    </ThemeModeProvider>
+    <Provider store={store}>
+      <ThemeModeProvider>
+        <ComposeDialog
+          open
+          fullScreen={false}
+          onClose={() => {}}
+          onStart={() => {}}
+          onStartGroup={async () => {}}
+        />
+      </ThemeModeProvider>
+    </Provider>
   );
 }
 
@@ -58,57 +78,57 @@ function type(el: HTMLElement, value: string) {
   el.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
+/**
+ * Advances the debounce, then drains the promise chain the query resolves through. Both are
+ * needed: `advanceTimersByTimeAsync` gets the request issued, but the fulfilled action and
+ * the re-render it causes land a few microtasks later.
+ */
 const flush = (ms: number) =>
   act(async () => {
     await vi.advanceTimersByTimeAsync(ms);
+    await Promise.resolve();
+    await Promise.resolve();
   });
 
 describe('ComposeDialog search', () => {
   beforeEach(() => {
     PARENT.renders = 0;
+    searchDirectory.mockReset();
     vi.useFakeTimers();
   });
-  afterEach(() => {
-    vi.useRealTimers();
-  });
+  afterEach(() => vi.useRealTimers());
 
-  it('issues one request per term even when every parent render remints the callback', async () => {
-    const onSearch = vi.fn().mockResolvedValue([]);
-    render(<Harness onSearch={onSearch} />);
+  it('issues one request per term however often the parent re-renders', async () => {
+    render(<Harness />);
 
     await act(async () => {
       type(screen.getByRole('textbox'), 'test2');
     });
 
     await flush(300); // past the 250ms debounce - the one legitimate call
-    await flush(3000); // a loop fires roughly once per debounce; this would add ~12 more
+    await flush(3000); // a loop fired roughly once per debounce; this would add ~12 more
 
-    expect(onSearch).toHaveBeenCalledTimes(1);
-    expect(onSearch).toHaveBeenCalledWith('test2');
+    expect(searchDirectory).toHaveBeenCalledTimes(1);
+    expect(searchDirectory.mock.calls[0][0]).toBe('test2');
+    expect(PARENT.renders).toBeGreaterThan(1); // the parent really did re-render
   });
 
   it('shows the result rather than discarding it', async () => {
-    const onSearch = vi
-      .fn()
-      .mockResolvedValue([
-        { id: '701f6296', name: 'test2', role: '', presence: 'online', avatarFileName: null },
-      ]);
-    render(<Harness onSearch={onSearch} />);
+    render(<Harness />);
 
     await act(async () => {
       type(screen.getByRole('textbox'), 'test2');
     });
-    await flush(300);
+    await flush(300); // debounce fires, request goes out
+    await flush(300); // fulfilled action commits and the list re-renders
 
-    // Each re-run's cleanup set cancelled = true, so the setPeople of the request already
-    // in flight was thrown away moments before it would have committed. The list stayed
-    // empty however many times the request succeeded.
+    // Each re-run's cleanup used to set cancelled = true, throwing away the response already
+    // in flight. The list stayed empty however many times the request succeeded.
     expect(screen.getByText('test2')).toBeInTheDocument();
   });
 
   it('searches again when the term changes, and only then', async () => {
-    const onSearch = vi.fn().mockResolvedValue([]);
-    render(<Harness onSearch={onSearch} />);
+    render(<Harness />);
     const input = screen.getByRole('textbox');
 
     await act(async () => {
@@ -121,12 +141,11 @@ describe('ComposeDialog search', () => {
     await flush(300);
     await flush(2000);
 
-    expect(onSearch.mock.calls.map(([t]) => t)).toEqual(['ab', 'abc']);
+    expect(searchDirectory.mock.calls.map(([t]) => t)).toEqual(['ab', 'abc']);
   });
 
   it('debounces keystrokes into a single request', async () => {
-    const onSearch = vi.fn().mockResolvedValue([]);
-    render(<Harness onSearch={onSearch} />);
+    render(<Harness />);
     const input = screen.getByRole('textbox');
 
     for (const v of ['t', 'te', 'tes', 'test']) {
@@ -137,7 +156,24 @@ describe('ComposeDialog search', () => {
     }
     await flush(300);
 
-    expect(onSearch).toHaveBeenCalledTimes(1);
-    expect(onSearch).toHaveBeenCalledWith('test');
+    expect(searchDirectory).toHaveBeenCalledTimes(1);
+    expect(searchDirectory.mock.calls[0][0]).toBe('test');
+  });
+
+  it('serves a repeated term from cache instead of asking again', async () => {
+    // New behaviour: the hand-rolled version had no cache, so returning to a previous term
+    // always meant another round trip.
+    render(<Harness />);
+    const input = screen.getByRole('textbox');
+
+    for (const term of ['test2', 'abc', 'test2']) {
+      await act(async () => {
+        type(input, term);
+      });
+      await flush(300);
+    }
+
+    expect(searchDirectory.mock.calls.map(([t]) => t)).toEqual(['test2', 'abc']);
+    expect(screen.getByText('test2')).toBeInTheDocument();
   });
 });

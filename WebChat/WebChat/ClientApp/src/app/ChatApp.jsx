@@ -7,7 +7,6 @@ import {
   useGetThreadsQuery,
   useGetMessagesQuery,
   useSearchThreadQuery,
-  useLazySearchDirectoryQuery,
   useSendMessageMutation,
   useStartThreadMutation,
   useStartGroupMutation,
@@ -111,10 +110,10 @@ export default function ChatApp({ user, onSignOut }) {
     { skip: !searchOpen || !activeId || term.length === 0 },
   );
 
-  const [triggerDirectory] = useLazySearchDirectoryQuery();
   const [sendMessage] = useSendMessageMutation();
   const [startThread] = useStartThreadMutation();
-  const [startGroup] = useStartGroupMutation();
+  // The mutation's own isLoading, rather than a copy of it inside the dialog.
+  const [startGroup, startGroupState] = useStartGroupMutation();
   // The mutation's own result is the source of truth for "saving" and "what went wrong" -
   // SettingsDrawer used to keep a second copy of both in local state and derive the message
   // from a caught exception.
@@ -156,17 +155,6 @@ export default function ChatApp({ user, onSignOut }) {
       dispatch(unreadCleared(id));
     },
     [dispatch],
-  );
-
-  // ComposeDialog runs its search from an effect that lists this among its dependencies, so
-  // an inline arrow here re-triggers that effect on every render - and because the effect
-  // sets loading state, each run causes the next. The result is an unbounded stream of
-  // /api/users/search calls whose responses are all discarded by the following run's
-  // cleanup, so the spinner never stops and no result is ever shown. The lazy-query trigger
-  // from RTK Query is itself stable, so this identity never changes.
-  const handleSearchDirectory = useCallback(
-    (term) => triggerDirectory(term).unwrap(),
-    [triggerDirectory],
   );
 
   // Everything below is wrapped in useCallback because it is handed to memoized rows.
@@ -368,7 +356,7 @@ export default function ChatApp({ user, onSignOut }) {
         onClose={() => dispatch(composeClosed())}
         onStart={handleStartThread}
         onStartGroup={handleStartGroup}
-        onSearch={handleSearchDirectory}
+        creating={startGroupState.isLoading}
         fullScreen={isMobile}
       />
 
