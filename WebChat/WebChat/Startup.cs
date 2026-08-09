@@ -332,6 +332,11 @@ namespace WebChat
             var r2 = new AvatarWriter.R2Options();
             Configuration.GetSection(AvatarWriter.R2Options.SectionName).Bind(r2);
 
+            // Registered whether or not R2 is configured: AvatarsController reads CacheableFor
+            // from it to set the redirect's Cache-Control, and a controller that cannot be
+            // constructed without credentials would break the local-disk setup entirely.
+            services.AddSingleton(r2);
+
             if (!r2.IsConfigured)
             {
                 services.AddTransient<AvatarWriter.Interface.IAvatarWriter,
@@ -341,7 +346,6 @@ namespace WebChat
                 return;
             }
 
-            services.AddSingleton(r2);
             services.AddSingleton<IAmazonS3>(_ => new AmazonS3Client(
                 new BasicAWSCredentials(r2.AccessKeyId, r2.SecretAccessKey),
                 new AmazonS3Config
@@ -356,8 +360,14 @@ namespace WebChat
             services.AddTransient<AvatarWriter.R2AvatarWriter>();
             services.AddTransient<AvatarWriter.Interface.IAvatarWriter>(
                 sp => sp.GetRequiredService<AvatarWriter.R2AvatarWriter>());
-            services.AddTransient<AvatarWriter.Interface.IAvatarUrlProvider>(
-                sp => sp.GetRequiredService<AvatarWriter.R2AvatarWriter>());
+            // Singleton, and wrapping the R2 writer rather than replacing it: the cache is the
+            // whole point, so it has to outlive a request. Signing per request produced a
+            // different URL every time - SigV4 signs over the timestamp - so no browser could
+            // ever match one and every render re-downloaded the image.
+            services.AddSingleton<AvatarWriter.Interface.IAvatarUrlProvider>(sp =>
+                new AvatarWriter.CachingAvatarUrlProvider(
+                    sp.GetRequiredService<AvatarWriter.R2AvatarWriter>(),
+                    TimeSpan.FromMinutes(r2.UrlCacheMinutes)));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

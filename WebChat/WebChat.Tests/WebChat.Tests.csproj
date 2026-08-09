@@ -28,6 +28,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\WebChat.AvatarWriter\WebChat.AvatarWriter.csproj" />
     <ProjectReference Include="..\WebChat.Hub\WebChat.Hubs.csproj" />
     <ProjectReference Include="..\WebChat.Services\WebChat.Services.csproj" />
     <ProjectReference Include="..\WebChat.Data\WebChat.Models.csproj" />
