@@ -1,0 +1,316 @@
+---
+id: configureStore
+title: configureStore
+sidebar_label: configureStore
+hide_title: true
+---
+
+&nbsp;
+
+# `configureStore`
+
+The standard method for creating a Redux store. It uses the low-level Redux core `createStore` method internally, but wraps that to provide good defaults to the store setup for a better development experience.
+
+## Purpose and Behavior
+
+A standard Redux store setup typically requires multiple pieces of configuration:
+
+- Combining the slice reducers into the root reducer
+- Creating the middleware enhancer, usually with the thunk middleware or other side effects middleware, as well as middleware that might be used for development checks
+- Adding the Redux DevTools enhancer, and composing the enhancers together
+- Calling `createStore`
+
+Legacy Redux usage patterns typically required several dozen lines of copy-pasted boilerplate to achieve this.
+
+Redux Toolkit's `configureStore` simplifies that setup process, by doing all that work for you. One call to `configureStore` will:
+
+- Call `combineReducers` to combine your slices reducers into the root reducer function
+- Add the thunk middleware and called `applyMiddleware`
+- In development, automatically add more middleware to check for common mistakes like accidentally mutating the state
+- Automatically set up the Redux DevTools Extension connection
+- Call `createStore` to create a Redux store using that root reducer and those configuration options
+
+`configureStore` also offers an improved API and usage patterns compared to the original `createStore` by accepting named fields for `reducer`, `preloadedState`, `middleware`, `enhancers`, and `devtools`, as well as much better TS type inference.
+
+## Parameters
+
+`configureStore` accepts a single configuration object parameter, with the following options:
+
+```ts no-transpile
+
+interface ConfigureStoreOptions<
+  S = any,
+  A extends Action = UnknownAction,
+  M extends Tuple<Middlewares<S>> = Tuple<Middlewares<S>>
+  E extends Tuple<Enhancers> = Tuple<Enhancers>,
+  P = S
+> {
+  /**
+   * A single reducer function that will be used as the root reducer, or an
+   * object of slice reducers that will be passed to `combineReducers()`.
+   */
+  reducer: Reducer<S, A, P> | ReducersMapObject<S, A, P>
+
+  /**
+   * An array of Redux middleware to install. If not supplied, defaults to
+   * the set of middleware returned by `getDefaultMiddleware()`.
+   */
+  middleware?: ((getDefaultMiddleware: CurriedGetDefaultMiddleware<S>) => M) | M
+
+  /**
+   * Whether to enable Redux DevTools integration. Defaults to `true`.
+   *
+   * Additional configuration can be done by passing Redux DevTools options
+   */
+  devTools?: boolean | DevToolsOptions
+
+  /**
+   * Whether to check for duplicate middleware instances. Defaults to `true`.
+   */
+  duplicateMiddlewareCheck?: boolean
+
+  /**
+   * The initial state, same as Redux's createStore.
+   * You may optionally specify it to hydrate the state
+   * from the server in universal apps, or to restore a previously serialized
+   * user session. If you use `combineReducers()` to produce the root reducer
+   * function (either directly or indirectly by passing an object as `reducer`),
+   * this must be an object with the same shape as the reducer map keys.
+   */
+  preloadedState?: P
+
+  /**
+   * The store enhancers to apply. See Redux's `createStore()`.
+   * All enhancers will be included before the DevTools Extension enhancer.
+   * If you need to customize the order of enhancers, supply a callback
+   * function that will receive the getDefaultEnhancers,
+   * and should return a new array (such as `getDefaultEnhancers().concat(offline)`).
+   * If you only need to add middleware, you can use the `middleware` parameter instead.
+   */
+  enhancers?: (getDefaultEnhancers: GetDefaultEnhancers<M>) => E | E
+}
+
+function configureStore<
+  S = any,
+  A extends Action = UnknownAction,
+  M extends Tuple<Middlewares<S>> = Tuple<Middlewares<S>>
+  E extends Tuple<Enhancers> = Tuple<Enhancers>,
+  P = S
+>(options: ConfigureStoreOptions<S, A, M, E, P>): EnhancedStore<S, A, M, E>
+```
+
+### `reducer`
+
+If this is a single function, it will be directly used as the root reducer for the store.
+
+If it is an object of slice reducers, like `{users : usersReducer, posts : postsReducer}`,
+`configureStore` will automatically create the root reducer by passing this object to the
+[Redux `combineReducers` utility](https://redux.js.org/api/combinereducers).
+
+### `middleware`
+
+A callback which will receive `getDefaultMiddleware` as its argument,
+and should return a middleware array.
+
+If this option is provided, it should return all the middleware functions you
+want added to the store. `configureStore` will automatically pass those to `applyMiddleware`.
+
+If not provided, `configureStore` will call `getDefaultMiddleware` and use the
+array of middleware functions it returns.
+
+For more details on how the `middleware` parameter works and the list of middleware that are added by default, see the
+[`getDefaultMiddleware` docs page](./getDefaultMiddleware.mdx).
+
+:::note Tuple
+TypeScript users are required to use a `Tuple` instance (if not using a `getDefaultMiddleware` result, which is already a `Tuple`), for better inference.
+
+```ts no-transpile
+import { configureStore, Tuple } from '@reduxjs/toolkit'
+
+configureStore({
+  reducer: rootReducer,
+  middleware: () => new Tuple(additionalMiddleware, logger),
+})
+```
+
+Javascript-only users are free to use a plain array if preferred.
+
+:::
+
+### `devTools`
+
+If this is a boolean, it will be used to indicate whether `configureStore` should automatically enable support for [the Redux DevTools browser extension](https://github.com/reduxjs/redux-devtools).
+
+If it is an object, then the DevTools Extension will be enabled, and the options object will be passed to `composeWithDevtools()`. See
+the DevTools Extension docs for [`EnhancerOptions`](https://github.com/reduxjs/redux-devtools/blob/main/extension/docs/API/Arguments.md) for
+a list of the specific options that are available.
+
+Defaults to `true`.
+
+### `duplicateMiddlewareCheck`
+
+If enabled, the store will check the final middleware array to see if there are any duplicate middleware references. This will catch issues like accidentally adding the same RTK Query API middleware twice (such as adding both the base API middleware and an injected API middleware, which are actually the exact same function reference).
+
+Defaults to `true`.
+
+#### `trace`
+
+The Redux DevTools Extension recently added [support for showing action stack traces](https://github.com/reduxjs/redux-devtools/blob/main/extension/docs/Features/Trace.md) that show exactly where each action was dispatched.
+Capturing the traces can add a bit of overhead, so the DevTools Extension allows users to configure whether action stack traces are captured by [setting the 'trace' argument](https://github.com/reduxjs/redux-devtools/blob/main/extension/docs/API/Arguments.md#trace).
+If the DevTools are enabled by passing `true` or an object, then `configureStore` will default to enabling capturing action stack traces in development mode only.
+
+### `preloadedState`
+
+An optional initial state value to be passed to the Redux `createStore` function.
+
+### `enhancers`
+
+A callback function to customize the array of enhancers.
+
+Enhancers returned by this callback will be passed to [the Redux `compose` function](https://redux.js.org/api/compose), and the combined enhancer will be passed to `createStore`.
+
+:::tip Dev Tools
+This should _not_ include the Redux DevTools Extension `composeWithDevTools`, as this is already handled by `configureStore`.
+
+Example: `enhancers: () => new Tuple(offline)` will result in a final setup of `[offline, devToolsExtension]`.
+:::
+
+If not provided, `configureStore` will call `getDefaultEnhancers` and use the array of enhancers it returns (including `applyMiddleware` with specified middleware).
+
+Where you wish to add onto or customize the default enhancers, you may pass a callback function that will receive `getDefaultEnhancers` as its argument, and should return an enhancer array.
+
+Example: `enhancers: (defaultEnhancers) => defaultEnhancers.prepend(offline)` will result in a final setup
+of `[offline, applyMiddleware, devToolsExtension]`.
+
+For more details on how the `enhancers` parameter works and the list of enhancers that are added by default, see the [`getDefaultEnhancers` docs page](./getDefaultEnhancers).
+
+:::caution Middleware
+
+If you don't use `getDefaultEnhancers` and instead return an array, the `applyMiddleware` enhancer will _not_ be used.
+
+`configureStore` will warn in console if any middleware are provided (or left as default) but not included in the final list of enhancers.
+
+```ts no-transpile
+// warns - middleware customised but not included in final enhancers
+configureStore({
+  reducer,
+  middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(logger),
+  enhancers: [offline(offlineConfig)],
+})
+
+// fine - default enhancers included
+configureStore({
+  reducer,
+  enhancers: (getDefaultEnhancers) => getDefaultEnhancers().concat(offline(offlineConfig)),
+})
+
+// also allowed
+configureStore({
+  reducer,
+  middleware: () => [],
+  enhancers: () => [offline(offlineConfig)],
+})
+```
+
+Note that if using TypeScript, the `middleware` option is required to be provided _before_ the enhancer option, as the type of `getDefaultEnhancers` depends on its result.
+
+:::
+
+:::note Tuple
+TypeScript users are required to use a `Tuple` instance (if not using a `getDefaultEnhancers` result, which is already a `Tuple`), for better inference.
+
+```ts no-transpile
+import { configureStore, Tuple } from '@reduxjs/toolkit'
+
+configureStore({
+  reducer: rootReducer,
+  enhancers: () => new Tuple(offline),
+})
+```
+
+Javascript-only users are free to use a plain array if preferred.
+
+:::
+
+## Usage
+
+### Basic Example
+
+```ts
+// file: reducers.ts noEmit
+import type { Reducer } from '@reduxjs/toolkit'
+declare const rootReducer: Reducer<{}>
+export default rootReducer
+
+// file: store.ts
+import { configureStore } from '@reduxjs/toolkit'
+
+import rootReducer from './reducers'
+
+const store = configureStore({ reducer: rootReducer })
+// The store now has redux-thunk added and the Redux DevTools Extension is turned on
+```
+
+### Full Example
+
+```ts no-transpile
+// file: todos/todosReducer.ts noEmit
+import type { Reducer } from '@reduxjs/toolkit'
+declare const reducer: Reducer<{}>
+export default reducer
+
+// file: visibility/visibilityReducer.ts noEmit
+import type { Reducer } from '@reduxjs/toolkit'
+declare const reducer: Reducer<{}>
+export default reducer
+
+// file: store.ts
+import { configureStore } from '@reduxjs/toolkit'
+
+// We'll use redux-logger just as an example of adding another middleware
+import logger from 'redux-logger'
+
+// And use redux-batched-subscribe as an example of adding enhancers
+import { batchedSubscribe } from 'redux-batched-subscribe'
+
+import todosReducer from './todos/todosReducer'
+import visibilityReducer from './visibility/visibilityReducer'
+
+const reducer = {
+  todos: todosReducer,
+  visibility: visibilityReducer,
+}
+
+const preloadedState = {
+  todos: [
+    {
+      text: 'Eat food',
+      completed: true,
+    },
+    {
+      text: 'Exercise',
+      completed: false,
+    },
+  ],
+  visibilityFilter: 'SHOW_COMPLETED',
+}
+
+const debounceNotify = _.debounce((notify) => notify())
+
+const store = configureStore({
+  reducer,
+  middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(logger),
+  devTools: process.env.NODE_ENV !== 'production',
+  preloadedState,
+  enhancers: (getDefaultEnhancers) =>
+    getDefaultEnhancers({
+      autoBatch: false,
+    }).concat(batchedSubscribe(debounceNotify)),
+})
+
+// The store has been created with these options:
+// - The slice reducers were automatically passed to combineReducers()
+// - redux-thunk and redux-logger were added as middleware
+// - The Redux DevTools Extension is disabled for production
+// - The middleware, batched subscribe, and devtools enhancers were composed together
+```
