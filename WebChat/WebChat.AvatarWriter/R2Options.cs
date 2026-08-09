@@ -1,3 +1,5 @@
+using System;
+
 namespace WebChat.AvatarWriter
 {
     /// <summary>
@@ -21,11 +23,45 @@ namespace WebChat.AvatarWriter
         public string Bucket { get; set; } = "";
 
         /// <summary>
-        /// How long a presigned read URL stays valid. This is deliberately short: the browser
-        /// is redirected to a freshly signed URL on every avatar request, so a long lifetime
-        /// buys nothing and only widens the window in which a leaked URL still works.
+        /// How long a presigned read URL stays valid.
+        ///
+        /// Must stay comfortably larger than <see cref="UrlCacheMinutes"/>: a URL handed out
+        /// at the very end of a cache window still has to be usable, and what is left at that
+        /// moment is only the difference between the two. See <see cref="CacheableFor"/>.
         /// </summary>
-        public int UrlLifetimeMinutes { get; set; } = 15;
+        public int UrlLifetimeMinutes { get; set; } = 30;
+
+        /// <summary>
+        /// How long one signed URL is reused before a new one is minted.
+        ///
+        /// This is what makes an avatar cacheable at all. A SigV4 URL carries its signing
+        /// instant, so signing per request produced a different URL every time and the
+        /// browser could never match one - every render re-downloaded the image. Set to 0 to
+        /// go back to signing per request.
+        /// </summary>
+        public int UrlCacheMinutes { get; set; } = 5;
+
+        /// <summary>
+        /// How long the redirect itself may be cached: the smaller of the reuse window and
+        /// the validity a URL is guaranteed to have left when it is handed out at the end of
+        /// that window.
+        ///
+        /// Bounding by the second term is the part that is easy to get wrong - cache the
+        /// redirect for longer than the URL it points at is guaranteed to live, and a browser
+        /// will faithfully replay a request to something already expired.
+        /// </summary>
+        public TimeSpan CacheableFor
+        {
+            get
+            {
+                var reuse = TimeSpan.FromMinutes(Math.Max(0, UrlCacheMinutes));
+                var guaranteedRemaining = TimeSpan.FromMinutes(UrlLifetimeMinutes) - reuse;
+
+                return guaranteedRemaining <= TimeSpan.Zero
+                    ? TimeSpan.Zero
+                    : (reuse < guaranteedRemaining ? reuse : guaranteedRemaining);
+            }
+        }
 
         /// <summary>R2's S3-compatible endpoint for this account.</summary>
         public string ServiceUrl => $"https://{AccountId}.r2.cloudflarestorage.com";

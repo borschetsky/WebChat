@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using System;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -22,14 +23,16 @@ namespace WebChat.Controllers
         private readonly IHubContext<ChatHub> hubContext;
         private readonly IConnectionMapping<string> connectionMapping;
         private readonly IAvatarUrlProvider avatarUrls;
+        private readonly WebChat.AvatarWriter.R2Options r2;
 
-        public AvatarsController(IImageHandler imageHandler, IUserService userService, IHubContext<ChatHub> hubContext, IConnectionMapping<string> connectionMapping, IAvatarUrlProvider avatarUrls)
+        public AvatarsController(IImageHandler imageHandler, IUserService userService, IHubContext<ChatHub> hubContext, IConnectionMapping<string> connectionMapping, IAvatarUrlProvider avatarUrls, WebChat.AvatarWriter.R2Options r2)
         {
             this.imageHandler = imageHandler;
             this.userService = userService;
             this.hubContext = hubContext;
             this.connectionMapping = connectionMapping;
             this.avatarUrls = avatarUrls;
+            this.r2 = r2;
         }
 
         [HttpPost("upload")]
@@ -99,10 +102,20 @@ namespace WebChat.Controllers
                 return NotFound();
             }
 
-            // The redirect itself must not be cached: it carries a signature that outlives it
-            // by only a few minutes, and a cached 302 would keep sending browsers to a URL
-            // that has since expired.
-            Response.Headers.CacheControl = "no-store";
+            // This used to be `no-store`, on the reasoning that a cached 302 could outlive the
+            // signature it points at. True in itself, but it made the whole chain uncacheable:
+            // the browser re-asked on every render, and because each answer was a *newly
+            // signed* URL it could never match the image in its cache either. Every avatar was
+            // downloaded once per render.
+            //
+            // Now that one signed URL is reused for a window, the redirect is worth caching for
+            // as long as the URL behind it is guaranteed to still be valid - which is what
+            // CacheableFor computes. `private`, because the target carries a signature and no
+            // shared cache should hold it.
+            var cacheable = this.r2.CacheableFor;
+            Response.Headers.CacheControl = cacheable > TimeSpan.Zero
+                ? $"private, max-age={(int)cacheable.TotalSeconds}"
+                : "no-store";
 
             return Redirect(url);
         }

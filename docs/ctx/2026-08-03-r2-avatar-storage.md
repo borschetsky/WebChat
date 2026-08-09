@@ -271,3 +271,15 @@ verified beyond reading the code — no code exists yet to address either):
 - No .NET test project exists in the solution (confirmed: `WebChat.sln` lists six projects,
   none a test project) — all backend verification across this body of work was curl/console
   tools, not committed tests.
+
+## Update — 2026-08-09
+
+**The `no-store` on the redirect, and the freshly-signed-URL-per-request design described
+above, are no longer what the code does.** Both are superseded by
+[2026-08-09-stable-avatar-urls.md](2026-08-09-stable-avatar-urls.md) (issue #46).
+
+The reasoning recorded here for `no-store` — that a cached 302 could outlive the signature it
+points at — is sound in isolation, but the consequence was not measured at the time: because
+each request answered with a *newly signed* URL, the browser could never match the image in
+its cache either, so every avatar was downloaded once per render. One signed URL is now reused
+for a five-minute window, and the redirect carries `private, max-age=300`.
