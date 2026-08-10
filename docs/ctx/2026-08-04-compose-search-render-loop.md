@@ -113,3 +113,22 @@ message and the in-code comment at `ComposeDialog.jsx:23-28`.
   the test suite — 56 tests were passing while the primary "start a conversation" flow was
   completely broken. Cited (by the author, not independently corroborated here) as the
   motivation for broader UI-flow test coverage being discussed.
+
+## Update — 2026-08-10
+
+**Both halves of the fix described above are gone, and so is the bug they fixed.**
+Superseded by [2026-08-10-compose-search-rtk-query.md](2026-08-10-compose-search-rtk-query.md)
+(issue #58).
+
+`ComposeDialog` now calls `useSearchDirectoryQuery` itself. There is no effect, no `onSearch`
+prop, no ref holding it, and no `handleSearchDirectory`/`useCallback` in `ChatApp` — so the
+mechanism recorded here has nothing left to act on. The loop cannot re-form rather than being
+prevented from forming.
+
+What remains true and worth keeping is the *diagnosis*: an unstable callback identity crossing
+a component boundary, listed in an effect's dependencies, is a loop. That is why the debounce
+that replaced the effect returns a **value** and not a callback.
+
+The regression suite still exists and still uses a re-rendering parent, but its docstring now
+says plainly that it no longer reproduces the bug — it pins the guarantees the bug violated
+against the implementation that replaced it.

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Button,
@@ -19,6 +19,8 @@ import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import PresenceAvatar from '@/components/PresenceAvatar';
 import SearchField from '@/components/SearchField';
+import { useSearchDirectoryQuery } from '@/app/api/chatApi';
+import { useDebouncedValue } from '@/lib/useDebouncedValue';
 
 /**
  * New-conversation dialog, following the design handoff exactly.
@@ -33,22 +35,33 @@ import SearchField from '@/components/SearchField';
  * one the API accepts: a nameless two-person group would be indistinguishable from a direct
  * thread, which is the whole argument CreateGroupViewModel makes for allowing one.
  *
- * Unlike the handoff, which filtered a local fixture array, this queries /api/users/search -
- * so it keeps a debounce, a loading state and a prompt before anything is typed.
+ * Unlike the handoff, which filtered a local fixture array, this queries /api/users/search
+ * through RTK Query. The query owns the results and the in-flight flag; the only thing left
+ * here is a debounce, because every distinct term is a distinct request.
  */
 export default function ComposeDialog({
   open,
   onClose,
   onStart,
   onStartGroup,
-  onSearch,
+  creating = false,
   fullScreen,
 }) {
+  // `q` and `picked` stay local deliberately. `q` is a controlled input, and `picked` is
+  // dialog-scoped selection that must not survive a close. What used to live here and does
+  // not any more: `people` (a hand-kept copy of server data), `loading` (a hand-kept request
+  // flag), and `creating` (a copy of the mutation's own isLoading).
   const [q, setQ] = useState('');
-  const [people, setPeople] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [picked, setPicked] = useState([]);
-  const [creating, setCreating] = useState(false);
+
+  const term = useDebouncedValue(q.trim(), 250);
+
+  // The query owns the results, the in-flight flag, cancellation of superseded responses, and
+  // a cache - so retyping a term that was searched a moment ago is instant rather than
+  // another round trip. `skip` is what keeps a closed dialog and an empty box from querying.
+  const { data: people = [], isFetching } = useSearchDirectoryQuery(term, {
+    skip: !open || term.length === 0,
+  });
 
   const toggle = (person) =>
     setPicked((current) =>
@@ -62,57 +75,7 @@ export default function ComposeDialog({
     onStart(person);
   };
 
-  const createGroup = async () => {
-    setCreating(true);
-    try {
-      await onStartGroup(picked);
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  // Held in a ref so the effect below does not depend on its identity. Listing onSearch as a
-  // dependency makes this component only as stable as its caller: an inline arrow prop
-  // re-runs the effect every render, the effect sets loading state, and that render triggers
-  // the next run - an endless stream of requests whose results are each thrown away by the
-  // following run's cleanup, so the spinner never stops and nothing is ever displayed.
-  // A ref keeps the latest callback without making a re-render mean a refetch.
-  const search = useRef(onSearch);
-  useEffect(() => {
-    search.current = onSearch;
-  }, [onSearch]);
-
-  useEffect(() => {
-    if (!open) return undefined;
-    const term = q.trim();
-    // Clearing results for an empty box should really be derived at render rather than set
-    // here. Left as-is deliberately: this effect is the one that caused the request loop in
-    // docs/ctx/2026-08-04-compose-search-render-loop.md, it is pinned by a regression test,
-    // and restructuring it does not belong in a change to the dialog's layout.
-    if (!term) {
-      // oxlint-disable-next-line rh/set-state-in-effect
-      setPeople([]);
-      return undefined;
-    }
-
-    let cancelled = false;
-    setLoading(true);
-    const t = setTimeout(async () => {
-      try {
-        const found = await search.current(term);
-        if (!cancelled) setPeople(found);
-      } catch {
-        if (!cancelled) setPeople([]);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }, 250);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(t);
-    };
-  }, [q, open]);
+  const createGroup = () => onStartGroup(picked);
 
   // Everything resets on close. Reopening into a half-built group with people selected from
   // last time would be a surprising place to land.
@@ -122,7 +85,6 @@ export default function ComposeDialog({
       // which is a change to ChatApp rather than to this file. Deferred; see the ctx note.
       // oxlint-disable-next-line rh/set-state-in-effect
       setQ('');
-      setPeople([]);
       setPicked([]);
     }
   }, [open]);
@@ -151,7 +113,7 @@ export default function ComposeDialog({
             placeholder="Search directory"
             label="Search the directory for someone to message"
             icon={<PersonSearchIcon fontSize="small" sx={{ color: 'text.secondary' }} />}
-            loading={loading}
+            loading={isFetching}
             autoFocus
           />
         </Box>
@@ -232,7 +194,7 @@ export default function ComposeDialog({
           })}
         </List>
 
-        {!loading && q.trim() && people.length === 0 && (
+        {!isFetching && term && people.length === 0 && (
           <Typography sx={{ textAlign: 'center', py: 4.5, fontSize: 13, color: 'text.secondary' }}>
             Nobody in the directory matches “{q.trim()}”.
           </Typography>

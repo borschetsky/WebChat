@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
+import { Provider } from 'react-redux';
 import { ThemeModeProvider } from '@/theme/ThemeModeProvider';
 import ComposeDialog from '@/features/threads/ComposeDialog';
 
@@ -8,6 +9,9 @@ import ComposeDialog from '@/features/threads/ComposeDialog';
  * group and the chat-bubble button on a row opens a direct message. There is no mode toggle
  * and no group-name field, so the only thing standing between two ticks and a group is the
  * two-person minimum.
+ *
+ * The dialog now runs its own RTK Query, so these render it inside a store and stub the
+ * service the query calls rather than passing results in as a prop.
  */
 
 const DIRECTORY = [
@@ -16,21 +20,35 @@ const DIRECTORY = [
   { id: 'u3', name: 'Priya Nair', role: 'Eng', presence: 'offline', avatarFileName: null },
 ];
 
+const searchDirectory = vi.fn();
+
+vi.mock('@/services/chat-service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/services/chat-service')>()),
+  searchDirectory: (term: string, token: string) => searchDirectory(term, token),
+}));
+
+const { makeStore } = await import('@/app/store');
+
+// The query reads the token out of the store, so a session has to be present or every
+// search fails as "Not authenticated" and the list stays empty for the wrong reason.
+const session = { token: 'jwt', tokenExpirationTime: 9e9, id: 'me' };
+
 function renderDialog(props: Record<string, unknown> = {}) {
   const onStart = vi.fn();
   const onStartGroup = vi.fn().mockResolvedValue(undefined);
   render(
-    <ThemeModeProvider>
-      <ComposeDialog
-        open
-        fullScreen={false}
-        onClose={() => {}}
-        onStart={onStart}
-        onStartGroup={onStartGroup}
-        onSearch={vi.fn().mockResolvedValue(DIRECTORY)}
-        {...props}
-      />
-    </ThemeModeProvider>,
+    <Provider store={makeStore({ user: session, busy: false })}>
+      <ThemeModeProvider>
+        <ComposeDialog
+          open
+          fullScreen={false}
+          onClose={() => {}}
+          onStart={onStart}
+          onStartGroup={onStartGroup}
+          {...props}
+        />
+      </ThemeModeProvider>
+    </Provider>,
   );
   return { onStart, onStartGroup };
 }
@@ -41,18 +59,29 @@ function type(el: HTMLElement, value: string) {
   el.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
-/** Types a term and lets the 250ms debounce and the resolved search settle. */
+/**
+ * Types a term, lets the 250ms debounce fire, then drains the promise chain the query
+ * resolves through - the fulfilled action and its re-render land a few microtasks after the
+ * timer does, so advancing time alone leaves the list empty.
+ */
 async function searchFor(term: string) {
   await act(async () => {
     type(screen.getByRole('textbox'), term);
   });
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(300);
-  });
+  for (let i = 0; i < 2; i += 1) {
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+  }
 }
 
 describe('ComposeDialog, modeless', () => {
-  beforeEach(() => vi.useFakeTimers());
+  beforeEach(() => {
+    searchDirectory.mockReset().mockResolvedValue(DIRECTORY);
+    vi.useFakeTimers();
+  });
   afterEach(() => vi.useRealTimers());
 
   it('has no mode toggle and no group-name field', async () => {

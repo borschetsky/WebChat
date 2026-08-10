@@ -215,7 +215,9 @@ export const {
   useGetThreadsQuery,
   useGetMessagesQuery,
   useSearchThreadQuery,
-  useLazySearchDirectoryQuery,
+  // The dialog subscribes to the term, so it gets caching and a shared in-flight request.
+  // The lazy variant is gone with the hand-rolled search it existed for.
+  useSearchDirectoryQuery,
   useSendMessageMutation,
   useStartThreadMutation,
   useStartGroupMutation,
