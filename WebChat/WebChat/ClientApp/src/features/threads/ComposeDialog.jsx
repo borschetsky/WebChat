@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogTitle,
   IconButton,
+  InputBase,
   List,
   ListItemButton,
   Stack,
@@ -19,6 +20,8 @@ import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import PresenceAvatar from '@/components/PresenceAvatar';
 import SearchField from '@/components/SearchField';
+import AvatarStack from '@/components/AvatarStack';
+import { autoGroupNameOf } from '@/features/threads/groupName';
 import { useSearchDirectoryQuery } from '@/app/api/chatApi';
 import { useDebouncedValue } from '@/lib/useDebouncedValue';
 
@@ -30,10 +33,10 @@ import { useDebouncedValue } from '@/lib/useDebouncedValue';
  * version had two modes behind a toggle and made a group cost a mode switch, a typed name
  * and a submit; this reaches a group in two ticks and one press.
  *
- * There is deliberately no group-name field - the handoff derives the name from the members
- * (see deriveGroupName in ChatApp). That is why the minimum is two people rather than the
- * one the API accepts: a nameless two-person group would be indistinguishable from a direct
- * thread, which is the whole argument CreateGroupViewModel makes for allowing one.
+ * The group-name field is optional and appears only at 2+ selections, with the auto-name as
+ * its placeholder - so a blank submit is the expected path, and the server stores null rather
+ * than a snapshot. That is what lets the title follow membership. The two-person minimum
+ * stands because a one-person group is a direct thread by another name.
  *
  * Unlike the handoff, which filtered a local fixture array, this queries /api/users/search
  * through RTK Query. The query owns the results and the in-flight flag; the only thing left
@@ -53,6 +56,9 @@ export default function ComposeDialog({
   // flag), and `creating` (a copy of the mutation's own isLoading).
   const [q, setQ] = useState('');
   const [picked, setPicked] = useState([]);
+  // Optional. Blank is the expected path, not an error - the auto-name is this field's
+  // placeholder, and a blank submit means "derive it from the members, forever".
+  const [groupName, setGroupName] = useState('');
 
   const term = useDebouncedValue(q.trim(), 250);
 
@@ -75,7 +81,7 @@ export default function ComposeDialog({
     onStart(person);
   };
 
-  const createGroup = () => onStartGroup(picked);
+  const createGroup = () => onStartGroup(picked, groupName);
 
   // Everything resets on close. Reopening into a half-built group with people selected from
   // last time would be a surprising place to land.
@@ -86,6 +92,7 @@ export default function ComposeDialog({
       // oxlint-disable-next-line rh/set-state-in-effect
       setQ('');
       setPicked([]);
+      setGroupName('');
     }
   }, [open]);
 
@@ -117,6 +124,41 @@ export default function ComposeDialog({
             autoFocus
           />
         </Box>
+
+        {/* Revealed only once a group is actually possible. The auto-name is the placeholder,
+            not the value, so an untouched field submits blank and the server stores null -
+            which is what lets the title follow membership instead of freezing at creation. */}
+        {picked.length > 1 && (
+          <Stack
+            direction="row"
+            spacing={1.5}
+            sx={{
+              alignItems: 'center',
+              mb: 1.75,
+              p: 1.25,
+              px: 1.75,
+              borderRadius: 3,
+              bgcolor: 'background.field',
+            }}
+          >
+            <AvatarStack members={picked} size={38} borderColor="background.field" />
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <InputBase
+                fullWidth
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+                placeholder={autoGroupNameOf(picked)}
+                slotProps={{ input: { 'aria-label': 'Group name' } }}
+                sx={{ fontSize: 15, fontWeight: 500 }}
+              />
+              <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+                {groupName.trim()
+                  ? 'Custom group name'
+                  : 'Optional — we will name it after the members'}
+              </Typography>
+            </Box>
+          </Stack>
+        )}
 
         {picked.length > 0 && (
           <Stack direction="row" flexWrap="wrap" gap={0.75} sx={{ mb: 1.25 }}>

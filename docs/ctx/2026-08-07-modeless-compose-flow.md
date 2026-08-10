@@ -122,3 +122,21 @@ the handoff's layout; do not take its data assumptions.
   and the same JS→TS extension drift the checkpoint skill lists as a standard trap.
 - The handoff's thread list has a third **Groups** filter tab; `ThreadList.jsx` still has only
   `all` and `unread`. Noted in #43 as adjacent, still not done.
+
+## Update — 2026-08-10
+
+**The "known cost" recorded above is now a fixed defect.** The note said a derived name
+freezes at creation, so adding a member leaves "+2" stale, and treated that as an accepted
+trade. The 2026-08-10 handoff's `SPEC-groups-and-admin.md` §1 addresses it directly:
+
+> Do **not** snapshot the string at creation — it goes stale silently and users report it as a
+> bug.
+
+Superseded by [2026-08-10-derived-group-names.md](2026-08-10-derived-group-names.md) and issue
+#62. An unnamed group now stores `null` and its title is derived from current membership on
+every read, so removing a member retitles the thread with nothing to invalidate.
+
+Two other decisions here were reversed by the same spec. The auto-name format is **three**
+first names then `+N`, not two. And the optional group-name field is back — revealed at 2+
+selections with the auto-name as its *placeholder*, so a blank submit is the expected path.
+The two-person minimum survives, but for the spec's reason rather than the one argued here.

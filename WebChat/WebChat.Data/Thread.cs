@@ -31,8 +31,25 @@ namespace WebChat.Models
         /// </summary>
         public string OponentId { get; set; }
 
-        /// <summary>Display name. Null for a direct message, which is named after the other person.</summary>
+        /// <summary>
+        /// Display name, or null.
+        ///
+        /// Null for a direct message, which is named after the other person - and now also null
+        /// for a group nobody has named, whose title is derived from current membership on every
+        /// read. Snapshotting that string at creation is what this replaced: it goes stale the
+        /// moment a member leaves, silently, and reads as a bug rather than as a stale cache.
+        /// </summary>
         public string Name { get; set; }
+
+        /// <summary>
+        /// True once somebody has deliberately named this group.
+        ///
+        /// The flag rather than a null check, because the two states are not the same: a named
+        /// group keeps its name forever, even as membership changes, while an unnamed one
+        /// re-derives. Without it, renaming a group to exactly its derived title would silently
+        /// re-enable derivation.
+        /// </summary>
+        public bool Named { get; set; }
 
         /// <summary>
         /// Stored rather than derived from participant count, because a two-person group is a

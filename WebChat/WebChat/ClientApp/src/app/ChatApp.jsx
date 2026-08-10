@@ -18,7 +18,6 @@ import ThreadList from '@/features/threads/ThreadList';
 import ConversationPane from '@/features/messages/ConversationPane';
 import SettingsDrawer from '@/features/settings/SettingsDrawer';
 import ComposeDialog from '@/features/threads/ComposeDialog';
-import { deriveGroupName } from '@/features/threads/groupName';
 import { useThemeMode } from '@/theme/ThemeModeProvider';
 import { uploadAvatar } from '@/services';
 import { markThreadRead, markAllThreadsRead, readReceiptFor } from '@/services/chat-service';
@@ -232,13 +231,14 @@ export default function ChatApp({ user, onSignOut }) {
     }
   };
 
-  // The dialog collects people and nothing else - the handoff has no group-name field, so
-  // the name is derived from the members here rather than typed.
-  const handleStartGroup = async (members) => {
+  // `name` is whatever the user typed, and blank is the expected path rather than an error -
+  // the dialog shows the auto-name as a placeholder. Blank is sent as blank and stored as
+  // null, so the title derives from membership on every read instead of being snapshotted
+  // here, which is what made it go stale when someone left the group.
+  const handleStartGroup = async (members, name = '') => {
     dispatch(composeClosed());
-    const name = deriveGroupName(members);
     try {
-      const { threadId } = await startGroup({ name, members }).unwrap();
+      const { threadId } = await startGroup({ name: name.trim(), members }).unwrap();
       await selectThread(threadId);
       notify(`Group created with ${members.length} people`);
     } catch {

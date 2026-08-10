@@ -7,6 +7,7 @@
 // the removal of one mock, rather than a hunt through components.
 
 import { avatarColor } from '@/theme/tokens';
+import { autoGroupName } from '@/features/threads/groupName';
 import { getDateInfoForThread, getDateInfoForMessage } from '@/lib/date-time-format';
 import type { MessageDto, MessagesByDayDto, ProfileDto, ThreadDto, UserDto } from '@/types/dto';
 import type { DirectoryEntry, Message, Profile, Thread } from '@/types/models';
@@ -40,7 +41,12 @@ export const toThread = (vm: ThreadDto): Thread => {
   return {
     id: vm.id,
     opponentId: opponent?.id,
-    name: vm.isGroup ? (vm.name ?? 'Group') : (opponent?.username ?? 'Unknown'),
+    // A group nobody named has no stored name, so its title is derived here from current
+    // membership - which is why removing a member retitles the thread with nothing to
+    // invalidate. `members` excludes the caller already, which is what the derivation wants.
+    name: vm.isGroup
+      ? (vm.name ?? autoGroupName((vm.members ?? []).map((m) => m?.username ?? undefined)))
+      : (opponent?.username ?? 'Unknown'),
     avatarFileName: vm.isGroup ? null : (opponent?.avatarFileName ?? null),
     color: avatarColor(vm.isGroup ? vm.id : (opponent?.id ?? vm.id)),
 

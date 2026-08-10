@@ -274,7 +274,7 @@ both profiles point at a Postgres on `localhost:5432`.
 ```bash
 cd WebChat/WebChat/ClientApp
 npm run verify    # lint, format:check, typecheck, test — the whole gate, in that order
-npm test          # vitest — 95 tests, 11 files
+npm test          # vitest — 99 tests, 11 files
 npm run typecheck # tsc --noEmit
 npm run lint      # oxlint --deny-warnings (warnings fail, matching the .NET 0-warning bar)
 npm run format    # prettier --write .
