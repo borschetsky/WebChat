@@ -4,12 +4,17 @@ import { ThemeModeProvider } from '@/theme/ThemeModeProvider';
 import AvatarStack from '@/components/AvatarStack';
 
 /**
- * The handoff's group avatar, built on MUI's AvatarGroup. MUI owns the surplus logic, so
- * these tests cover the two things this wrapper is actually responsible for: the geometry
- * that keeps a group inside one avatar's footprint, and the fallbacks either side of it.
+ * The handoff's group avatar: up to three faces scattered inside one avatar's footprint,
+ * alternating top and bottom, then a "+N" tile.
  *
- * The geometry numbers are the design, not implementation detail - a group row has to
- * occupy the same box as a direct one or the list develops a ragged left edge.
+ * The geometry numbers are the design, not implementation detail - a group row has to occupy
+ * the same box as a direct one or the list develops a ragged left edge, and the alternation is
+ * what makes a group read as a group rather than as a wider single avatar. Asserted on computed
+ * pixel values so a change to the maths fails here rather than passing quietly.
+ *
+ * A revision of the handoff briefly rebuilt this on MUI's AvatarGroup, which lays children out
+ * in a straight row. That was implemented and then reverted once the render was compared with
+ * the design; these tests are the record of which layout is correct.
  */
 
 const member = (n: number) => ({ id: `u${n}`, name: `Person${n} Surname` });
@@ -17,9 +22,19 @@ const members = (count: number) => Array.from({ length: count }, (_, i) => membe
 
 const draw = (ui: React.ReactElement) => render(<ThemeModeProvider>{ui}</ThemeModeProvider>);
 
-/** The rendered avatar circles, in DOM order. */
-const avatars = (container: HTMLElement) =>
-  Array.from(container.querySelectorAll<HTMLElement>('.MuiAvatar-root'));
+/**
+ * The tiles, in DOM order - the stack Box's direct children.
+ *
+ * Taken from the container rather than `getByRole("img")`: the stack carries role="img", but
+ * so does every rendered <img> inside it, so that query is ambiguous the moment a member has
+ * an uploaded avatar.
+ *
+ * Not filtered on `el.style.position` either - `sx` compiles to an emotion class, so inline
+ * style is empty and such a filter silently matches nothing. `toHaveStyle` still works,
+ * because jsdom resolves it through the stylesheet.
+ */
+const tiles = (container: HTMLElement) =>
+  Array.from(container.firstElementChild!.children) as HTMLElement[];
 
 describe('AvatarStack', () => {
   it('draws a plain avatar rather than a stack of one', () => {
@@ -47,60 +62,60 @@ describe('AvatarStack', () => {
     );
   });
 
-  it('labels exactly what is drawn, surplus included', () => {
+  it('shows three faces and counts the rest', () => {
     const { container } = draw(<AvatarStack members={members(6)} size={40} />);
 
-    // AvatarGroup gives up one slot to the surplus once the total overflows max, so two
-    // faces are visible and the tile reads "+4". The label has to agree with that, not
-    // claim three names and "3 more".
-    expect(container.textContent).toContain('+4');
+    // Three faces plus one surplus tile. AvatarGroup would have shown two faces and "+4",
+    // because it gives up a slot to the surplus; this does not.
+    expect(tiles(container)).toHaveLength(4);
+    expect(container.textContent).toContain('+3');
     expect(screen.getByRole('img')).toHaveAttribute(
       'aria-label',
-      'Person1 Surname, Person2 Surname and 4 more',
+      'Person1 Surname, Person2 Surname, Person3 Surname and 3 more',
     );
   });
 
-  it('lets MUI cap the faces and render the surplus', () => {
-    const { container } = draw(<AvatarStack members={members(6)} size={40} />);
+  it('alternates top and bottom rather than laying out in a row', () => {
+    const { container } = draw(<AvatarStack members={members(4)} size={40} />);
 
-    // AvatarGroup renders max-1 faces plus one surplus tile, so max=3 gives 3 circles.
-    const circles = avatars(container);
-    expect(circles).toHaveLength(3);
-    expect(container.textContent).toContain('+4');
-  });
+    // cell = round(40 * 0.62) = 25; step = round(25 * 0.45) = 11; bottom = 40 - 25 = 15.
+    const [a, b, c, surplus] = tiles(container);
+    expect(a).toHaveStyle({ left: '0px', top: '0px', width: '25px', height: '25px' });
+    expect(b).toHaveStyle({ left: '11px', top: '15px' });
+    expect(c).toHaveStyle({ left: '22px', top: '0px' });
+    expect(surplus).toHaveStyle({ left: '33px', top: '15px' });
 
-  it('sizes and overlaps the tight variant from size alone', () => {
-    const { container } = draw(<AvatarStack members={members(3)} size={40} />);
-
-    // cell = round(40 * 0.62) = 25; overlap = -round(25 * 0.55) = -14.
-    const [first, second] = avatars(container);
-    expect(first).toHaveStyle({ width: '25px', height: '25px' });
-    expect(first).toHaveStyle({ marginLeft: '0px' });
-    expect(second).toHaveStyle({ marginLeft: '-14px' });
+    // The three assertions above are the alternation: a row would put every tile at top: 0.
+    // Asserted through toHaveStyle rather than el.style.top, which is empty under emotion.
   });
 
   it('stays proportional at compact density', () => {
     const { container } = draw(<AvatarStack members={members(3)} size={34} />);
 
-    // cell = round(34 * 0.62) = 21; overlap = -round(21 * 0.55) = -12.
-    const [first, second] = avatars(container);
-    expect(first).toHaveStyle({ width: '21px', height: '21px' });
-    expect(second).toHaveStyle({ marginLeft: '-12px' });
+    // cell = round(34 * 0.62) = 21; step = round(21 * 0.45) = 9; bottom = 34 - 21 = 13.
+    const [a, b] = tiles(container);
+    expect(a).toHaveStyle({ width: '21px', height: '21px', left: '0px', top: '0px' });
+    expect(b).toHaveStyle({ left: '9px', top: '13px' });
   });
 
-  it('gives the row variant bigger faces and a looser overlap', () => {
-    const { container } = draw(<AvatarStack members={members(3)} size={40} variant="row" />);
+  it('stacks the first face above the ones after it', () => {
+    const { container } = draw(<AvatarStack members={members(3)} size={40} />);
 
-    // cell = round(40 * 0.78) = 31; overlap = -round(31 * 0.3) = -9.
-    const [first, second] = avatars(container);
-    expect(first).toHaveStyle({ width: '31px', height: '31px' });
-    expect(second).toHaveStyle({ marginLeft: '-9px' });
+    const [a, b, c] = tiles(container);
+    expect(a).toHaveStyle({ zIndex: '3' });
+    expect(b).toHaveStyle({ zIndex: '2' });
+    expect(c).toHaveStyle({ zIndex: '1' });
+  });
+
+  it('keeps the container to one avatar footprint', () => {
+    draw(<AvatarStack members={members(3)} size={40} />);
+
+    expect(screen.getByRole('img')).toHaveStyle({ width: '40px', height: '40px' });
   });
 
   /**
-   * #47: the faces were always initials, whatever the members had uploaded, because
-   * `toThread` discarded `avatarFileName` before it ever reached here. With the mapping
-   * fixed the stack has to actually draw the file.
+   * #47: the faces were always initials, whatever members had uploaded, because `toThread`
+   * discarded `avatarFileName` before it ever reached here.
    */
   it('draws an uploaded avatar for a member who has one', () => {
     const { container } = draw(
@@ -114,12 +129,9 @@ describe('AvatarStack', () => {
     );
 
     const srcs = Array.from(container.querySelectorAll('img')).map((i) => i.getAttribute('src'));
-    // AvatarGroup renders its children in reverse DOM order for the stacking, so compare
-    // as a set rather than in order.
     expect(srcs).toHaveLength(2);
     expect(srcs.join(' ')).toContain('images/sam-avatar.png');
     expect(srcs.join(' ')).toContain('images/jo-avatar.png');
-    // An avatar drawn from a file replaces the initials, it does not sit behind them.
     expect(container.textContent).toBe('');
   });
 
@@ -135,7 +147,7 @@ describe('AvatarStack', () => {
     );
 
     expect(container.querySelector('img')).toBeNull();
-    expect(container.textContent).toBe('JLSR');
+    expect(container.textContent).toBe('SRJL');
   });
 
   it('mixes faces and initials in one group, keeping the geometry', () => {
@@ -151,14 +163,10 @@ describe('AvatarStack', () => {
     );
 
     expect(container.querySelectorAll('img')).toHaveLength(2);
-    // The one without an avatar still shows initials.
     expect(container.textContent).toBe('JL');
 
-    // An avatar rendered from a file is still an AvatarGroup child, so the group's own
-    // geometry overrides have to land on it: cell = round(40 * 0.62) = 25, overlap = -14.
-    const circles = avatars(container);
-    expect(circles).toHaveLength(3);
-    expect(circles[0]).toHaveStyle({ width: '25px', height: '25px', marginLeft: '0px' });
-    expect(circles[1]).toHaveStyle({ width: '25px', height: '25px', marginLeft: '-14px' });
+    const [a, b] = tiles(container);
+    expect(a).toHaveStyle({ left: '0px', top: '0px' });
+    expect(b).toHaveStyle({ left: '11px', top: '15px' });
   });
 });
