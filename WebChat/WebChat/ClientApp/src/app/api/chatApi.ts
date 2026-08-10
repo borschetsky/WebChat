@@ -2,8 +2,19 @@ import { createApi, fakeBaseQuery } from '@reduxjs/toolkit/query/react';
 import { createEntityAdapter } from '@reduxjs/toolkit';
 import type { EntityState } from '@reduxjs/toolkit';
 import type { RootState } from '@/app/store';
-import type { DirectoryEntry, Message, Profile, Quote, Thread } from '@/types/models';
+import type { GroupDto } from '@/types/dto';
+import type {
+  DirectoryEntry,
+  Group,
+  GroupPerms,
+  GroupRole,
+  Message,
+  Profile,
+  Quote,
+  Thread,
+} from '@/types/models';
 import * as chat from '@/services/chat-service';
+import { toGroup } from '@/services/adapters';
 
 /**
  * RTK Query over the existing chat-service.
@@ -68,10 +79,98 @@ export interface SendArgs {
   retryOf?: string;
 }
 
+/**
+ * The wire contract's error envelope, as `run` above surfaces it.
+ * `group` is attached to every 409 precisely so the client can reconcile without refetching.
+ */
+interface GroupErrorBody {
+  error?: { code?: string; message?: string; group?: GroupDto };
+}
+
+export const groupErrorCode = (error: unknown): string | undefined =>
+  ((error as { data?: GroupErrorBody } | undefined)?.data as GroupErrorBody | undefined)?.error
+    ?.code;
+
+export const groupErrorMessage = (error: unknown): string | undefined =>
+  ((error as { data?: GroupErrorBody } | undefined)?.data as GroupErrorBody | undefined)?.error
+    ?.message;
+
+/** The current group a 409 carries, or null if this is not a version conflict. */
+const conflictGroup = (error: unknown): Group | null => {
+  const body = (error as { data?: GroupErrorBody } | undefined)?.data as GroupErrorBody | undefined;
+  if (body?.error?.code !== 'VERSION_CONFLICT' || !body.error.group) return null;
+  return toGroup(body.error.group);
+};
+
+/**
+ * Runs a group mutation under the spec's concurrency rule (§4).
+ *
+ * A stale version is not a user-visible failure - nobody caused it and nobody cares - so a
+ * conflict is retried **once** against the version the server just handed back. A second
+ * conflict is genuine contention: stop, and let the caller adopt the returned group. The
+ * error still surfaces rather than being reported as success, because the intent did not
+ * land; it is the UI that decides a VERSION_CONFLICT is not worth a snackbar.
+ */
+const mutateGroup = async (
+  version: number,
+  attempt: (version: number) => Promise<chat.GroupMutation>,
+): Promise<Result<chat.GroupMutation>> => {
+  const first = await run(() => attempt(version));
+  if (first.error === undefined) return first;
+
+  const current = conflictGroup(first.error);
+  if (!current) return first;
+
+  return run(() => attempt(current.version));
+};
+
+/**
+ * Shared aftermath for every group mutation.
+ *
+ * On success the server's group replaces the cached one and the system message is inserted
+ * into the open conversation - the hub broadcast excludes the actor, so this is the only
+ * thing that puts the row in front of the person who caused it.
+ *
+ * On a conflict that survived the retry, the group the error carries is adopted anyway. The
+ * mutation still reports failure; the cache still tells the truth.
+ */
+async function onGroupMutation(
+  arg: { groupId: string },
+  {
+    dispatch,
+    queryFulfilled,
+  }: {
+    // Not AppDispatch: the store's type is derived from this api's reducer and middleware,
+    // so naming it here makes chatApi reference itself through the store and TypeScript
+    // gives up on inferring either. A structural dispatch breaks the cycle.
+    dispatch: (action: unknown) => unknown;
+    queryFulfilled: Promise<{ data: chat.GroupMutation }>;
+  },
+) {
+  const adopt = (group: Group) =>
+    dispatch(chatApi.util.upsertQueryData('getGroup', arg.groupId, group));
+
+  try {
+    const { data } = await queryFulfilled;
+    adopt(data.group);
+
+    if (data.systemMessage) {
+      dispatch(
+        chatApi.util.updateQueryData('getMessages', arg.groupId, (draft) => {
+          messagesAdapter.upsertOne(draft, data.systemMessage as Message);
+        }),
+      );
+    }
+  } catch (rejection) {
+    const current = conflictGroup((rejection as { error?: unknown })?.error);
+    if (current) adopt(current);
+  }
+}
+
 export const chatApi = createApi({
   reducerPath: 'chatApi',
   baseQuery: fakeBaseQuery(),
-  tagTypes: ['Threads', 'Messages', 'Profile'],
+  tagTypes: ['Threads', 'Messages', 'Profile', 'Group'],
   endpoints: (build) => ({
     getProfile: build.query<Profile, void>({
       queryFn: (_arg, api) => run(() => chat.loadProfile(tokenOf(api.getState))),
@@ -182,6 +281,84 @@ export const chatApi = createApi({
       invalidatesTags: ['Threads'],
     }),
 
+    /**
+     * The open group's management state. Fetched per group rather than folded into
+     * getThreads: `version` is a concurrency token, and one going stale in a list of forty
+     * cached rows is worse than useless.
+     */
+    getGroup: build.query<Group, string>({
+      queryFn: (groupId, api) => run(() => chat.loadGroup(groupId, tokenOf(api.getState))),
+      providesTags: (_r, _e, groupId) => [{ type: 'Group' as const, id: groupId }],
+    }),
+
+    renameGroup: build.mutation<
+      chat.GroupMutation,
+      { groupId: string; name: string | null; version: number }
+    >({
+      queryFn: ({ groupId, name, version }, api) =>
+        mutateGroup(version, (v) => chat.renameGroupTo(groupId, name, v, tokenOf(api.getState))),
+      onQueryStarted: onGroupMutation,
+      // The thread list shows the group's title, so it is stale the moment this lands.
+      invalidatesTags: ['Threads'],
+    }),
+
+    addGroupMembers: build.mutation<
+      chat.GroupMutation,
+      { groupId: string; userIds: string[]; version: number }
+    >({
+      queryFn: ({ groupId, userIds, version }, api) =>
+        mutateGroup(version, (v) =>
+          chat.addMembersToGroup(groupId, userIds, v, tokenOf(api.getState)),
+        ),
+      onQueryStarted: onGroupMutation,
+      invalidatesTags: ['Threads'],
+    }),
+
+    removeGroupMember: build.mutation<
+      chat.GroupMutation,
+      { groupId: string; userId: string; version: number }
+    >({
+      queryFn: ({ groupId, userId, version }, api) =>
+        mutateGroup(version, (v) =>
+          chat.removeMemberFromGroup(groupId, userId, v, tokenOf(api.getState)),
+        ),
+      onQueryStarted: onGroupMutation,
+      invalidatesTags: ['Threads'],
+    }),
+
+    setGroupRole: build.mutation<
+      chat.GroupMutation,
+      { groupId: string; userId: string; gRole: GroupRole; version: number }
+    >({
+      queryFn: ({ groupId, userId, gRole, version }, api) =>
+        mutateGroup(version, (v) =>
+          chat.setMemberRole(groupId, userId, gRole, v, tokenOf(api.getState)),
+        ),
+      onQueryStarted: onGroupMutation,
+    }),
+
+    transferGroupOwnership: build.mutation<
+      chat.GroupMutation,
+      { groupId: string; userId: string; version: number }
+    >({
+      queryFn: ({ groupId, userId, version }, api) =>
+        mutateGroup(version, (v) =>
+          chat.transferOwnership(groupId, userId, v, tokenOf(api.getState)),
+        ),
+      onQueryStarted: onGroupMutation,
+    }),
+
+    setGroupPermissions: build.mutation<
+      chat.GroupMutation,
+      { groupId: string; perms: Partial<GroupPerms>; version: number }
+    >({
+      queryFn: ({ groupId, perms, version }, api) =>
+        mutateGroup(version, (v) =>
+          chat.changeGroupPermissions(groupId, perms, v, tokenOf(api.getState)),
+        ),
+      onQueryStarted: onGroupMutation,
+    }),
+
     saveProfile: build.mutation<Profile, Profile>({
       queryFn: (profile, api) => run(() => chat.saveProfile(profile, tokenOf(api.getState))),
       invalidatesTags: ['Profile'],
@@ -221,6 +398,13 @@ export const {
   useSendMessageMutation,
   useStartThreadMutation,
   useStartGroupMutation,
+  useGetGroupQuery,
+  useRenameGroupMutation,
+  useAddGroupMembersMutation,
+  useRemoveGroupMemberMutation,
+  useSetGroupRoleMutation,
+  useTransferGroupOwnershipMutation,
+  useSetGroupPermissionsMutation,
   useSaveProfileMutation,
   useToggleReactionMutation,
 } = chatApi;

@@ -151,6 +151,15 @@ audited action — never an implicit grant.
 mutations carry `If-Match`, and a stale value is refused with `409 VERSION_CONFLICT` and the
 current group attached.
 
+The rules are reachable end to end since #63. `ConversationsController`
+(`/api/conversations/{groupId}`) exposes a `GET` plus the six mutations — rename, add, remove,
+set role, transfer ownership, set permissions — delegating every decision to
+`GroupPermissions` and pushing a `ReciveGroupEvent` to the other members. On the client,
+`features/threads/groupPermissions.ts` mirrors the same rules to decide what to *draw*, and
+`GroupInfoDrawer` renders the result; `features/realtime/groupEvents.ts` applies an incoming
+event to the cached group. The client copy never decides authority — the server re-checks
+every request — it only avoids offering controls that could not succeed.
+
 ### Serialization
 
 **Newtonsoft.Json is deliberate.** Some endpoints return `Dictionary<DateTime, …>`; the

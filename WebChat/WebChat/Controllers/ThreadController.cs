@@ -16,13 +16,18 @@ namespace WebChat.Controllers
         private readonly IMessageService messageService;
         private readonly IValidator validator;
         private readonly IThreadService threadService;
+        private readonly IUserService userService;
 
-        public ThreadController(IMessageService messageService, IValidator validator, IThreadService threadService)
+        public ThreadController(
+            IMessageService messageService,
+            IValidator validator,
+            IThreadService threadService,
+            IUserService userService)
         {
             this.messageService = messageService ?? throw new ArgumentNullException("Message service can not be null");
             this.validator = validator ?? throw new ArgumentNullException("Validator can not be null");
             this.threadService = threadService;
-            
+            this.userService = userService;
         }
         [HttpGet("getmessages/{id}")]
         public ActionResult<Dictionary<DateTime, List<MessageViewModel>>> GetAllMessages(string id)
@@ -55,7 +60,8 @@ namespace WebChat.Controllers
                 }
             }
 
-            return dict;
+            // System messages carry their facts as JSON; hand the client an object.
+            return SystemDataJson.Expand(dict, this.userService.GetUserNameById);
         }
 
         
@@ -78,7 +84,8 @@ namespace WebChat.Controllers
 
             var result = threadService.SearchForMessages(threadid, term);
 
-            return result;
+            // Search excludes system messages, so this is defensive rather than load-bearing.
+            return SystemDataJson.Expand(result, this.userService.GetUserNameById);
         }
 
 

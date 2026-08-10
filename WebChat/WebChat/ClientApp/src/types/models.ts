@@ -54,6 +54,46 @@ export interface Thread {
   members: ThreadMember[];
 }
 
+export type GroupRole = 'owner' | 'admin' | 'member';
+export type PermRule = 'owner' | 'admins' | 'everyone';
+
+export interface GroupMember {
+  id: string;
+  name: string;
+  gRole: GroupRole;
+  joinedAt: string | null;
+  avatarFileName: string | null;
+  presence: Presence;
+  color: string;
+}
+
+export interface GroupPerms {
+  rename: PermRule;
+  invite: PermRule;
+  remove: PermRule;
+}
+
+/**
+ * A group's management state: roles, the permission map, and the concurrency token.
+ *
+ * Separate from `Thread` on purpose. A thread row is list data - fetched for every
+ * conversation on load and never version-checked - whereas this is fetched for the one
+ * group whose drawer is open, and `version` is only meaningful while something is watching
+ * it. Putting `version` on `Thread` would give every row a token going stale in the cache.
+ */
+export interface Group {
+  id: string;
+  /** Null when auto-named. `title` is what to display. */
+  name: string | null;
+  named: boolean;
+  title: string;
+  version: number;
+  perms: GroupPerms;
+  members: GroupMember[];
+  /** The viewer's own role, lifted out of `members` - every capability check needs it. */
+  myRole: GroupRole | null;
+}
+
 export interface Message {
   id: string;
   threadId: string;
@@ -77,6 +117,26 @@ export interface Message {
   quote: Quote | null;
   /** MOCK: no message attachment storage. */
   attachment: Attachment | null;
+
+  /**
+   * True for a system message - rendered as a centered divider row with no author, and
+   * excluded from the author prefix in thread-list previews.
+   */
+  system?: boolean;
+
+  /** Which system event this records, when `system` is true. */
+  systemKind?: string | null;
+
+  /** Structured facts behind a system message. The sentence is rendered, never stored. */
+  systemData?: unknown;
+
+  /**
+   * The ids in `systemData`, resolved to names by the server at read time.
+   *
+   * Preferred over the thread's member list, which cannot name the one person a removal or
+   * a departure is about - they are no longer in it.
+   */
+  systemNames?: Record<string, string> | null;
 
   /**
    * Delivery state for optimistic sends. Absent on messages loaded from the server.

@@ -6,8 +6,10 @@
   `WebChat.Services/GroupPermissions.cs` (new), a migration,
   `WebChat.Tests/Threads/GroupPermissionTests.cs` (new), `ORIENTATION.md`. Issue #63, first
   slice.
-- **Status:** partial — model, rules and migration done; endpoints, system messages and UI not
-  started
+- **Status:** partial when written — model, rules and migration only. The endpoints, system
+  messages and UI this note's "Known issues / follow-ups" listed as missing landed the next
+  day; see
+  [`2026-08-11-group-roles-endpoints-ui.md`](2026-08-11-group-roles-endpoints-ui.md).
 
 ## Context
 

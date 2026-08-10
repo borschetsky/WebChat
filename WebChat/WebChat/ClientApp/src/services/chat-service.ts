@@ -14,6 +14,13 @@ import {
   createGroup,
   getProfile,
   updateUsersProfile,
+  getGroup,
+  renameGroup,
+  addGroupMembers,
+  removeGroupMember,
+  setGroupRole,
+  transferGroupOwnership,
+  setGroupPermissions,
 } from './api-service';
 
 import {
@@ -22,6 +29,7 @@ import {
   toMessage,
   toDirectory,
   toProfile,
+  toGroup,
   currentUserId,
 } from './adapters';
 
@@ -37,7 +45,17 @@ import {
   MOCK_FEATURES,
 } from './mocks';
 
-import type { DirectoryEntry, Message, Profile, Quote, Reaction, Thread } from '@/types/models';
+import type {
+  DirectoryEntry,
+  Group,
+  GroupPerms,
+  GroupRole,
+  Message,
+  Profile,
+  Quote,
+  Reaction,
+  Thread,
+} from '@/types/models';
 
 export { MOCK_FEATURES };
 
@@ -121,6 +139,92 @@ export const startGroup = async (
   );
   return { threadId: res.data?.threadId ?? res.data?.ThreadId };
 };
+
+// --- group management ---------------------------------------------------------
+//
+// Each of these returns the group as the server now holds it, so a caller always has a
+// fresh `version` for its next `If-Match`. A refusal is thrown, not returned: the error
+// envelope carries the current group on a 409, and swallowing it here would leave the
+// conflict-reconciliation path in chatApi with nothing to reconcile against.
+
+/** What every group mutation answers with: the new state, and the row it wrote to history. */
+export interface GroupMutation {
+  group: Group;
+  /**
+   * The actor's own copy of the system message. The hub broadcast deliberately excludes
+   * them - they have this - so without it the person who did the thing is the one person
+   * who does not see it appear until a refetch.
+   */
+  systemMessage: Message | null;
+}
+
+interface GroupResponse {
+  group?: unknown;
+  systemMessage?: unknown;
+  systemMessages?: unknown[];
+}
+
+const toMutation = (data: GroupResponse | undefined): GroupMutation => {
+  // The batch add answers with `systemMessages` (plural, one per batch); the rest answer
+  // with `systemMessage`. Normalising here keeps that off every call site.
+  const raw = data?.systemMessage ?? data?.systemMessages?.[0] ?? null;
+  return {
+    group: toGroup(data?.group as never),
+    systemMessage: raw ? toMessage(raw as never) : null,
+  };
+};
+
+export const loadGroup = async (groupId: string, token: string): Promise<Group> =>
+  toGroup((await getGroup(groupId, token)).data?.group);
+
+/** Pass null to revert to auto-naming. */
+export const renameGroupTo = async (
+  groupId: string,
+  name: string | null,
+  version: number,
+  token: string,
+): Promise<GroupMutation> => toMutation((await renameGroup(groupId, name, version, token)).data);
+
+export const addMembersToGroup = async (
+  groupId: string,
+  userIds: string[],
+  version: number,
+  token: string,
+): Promise<GroupMutation> =>
+  toMutation((await addGroupMembers(groupId, userIds, version, token)).data);
+
+export const removeMemberFromGroup = async (
+  groupId: string,
+  userId: string,
+  version: number,
+  token: string,
+): Promise<GroupMutation> =>
+  toMutation((await removeGroupMember(groupId, userId, version, token)).data);
+
+export const setMemberRole = async (
+  groupId: string,
+  userId: string,
+  gRole: GroupRole,
+  version: number,
+  token: string,
+): Promise<GroupMutation> =>
+  toMutation((await setGroupRole(groupId, userId, gRole, version, token)).data);
+
+export const transferOwnership = async (
+  groupId: string,
+  userId: string,
+  version: number,
+  token: string,
+): Promise<GroupMutation> =>
+  toMutation((await transferGroupOwnership(groupId, userId, version, token)).data);
+
+export const changeGroupPermissions = async (
+  groupId: string,
+  perms: Partial<GroupPerms>,
+  version: number,
+  token: string,
+): Promise<GroupMutation> =>
+  toMutation((await setGroupPermissions(groupId, perms, version, token)).data);
 
 export interface SendMessageArgs {
   threadId: string;

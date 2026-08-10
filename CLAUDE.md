@@ -91,6 +91,14 @@ and fill it in, or the command stops naming the variable it wanted.
   until it is opened — so any test or script that registered and used the token straight
   away must now confirm first. Without SMTP credentials the app logs the message instead of
   sending, so the link is in the log and the flow still works offline.
+- **A system message is a real row with `Text = null`**, carrying `Type`, `SystemKind` and
+  `SystemData` (JSON facts, never a rendered sentence — the client builds the wording, so it
+  is not frozen in the actor's language). Any endpoint that returns messages must project all
+  three, or system rows arrive looking like ordinary messages with no text and render as
+  blank gaps; `getmessages` and the `getthreads` preview each shipped that way once. The ids
+  inside `SystemData` are resolved to names **server-side at read time** (`SystemDataJson`),
+  because the client resolves names from current members and the person a removal is about
+  has just stopped being one.
 - **Serialization is Newtonsoft.Json on purpose.** Some endpoints return
   `Dictionary<DateTime, …>` and the client parses those keys as dates; System.Text.Json
   formats non-string dictionary keys differently and would break the UI.

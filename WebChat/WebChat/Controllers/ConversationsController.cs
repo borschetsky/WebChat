@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Newtonsoft.Json;
 using WebChat.Hubs;
+using WebChat.Hubs.Interfaces;
 using WebChat.Models;
 using WebChat.Services;
 using WebChat.ViewModels;
@@ -32,12 +33,18 @@ namespace WebChat.Controllers
         private readonly IGroupService groups;
         private readonly IUserService users;
         private readonly IHubContext<ChatHub> hub;
+        private readonly IConnectionMapping<string> connections;
 
-        public ConversationsController(IGroupService groups, IUserService users, IHubContext<ChatHub> hub)
+        public ConversationsController(
+            IGroupService groups,
+            IUserService users,
+            IHubContext<ChatHub> hub,
+            IConnectionMapping<string> connections)
         {
             this.groups = groups;
             this.users = users;
             this.hub = hub;
+            this.connections = connections;
         }
 
         /// <summary>
@@ -62,6 +69,16 @@ namespace WebChat.Controllers
                 displayName = p.User?.Username,
                 gRole = p.GRole,
                 joinedAt = p.CreatedOn,
+
+                // Beyond the contract's Member shape, and additive on purpose: the member list
+                // in the info drawer draws a face and a presence dot per row, and without
+                // these it would have to cross-reference getthreads - which excludes the
+                // caller and carries no roles, so neither list is a superset of the other.
+                avatarFileName = p.User?.AvatarFileName,
+
+                // Presence is not a column - it is whether the hub currently holds a
+                // connection for them, the same source getthreads and the directory use.
+                isOnline = this.connections.GetConnections(p.UserId).Any(),
             });
 
             return new
@@ -91,7 +108,15 @@ namespace WebChat.Controllers
             systemKind = m.SystemKind,
             // Re-parsed so the client receives an object rather than a string of JSON.
             systemData = m.SystemData == null ? null : JsonConvert.DeserializeObject(m.SystemData),
-            body = m.Text,
+
+            // The ids inside, resolved to names. The client resolves against the thread's
+            // current members, and the person a system message is about has often just left
+            // it - "You removed Maya" would otherwise read "You removed someone".
+            systemNames = SystemDataJson.NamesFor(m.SystemData, this.users.GetUserNameById),
+            // `text`, not the spec.s `body`: getmessages already returns this field under
+            // that name, and system messages arrive through it too, so two names for one
+            // field would mean the client reading a different key depending on the route.
+            text = m.Text,
             createdAt = m.CreatedOn,
         };
 
@@ -148,6 +173,19 @@ namespace WebChat.Controllers
             {
                 await this.hub.Clients.Users(audience).SendAsync("ReciveGroupEvent", payload);
             }
+        }
+
+        /// <summary>
+        /// The group, for the info drawer. Not in the contract's list of five mutations, but
+        /// the client cannot send <c>If-Match</c> without a version and cannot draw §3's
+        /// read-only markup without <c>perms</c> and the caller's own role - and
+        /// <c>getthreads</c> carries none of that.
+        /// </summary>
+        [HttpGet]
+        public IActionResult Get(string groupId)
+        {
+            var result = this.groups.Get(groupId, Caller);
+            return result.Ok ? Ok(new { group = GroupView(result.Thread) }) : Problem(result);
         }
 
         [HttpPatch("name")]

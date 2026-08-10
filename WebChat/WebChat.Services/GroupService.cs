@@ -104,6 +104,20 @@ namespace WebChat.Services
             return message;
         }
 
+        public GroupResult Get(string groupId, string actorId)
+        {
+            var thread = LoadGroup(groupId);
+            if (thread == null) return GroupResult.Fail(GroupError.NotAMember);
+
+            // Membership is the read check too. Deliberately the same refusal a non-member
+            // gets from a mutation: whether a group exists is itself something only its
+            // members are entitled to learn.
+            var role = RoleOf(groupId, actorId);
+            if (role == null) return GroupResult.Fail(GroupError.NotAMember);
+
+            return new GroupResult { Thread = thread };
+        }
+
         public GroupResult Rename(string groupId, string actorId, string name, int? ifMatch)
         {
             var thread = LoadGroup(groupId);

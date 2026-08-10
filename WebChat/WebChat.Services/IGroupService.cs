@@ -13,6 +13,14 @@ namespace WebChat.Services
     /// </summary>
     public interface IGroupService
     {
+        /// <summary>
+        /// The group as it currently stands, for a caller who is in it. This is where the
+        /// client gets its first <see cref="Thread.Version"/> - without one it has nothing to
+        /// put in <c>If-Match</c> - and the roles and permission map the drawer renders from.
+        /// A non-member is refused rather than shown the membership.
+        /// </summary>
+        GroupResult Get(string groupId, string actorId);
+
         /// <summary>Rename, or pass null to revert to auto-naming.</summary>
         GroupResult Rename(string groupId, string actorId, string name, int? ifMatch);
 

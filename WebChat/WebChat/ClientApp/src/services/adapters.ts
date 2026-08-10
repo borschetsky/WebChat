@@ -8,9 +8,17 @@
 
 import { avatarColor } from '@/theme/tokens';
 import { autoGroupName } from '@/features/threads/groupName';
+import { systemMessageText } from '@/features/messages/systemMessage';
 import { getDateInfoForThread, getDateInfoForMessage } from '@/lib/date-time-format';
-import type { MessageDto, MessagesByDayDto, ProfileDto, ThreadDto, UserDto } from '@/types/dto';
-import type { DirectoryEntry, Message, Profile, Thread } from '@/types/models';
+import type {
+  GroupDto,
+  MessageDto,
+  MessagesByDayDto,
+  ProfileDto,
+  ThreadDto,
+  UserDto,
+} from '@/types/dto';
+import type { DirectoryEntry, Group, GroupMember, Message, Profile, Thread } from '@/types/models';
 import {
   mockThreadUnread,
   mockMessageReactions,
@@ -33,10 +41,34 @@ export const currentUserId = (): string | null => {
  * REAL: id, name, avatarFileName, presence (binary), preview, time, opponentId, group, members
  * MOCK: unread
  */
-export const toThread = (vm: ThreadDto): Thread => {
+export const toThread = (vm: ThreadDto, meId: string | null = currentUserId()): Thread => {
   const opponent = vm.oponentVM ?? null;
   const last = vm.lastMessage ?? null;
   const hasMessages = !!last?.text && last.text !== 'No messages';
+
+  // A system message is the newest row as often as any other, and its `text` is null - so
+  // without this a group whose last event was a rename reads "No messages yet" while its
+  // history is full of messages. The sentence is built here for the same reason it is built
+  // in the message list: the server stores facts, not prose.
+  const members = (vm.members ?? []).filter(Boolean);
+  const systemPreview =
+    last?.type === 'system'
+      ? systemMessageText(
+          {
+            authorId: last.senderId ?? '',
+            // The sender's own name first: on "left the group" the actor is by definition
+            // no longer in `members`, so looking them up there always failed and every such
+            // preview read "Someone left the group".
+            author:
+              last.username ?? members.find((m) => m.id === last.senderId)?.username ?? 'Someone',
+            systemKind: last.systemKind ?? null,
+            systemData: last.systemData ?? null,
+            systemNames: last.systemNames ?? null,
+          } as Message,
+          meId,
+          (id) => members.find((m) => m.id === id)?.username ?? undefined,
+        )
+      : '';
 
   return {
     id: vm.id,
@@ -55,16 +87,22 @@ export const toThread = (vm: ThreadDto): Thread => {
     presence: opponent?.isOnline ? 'online' : 'offline',
     isTyping: !!opponent?.isTyping,
 
-    preview: hasMessages ? (last?.text ?? '') : 'No messages yet',
-    time: hasMessages && last?.time ? getDateInfoForThread(last.time) : '',
-    lastMessageAt: hasMessages ? (last?.time ?? null) : null,
+    // A system message has no author to prefix - "Maya: You renamed the group" would be
+    // wrong twice over. The spec calls this out directly, and the preview is where it shows.
+    preview: systemPreview || (hasMessages ? (last?.text ?? '') : 'No messages yet'),
+    // System messages do update the sort order, which is the half of the rule that is not
+    // about display: they are excluded from unread, not from recency.
+    time: (systemPreview || hasMessages) && last?.time ? getDateInfoForThread(last.time) : '',
+    lastMessageAt: systemPreview || hasMessages ? (last?.time ?? null) : null,
 
     group: !!vm.isGroup,
     unread: mockThreadUnread(vm.id),
 
-    // Real members now. The server sends everyone but the caller, so a direct thread has
-    // one and a group has the rest - and `role` stays empty because nothing on the server
-    // has a concept of one yet. Inventing "Member" here would look like data.
+    // Real members now. The server sends everyone but the caller, so a direct thread has one
+    // and a group has the rest. `role` stays empty here even though the server does have
+    // roles since #63: getthreads does not carry them, and the one place roles are rendered
+    // - the info drawer - reads `Group.members`, which does. Filling this in from a second
+    // request per row would buy nothing.
     members: (vm.members ?? []).filter(Boolean).map((m) => ({
       id: m.id,
       name: m.username ?? 'Unknown',
@@ -78,8 +116,45 @@ export const toThread = (vm: ThreadDto): Thread => {
   };
 };
 
-export const toThreads = (vms: ThreadDto[] | null | undefined): Thread[] =>
-  Array.isArray(vms) ? vms.map(toThread) : [];
+export const toThreads = (
+  vms: ThreadDto[] | null | undefined,
+  meId: string | null = currentUserId(),
+): Thread[] =>
+  // Not `vms.map(toThread)`: map passes the index as the second argument, which would land
+  // in `meId` and make every preview read as someone else's.
+  Array.isArray(vms) ? vms.map((vm) => toThread(vm, meId)) : [];
+
+/**
+ * Group -> the info drawer's model.
+ *
+ * `title` is derived here from the same rule the thread list uses, so a group that nobody
+ * named reads identically in both places. `myRole` is lifted out of `members` because every
+ * capability check needs it and none of them should be re-scanning the list.
+ */
+export const toGroup = (vm: GroupDto, meId: string | null = currentUserId()): Group => {
+  const members: GroupMember[] = (vm.members ?? []).filter(Boolean).map((m) => ({
+    id: m.userId,
+    name: m.displayName ?? 'Unknown',
+    gRole: m.gRole,
+    joinedAt: m.joinedAt ?? null,
+    avatarFileName: m.avatarFileName ?? null,
+    presence: m.isOnline ? ('online' as const) : ('offline' as const),
+    color: avatarColor(m.userId ?? ''),
+  }));
+
+  return {
+    id: vm.id,
+    name: vm.name ?? null,
+    named: !!vm.named,
+    // Unlike getthreads, this list includes the viewer - and a title made of everyone
+    // including yourself reads wrong, so drop yourself before deriving it.
+    title: vm.name ?? autoGroupName(members.filter((m) => m.id !== meId).map((m) => m.name)),
+    version: vm.version ?? 0,
+    perms: vm.perms ?? { rename: 'admins', invite: 'admins', remove: 'admins' },
+    members,
+    myRole: members.find((m) => m.id === meId)?.gRole ?? null,
+  };
+};
 
 /**
  * MessageViewModel -> message row.
@@ -101,6 +176,12 @@ export const toMessage = (vm: MessageDto, meId: string | null = currentUserId())
   text: vm.text ?? '',
   time: vm.time ? getDateInfoForMessage(vm.time) : '',
   sentAt: vm.time ?? null,
+
+  // Absent on older payloads, which are all ordinary messages.
+  system: vm.type === 'system',
+  systemKind: vm.systemKind ?? null,
+  systemData: vm.systemData ?? null,
+  systemNames: vm.systemNames ?? null,
 
   reactions: mockMessageReactions(vm.id),
   quote: mockMessageQuote(vm.id),

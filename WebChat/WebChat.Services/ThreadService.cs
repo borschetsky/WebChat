@@ -24,10 +24,16 @@ namespace WebChat.Services
         public Dictionary<DateTime, List<MessageViewModel>> SearchForMessages(string threadId, string term)
         {
             var matchedMessages = ctx.Message.Where(m => m.ThreadId == threadId && m.Text.ToLower().IndexOf(term.ToLower()) > -1);
+            // System messages are excluded, per SPEC-group-wire-contract.md §2: "Someone
+            // searching 'Priya' wants messages, not the record of Priya joining." Stated
+            // rather than left to fall out of Text being null, which happens to work today
+            // and would stop the moment a system row gained a text column.
             var matchedMessagesTest = (from m in ctx.Message
                                        join u in ctx.User
                                        on m.SenderId equals u.Id
-                                       where m.ThreadId == threadId && m.Text.ToLower().IndexOf(term.ToLower()) > -1
+                                       where m.ThreadId == threadId
+                                             && m.Type != MessageType.System
+                                             && m.Text.ToLower().IndexOf(term.ToLower()) > -1
                                        orderby m.CreatedOn
                                        select new MessageViewModel
                                        {
@@ -119,7 +125,7 @@ namespace WebChat.Services
         /// Records who is in a thread. Call after the thread row exists - these rows carry a
         /// foreign key to it.
         /// </summary>
-        public void AddParticipants(string threadId, IEnumerable<string> userIds)
+        public void AddParticipants(string threadId, IEnumerable<string> userIds, string ownerId = null)
         {
             foreach (var userId in userIds.Where(u => !string.IsNullOrWhiteSpace(u)).Distinct())
             {
@@ -135,6 +141,13 @@ namespace WebChat.Services
                     Id = Guid.NewGuid().ToString(),
                     ThreadId = threadId,
                     UserId = userId,
+
+                    // The creator owns the group. Without this a new group is created with
+                    // every row at the column default, 'member' - so it has no owner at all,
+                    // nobody can transfer ownership, and the permission map is unreachable.
+                    // The #63 migration backfilled existing groups from Thread.OwnerId; this
+                    // is the other half, and only the migration had it until now.
+                    GRole = userId == ownerId ? GroupRole.Owner : GroupRole.Member,
                     CreatedOn = DateTime.UtcNow,
                 });
             }
@@ -149,11 +162,13 @@ namespace WebChat.Services
 
         public List<MessageViewModel> GetThreadMessages(string id)
         {
+            // No `using (ctx)` here. The context is injected and scoped to the request, so
+            // disposing it here disposes it for everything that runs afterwards - which was
+            // survivable only for as long as nothing did. The moment the caller resolved a
+            // display name after this returned, every getmessages call answered 500 with
+            // ObjectDisposedException. DI owns this object's lifetime.
             var vm = new List<MessageViewModel>();
-            using (ctx)
             {
-                
-
                 var tests = (from m in ctx.Message
                              join u in ctx.User
                              on m.SenderId equals u.Id
@@ -169,6 +184,14 @@ namespace WebChat.Services
                                  AvatarFileName = u.AvatarFileName,
                                  Text = m.Text,
                                  ThreadId = m.ThreadId,
+
+                                 // Without these a system row arrives looking like an
+                                 // ordinary message with no text, and renders as a blank
+                                 // gap. The raw JSON goes out as-is here; the host parses it
+                                 // before serializing - see SystemDataJson.
+                                 Type = m.Type,
+                                 SystemKind = m.SystemKind,
+                                 SystemData = m.SystemData,
                                  Time = m.CreatedOn
                              }).ToList();
                 vm = tests;
@@ -205,7 +228,15 @@ namespace WebChat.Services
             {
                 Text = message.Text,
                 Time = message.CreatedOn,
-                SenderId = message.SenderId
+                SenderId = message.SenderId,
+                Username = ctx.User.Where(u => u.Id == message.SenderId).Select(u => u.Username).FirstOrDefault(),
+
+                // A system message is the newest thing in the thread as often as any other,
+                // and the preview has to say what happened rather than fall back to
+                // "No messages yet".
+                Type = message.Type,
+                SystemKind = message.SystemKind,
+                SystemData = message.SystemData,
             };
 
             return result;
