@@ -123,6 +123,43 @@ the hub project and implemented in Services, exactly as `IConnectionMapping` is.
 `ReciveTypingStatus` carries `Username` as well as `UserId` and `ThreadId`, because a group
 has to name who is typing and the client has no lookup for an arbitrary user id.
 
+### Group authorization — two axes, not one
+
+Membership answers *may I open this thread*: `ThreadParticipant` has a row, or the request is
+refused. That is the older boundary and still the important one.
+
+Roles answer *may I change this thread*. `ThreadParticipant.GRole` is `owner` / `admin` /
+`member` **per conversation**, and `Thread` carries a permission map — `PermRename`,
+`PermInvite`, `PermRemove`, each `owner` / `admins` / `everyone`. The decision lives in
+`GroupPermissions`, deliberately pure and separate from loading anything, so the rules can be
+tested without a database.
+
+Three things the map cannot override, each because the state it would allow cannot be undone
+through the UI: **the owner cannot be removed** by anyone at any level, **only the owner**
+transfers ownership or edits the map, and **nobody is promoted straight to owner** — ownership
+moves by transfer, which demotes the previous owner in the same transaction. An unrecognised
+level denies rather than defaults.
+
+`everyone` means every *member*, not every user. A caller with no membership row is refused
+even then.
+
+**Group roles are independent of any workspace role**, on purpose: it is what stops the admin
+console becoming a backdoor into private conversations. Relaxing that must be an explicit,
+audited action — never an implicit grant.
+
+`Thread.Version` is the optimistic-concurrency token the group wire contract requires:
+mutations carry `If-Match`, and a stale value is refused with `409 VERSION_CONFLICT` and the
+current group attached.
+
+The rules are reachable end to end since #63. `ConversationsController`
+(`/api/conversations/{groupId}`) exposes a `GET` plus the six mutations — rename, add, remove,
+set role, transfer ownership, set permissions — delegating every decision to
+`GroupPermissions` and pushing a `ReciveGroupEvent` to the other members. On the client,
+`features/threads/groupPermissions.ts` mirrors the same rules to decide what to *draw*, and
+`GroupInfoDrawer` renders the result; `features/realtime/groupEvents.ts` applies an incoming
+event to the cached group. The client copy never decides authority — the server re-checks
+every request — it only avoids offering controls that could not succeed.
+
 ### Serialization
 
 **Newtonsoft.Json is deliberate.** Some endpoints return `Dictionary<DateTime, …>`; the

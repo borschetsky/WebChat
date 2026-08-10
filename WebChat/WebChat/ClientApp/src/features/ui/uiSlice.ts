@@ -21,6 +21,8 @@ interface UiState {
   searchQuery: string;
   settingsOpen: boolean;
   composeOpen: boolean;
+  /** The conversation info drawer: members, roles, permissions. */
+  infoOpen: boolean;
   /** Which pane is visible below the md breakpoint. */
   pane: MobilePane;
   snack: string;
@@ -34,6 +36,7 @@ const initialState: UiState = {
   searchQuery: '',
   settingsOpen: false,
   composeOpen: false,
+  infoOpen: false,
   pane: 'list',
   snack: '',
 };
@@ -48,6 +51,28 @@ const uiSlice = createSlice({
       state.pane = 'chat';
       state.searchOpen = false;
       state.searchQuery = '';
+    },
+    /**
+     * The open thread went away - the viewer left it, or was removed from it. Everything
+     * scoped to it goes with it, including the info drawer, whose queries would otherwise
+     * start answering 403.
+     *
+     * Says nothing itself. "You left the group" and "you are no longer a member" are the
+     * same state arrived at very differently, and only the caller knows which happened.
+     */
+    threadClosed(state, action: PayloadAction<string>) {
+      if (state.activeThreadId !== action.payload) return;
+      state.activeThreadId = null;
+      state.pane = 'list';
+      state.searchOpen = false;
+      state.searchQuery = '';
+      state.infoOpen = false;
+    },
+    infoOpened(state) {
+      state.infoOpen = true;
+    },
+    infoClosed(state) {
+      state.infoOpen = false;
     },
     queryChanged(state, action: PayloadAction<string>) {
       state.query = action.payload;
@@ -92,6 +117,7 @@ const uiSlice = createSlice({
     selectSearchQuery: (state) => state.searchQuery,
     selectSettingsOpen: (state) => state.settingsOpen,
     selectComposeOpen: (state) => state.composeOpen,
+    selectInfoOpen: (state) => state.infoOpen,
     selectPane: (state) => state.pane,
     selectSnack: (state) => state.snack,
   },
@@ -107,6 +133,9 @@ export const {
   settingsClosed,
   composeOpened,
   composeClosed,
+  threadClosed,
+  infoOpened,
+  infoClosed,
   paneChanged,
   notified,
   notificationDismissed,
@@ -120,6 +149,7 @@ export const {
   selectSearchQuery,
   selectSettingsOpen,
   selectComposeOpen,
+  selectInfoOpen,
   selectPane,
   selectSnack,
 } = uiSlice.selectors;

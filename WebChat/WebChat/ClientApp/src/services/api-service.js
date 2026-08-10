@@ -119,6 +119,78 @@ const searchForMessageInThread = async (token, params) => {
   return await result;
 };
 
+// --- group management (SPEC-group-wire-contract.md §1) -------------------------
+//
+// Every mutation is a compare-and-swap on the group's version, carried in `If-Match`. The
+// server answers a stale one with 409 and the current group attached, so the caller can
+// reconcile without refetching - which is why these deliberately do not swallow the error.
+
+const groupHeaders = (token, version) => ({
+  ...authHeader(token),
+  // Quoted, as an entity tag is. The server strips the quotes.
+  ...(version == null ? {} : { 'If-Match': `"${version}"` }),
+});
+
+const conversationUrl = (groupId) => `${_baseUrl}conversations/${encodeURIComponent(groupId)}`;
+
+const getGroup = async (groupId, token) => {
+  const result = await Axios.get(conversationUrl(groupId), { headers: authHeader(token) });
+  return await result;
+};
+
+const renameGroup = async (groupId, name, version, token) => {
+  const result = await Axios.patch(
+    `${conversationUrl(groupId)}/name`,
+    // Explicitly null rather than omitted: null is the revert-to-auto-naming instruction,
+    // and an absent key would read as "no change".
+    { name },
+    { headers: groupHeaders(token, version) },
+  );
+  return await result;
+};
+
+const addGroupMembers = async (groupId, userIds, version, token) => {
+  const result = await Axios.post(
+    `${conversationUrl(groupId)}/members`,
+    { userIds },
+    { headers: groupHeaders(token, version) },
+  );
+  return await result;
+};
+
+const removeGroupMember = async (groupId, userId, version, token) => {
+  const result = await Axios.delete(
+    `${conversationUrl(groupId)}/members/${encodeURIComponent(userId)}`,
+    { headers: groupHeaders(token, version) },
+  );
+  return await result;
+};
+
+const setGroupRole = async (groupId, userId, gRole, version, token) => {
+  const result = await Axios.put(
+    `${conversationUrl(groupId)}/members/${encodeURIComponent(userId)}/role`,
+    { gRole },
+    { headers: groupHeaders(token, version) },
+  );
+  return await result;
+};
+
+const transferGroupOwnership = async (groupId, userId, version, token) => {
+  const result = await Axios.post(
+    `${conversationUrl(groupId)}/owner`,
+    { userId },
+    { headers: groupHeaders(token, version) },
+  );
+  return await result;
+};
+
+const setGroupPermissions = async (groupId, perms, version, token) => {
+  const result = await Axios.patch(`${conversationUrl(groupId)}/perms`, perms, {
+    headers: groupHeaders(token, version),
+  });
+  return await result;
+};
+
 const updateUsersProfile = async (token, user) => {
   const result = await Axios.post(`${_baseUrl}users/update`, user, {
     headers: authHeader(token),
@@ -143,4 +215,11 @@ export {
   resetPassword,
   searchForMessageInThread,
   updateUsersProfile,
+  getGroup,
+  renameGroup,
+  addGroupMembers,
+  removeGroupMember,
+  setGroupRole,
+  transferGroupOwnership,
+  setGroupPermissions,
 };

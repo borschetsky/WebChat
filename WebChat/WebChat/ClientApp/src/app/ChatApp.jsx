@@ -12,12 +12,21 @@ import {
   useStartGroupMutation,
   useSaveProfileMutation,
   useToggleReactionMutation,
+  useGetGroupQuery,
+  useRenameGroupMutation,
+  useRemoveGroupMemberMutation,
+  useSetGroupRoleMutation,
+  useTransferGroupOwnershipMutation,
+  useSetGroupPermissionsMutation,
+  groupErrorCode,
+  groupErrorMessage,
   messagesAdapter,
 } from '@/app/api/chatApi';
 import ThreadList from '@/features/threads/ThreadList';
 import ConversationPane from '@/features/messages/ConversationPane';
 import SettingsDrawer from '@/features/settings/SettingsDrawer';
 import ComposeDialog from '@/features/threads/ComposeDialog';
+import GroupInfoDrawer from '@/features/threads/GroupInfoDrawer';
 import { useThemeMode } from '@/theme/ThemeModeProvider';
 import { uploadAvatar } from '@/services';
 import { markThreadRead, markAllThreadsRead, readReceiptFor } from '@/services/chat-service';
@@ -40,17 +49,21 @@ import {
   searchQueryChanged,
   settingsOpened,
   settingsClosed,
+  infoOpened,
+  infoClosed,
   composeOpened,
   composeClosed,
   paneChanged,
   notified,
   notificationDismissed,
+  threadClosed,
   selectActiveThreadId,
   selectQuery,
   selectFilter,
   selectSearchOpen,
   selectSearchQuery,
   selectSettingsOpen,
+  selectInfoOpen,
   selectComposeOpen,
   selectPane,
   selectSnack,
@@ -82,6 +95,7 @@ export default function ChatApp({ user, onSignOut }) {
   const searchOpen = useAppSelector(selectSearchOpen);
   const searchQuery = useAppSelector(selectSearchQuery);
   const settingsOpen = useAppSelector(selectSettingsOpen);
+  const infoOpen = useAppSelector(selectInfoOpen);
   const composeOpen = useAppSelector(selectComposeOpen);
   const pane = useAppSelector(selectPane);
   const snack = useAppSelector(selectSnack);
@@ -119,6 +133,12 @@ export default function ChatApp({ user, onSignOut }) {
   const [saveProfile, saveProfileState] = useSaveProfileMutation();
   const [toggleReaction] = useToggleReactionMutation();
 
+  const [renameGroup] = useRenameGroupMutation();
+  const [removeGroupMember] = useRemoveGroupMemberMutation();
+  const [setGroupRole] = useSetGroupRoleMutation();
+  const [transferGroupOwnership] = useTransferGroupOwnershipMutation();
+  const [setGroupPermissions] = useSetGroupPermissionsMutation();
+
   const stopTypingTimer = useRef(null);
   const notify = useCallback((msg) => dispatch(notified(msg)), [dispatch]);
 
@@ -144,6 +164,12 @@ export default function ChatApp({ user, onSignOut }) {
     [threads, live, unread],
   );
   const active = decorated.find((t) => t.id === activeId) ?? null;
+
+  // Only while the drawer is open on a group. `version` is a concurrency token, and keeping
+  // one subscribed for every thread in the list would be forty tokens going stale.
+  const { data: group, isFetching: loadingGroup } = useGetGroupQuery(activeId, {
+    skip: !infoOpen || !activeId || !active?.group,
+  });
 
   // --- actions --------------------------------------------------------------
   const selectThread = useCallback(
@@ -265,6 +291,50 @@ export default function ChatApp({ user, onSignOut }) {
     }
   };
 
+  /**
+   * Runs a group mutation and decides whether the user hears about a failure.
+   *
+   * A VERSION_CONFLICT is deliberately silent. It survived the retry inside the endpoint,
+   * the cache has already adopted the server's group, and the user neither caused it nor
+   * can act on it - the spec is explicit that a conflict is not a toast. Everything else
+   * failed the user's actual intent, so it says what went wrong, in the server's words.
+   */
+  const runGroupAction = async (promise) => {
+    const result = await promise;
+    if (!result.error) return true;
+    if (groupErrorCode(result.error) !== 'VERSION_CONFLICT') {
+      notify(groupErrorMessage(result.error) ?? 'That change could not be applied.');
+    }
+    return false;
+  };
+
+  const groupArgs = { groupId: activeId, version: group?.version ?? 0 };
+
+  const handleRenameGroup = (name) => runGroupAction(renameGroup({ ...groupArgs, name }));
+
+  const handleSetGroupRole = (userId, gRole) =>
+    runGroupAction(setGroupRole({ ...groupArgs, userId, gRole }));
+
+  const handleTransferOwnership = (userId) =>
+    runGroupAction(transferGroupOwnership({ ...groupArgs, userId }));
+
+  const handleRemoveMember = (userId) =>
+    runGroupAction(removeGroupMember({ ...groupArgs, userId }));
+
+  const handleSetPermission = (key, rule) =>
+    runGroupAction(setGroupPermissions({ ...groupArgs, perms: { [key]: rule } }));
+
+  // Leaving is a removal of yourself, which the server treats as its own case: it bypasses
+  // the remove permission, and is refused for the owner, who must transfer first.
+  const handleLeaveGroup = async () => {
+    const left = await runGroupAction(removeGroupMember({ ...groupArgs, userId: user.id }));
+    if (left) {
+      dispatch(infoClosed());
+      dispatch(threadClosed(activeId));
+      notify('You left the group');
+    }
+  };
+
   // --- derived --------------------------------------------------------------
   const q = query.trim().toLowerCase();
   const visibleThreads = decorated
@@ -322,7 +392,10 @@ export default function ChatApp({ user, onSignOut }) {
           onBack={() => dispatch(paneChanged('list'))}
           onToggleSearch={() => dispatch(searchToggled())}
           onSearchQuery={(v) => dispatch(searchQueryChanged(v))}
-          onOpenSettings={() => dispatch(settingsOpened())}
+          // "Conversation details" means the conversation, not the app. A direct thread has
+          // no details of its own yet, so it still falls through to settings rather than
+          // opening a drawer with one avatar and nothing to do in it.
+          onOpenSettings={() => dispatch(active?.group ? infoOpened() : settingsOpened())}
           onSend={handleSend}
           onTyping={handleTyping}
           onReact={handleReact}
@@ -349,6 +422,21 @@ export default function ChatApp({ user, onSignOut }) {
         onUploadAvatar={handleUploadAvatar}
         onLogout={onSignOut}
         fullWidth={isMobile}
+      />
+
+      <GroupInfoDrawer
+        open={infoOpen && !!active?.group}
+        onClose={() => dispatch(infoClosed())}
+        group={group}
+        loading={loadingGroup}
+        meId={user?.id ?? null}
+        fullWidth={isMobile}
+        onRename={handleRenameGroup}
+        onSetRole={handleSetGroupRole}
+        onTransferOwnership={handleTransferOwnership}
+        onRemoveMember={handleRemoveMember}
+        onSetPermission={handleSetPermission}
+        onLeave={handleLeaveGroup}
       />
 
       <ComposeDialog

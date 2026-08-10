@@ -23,5 +23,14 @@ namespace WebChat.Models
         public string UserId { get; set; }
 
         public User User { get; set; }
+
+        /// <summary>
+        /// This member's role in this conversation - see <see cref="GroupRole"/>.
+        ///
+        /// On the membership row, so the same person can own one group and merely belong to
+        /// another. Meaningless for a direct thread, where both participants are equals; it is
+        /// left at Member there rather than given a fourth value nothing reads.
+        /// </summary>
+        public string GRole { get; set; } = GroupRole.Member;
     }
 }

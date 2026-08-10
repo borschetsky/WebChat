@@ -156,7 +156,9 @@ namespace WebChat.Controllers
                 threadsVM.Add(vModel);
             }
 
-            return threadsVM;
+            // A preview whose newest row is a system message carries its facts as JSON;
+            // hand the client an object, the same shape getmessages returns.
+            return SystemDataJson.Expand(threadsVM, this.userSercvice.GetUserNameById);
         }
 
         /// <summary>
@@ -214,7 +216,7 @@ namespace WebChat.Controllers
             // it has no right to read.
             var everyone = new List<string> { curentUserId };
             everyone.AddRange(memberIds);
-            this.thredService.AddParticipants(thread.Id, everyone);
+            this.thredService.AddParticipants(thread.Id, everyone, curentUserId);
 
             var vm = new ThreadViewModel
             {

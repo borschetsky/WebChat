@@ -19,7 +19,12 @@ const presenceLine = (thread, typingUsers) => {
   if (!thread) return '';
   const typing = typingLabel(typingUsers, !!thread.group);
   if (typing) return typing;
-  if (thread.group) return `${thread.members?.length ?? 0} members`;
+  if (thread.group) {
+    // +1 for the viewer: `members` is everyone *but* them, so this read "2 members" on a
+    // group of three and disagreed with the info drawer sitting next to it.
+    const count = (thread.members?.length ?? 0) + 1;
+    return `${count} ${count === 1 ? 'member' : 'members'}`;
+  }
   return thread.presence === 'online' ? 'Active now' : 'Offline';
 };
 
@@ -180,6 +185,7 @@ export default function ConversationPane({
           onReply={onReply}
           onRetry={onRetry}
           threadId={thread.id}
+          members={thread.members}
         />
 
         {typingUsers.length > 0 && (

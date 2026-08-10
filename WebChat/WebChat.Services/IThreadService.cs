@@ -16,7 +16,12 @@ namespace WebChat.Services
         /// <summary>Persists an already-built group thread.</summary>
         void AddGroupThread(Thread thread);
 
-        void AddParticipants(string threadId, IEnumerable<string> userIds);
+        /// <summary>
+        /// Adds membership rows. <paramref name="ownerId"/> takes <c>GroupRole.Owner</c>;
+        /// everyone else takes <c>Member</c>. Null on a direct thread, where the role is
+        /// stored but means nothing.
+        /// </summary>
+        void AddParticipants(string threadId, IEnumerable<string> userIds, string ownerId = null);
 
         /// <summary>Everyone in the thread, for delivering a message to all of them.</summary>
         List<string> GetParticipantIds(string threadId);

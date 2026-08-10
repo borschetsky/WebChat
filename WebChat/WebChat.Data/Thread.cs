@@ -52,6 +52,36 @@ namespace WebChat.Models
         public bool Named { get; set; }
 
         /// <summary>
+        /// The permission map: who may rename, who may add members, who may remove them. Each
+        /// is a <see cref="PermissionLevel"/>, and only the Owner may change them.
+        ///
+        /// Three columns rather than a JSON blob, because these are read on every
+        /// authorization check and a queryable column costs nothing to add and something real
+        /// to retrofit. New groups default to 'admins' on all three, per the spec.
+        /// </summary>
+        public string PermRename { get; set; } = PermissionLevel.Admins;
+
+        public string PermInvite { get; set; } = PermissionLevel.Admins;
+
+        public string PermRemove { get; set; } = PermissionLevel.Admins;
+
+        /// <summary>
+        /// Optimistic concurrency token, incremented on every successful change to the group's
+        /// metadata - name, permissions, membership, roles.
+        /// </summary>
+        ///
+        /// <remarks>
+        /// Required by the wire contract: every mutation carries <c>If-Match</c> and a stale
+        /// value is refused with <c>409 VERSION_CONFLICT</c>, with the current group attached so
+        /// the client can re-render rather than guess.
+        ///
+        /// This is what makes "two admins demote each other at once" resolvable instead of
+        /// last-write-wins. Not EF's <c>[Timestamp]</c>/xmin, because the value crosses the wire
+        /// and has to be a plain integer the client can echo back.
+        /// </remarks>
+        public int Version { get; set; }
+
+        /// <summary>
         /// Stored rather than derived from participant count, because a two-person group is a
         /// different thing from a direct message - it has a name and can gain members - and
         /// inferring it would erase that distinction the moment a group dropped to two people.
