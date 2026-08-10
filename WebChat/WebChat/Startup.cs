@@ -257,6 +257,7 @@ namespace WebChat
             services.AddTransient<IUserService, UserService>();
             services.AddTransient<IMessageService, MessageService>();
             services.AddTransient<IThreadService, ThreadService>();
+            services.AddTransient<IGroupService, GroupService>();
             services.AddTransient<IMappingService, MappingService>();
             services.AddTransient<IValidator, Validator>();
             services.AddSingleton(typeof(IConnectionMapping<string>), typeof(ConnectionMapping<string>));
