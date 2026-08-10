@@ -191,12 +191,19 @@ namespace WebChat.Controllers
                 return BadRequest(new { members = "Add at least one other person to the group." });
             }
 
+            // Null, not a derived string. A group nobody named has no name, and its title is
+            // computed from current membership every time it is read - so removing a member
+            // drops them from the title on its own. Storing the derived string here is what
+            // this replaced: it went stale silently, which reads as a bug rather than a cache.
+            var given = string.IsNullOrWhiteSpace(model.Name) ? null : model.Name.Trim();
+
             var thread = new Models.Thread
             {
                 Id = Guid.NewGuid().ToString(),
                 OwnerId = curentUserId,
                 IsGroup = true,
-                Name = model.Name.Trim(),
+                Name = given,
+                Named = given != null,
                 CreatedOn = DateTime.UtcNow,
             };
 

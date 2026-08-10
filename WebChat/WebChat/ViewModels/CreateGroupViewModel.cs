@@ -5,8 +5,15 @@ namespace WebChat.ViewModels
 {
     public class CreateGroupViewModel
     {
-        [Required]
-        [StringLength(60, MinimumLength = 1)]
+        /// <summary>
+        /// Optional. Blank or absent means nobody named this group, and its title is derived
+        /// from current membership on every read.
+        ///
+        /// No longer [Required]: the compose dialog shows the auto-name as a *placeholder*, so
+        /// submitting an empty field is the expected path rather than an error. StringLength
+        /// still applies to a name that is actually given.
+        /// </summary>
+        [StringLength(60)]
         public string Name { get; set; }
 
         /// <summary>
