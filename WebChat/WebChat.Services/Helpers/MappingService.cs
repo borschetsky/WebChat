@@ -91,7 +91,8 @@ namespace WebChat.Services.Helpers
                 Id = model.Id,
                 Username = model.Username,
                 Email = model.Email,
-                AvatarFileName = model.AvatarFileName
+                AvatarFileName = model.AvatarFileName,
+                Role = model.Role,
             };
         }
     }

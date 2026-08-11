@@ -90,6 +90,10 @@ services:
       - SpaDevServerUrl=http://react-app:3000
       - Cors__AllowedOrigins__0=http://localhost:3000
       - Cors__AllowedOrigins__1=https://localhost:8081
+      # No `:?` - a stack with nobody configured is fine, it just has no admin console.
+      # Promotion is idempotent and requires a confirmed account, so leaving this set does
+      # nothing on every boot after the first.
+      - Admin__BootstrapOwners__0=${ADMIN_BOOTSTRAP_OWNER}
     volumes:
       - ~/.aspnet/https:/https:ro
       - webchat-avatars:/src/wwwroot/images

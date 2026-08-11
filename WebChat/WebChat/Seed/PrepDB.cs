@@ -44,6 +44,9 @@ namespace WebChat.Seed
                     // when the schema is already current.
                     await context.Database.MigrateAsync(cancellationToken);
 
+                    // After the schema is current, so the Role column exists to write to.
+                    await WebChat.Services.BootstrapAdmins.PromoteAsync(context, configuration, logger, cancellationToken);
+
                     var applied = (await context.Database.GetAppliedMigrationsAsync(cancellationToken)).ToList();
                     logger.LogInformation(
                         "Database ready ({Count} migration(s) applied): {Migrations}",

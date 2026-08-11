@@ -198,6 +198,12 @@ namespace WebChat.Services
                 Email = email,
                 Password = authService.HashPassword(password),
 
+                // Explicit, not left to the column default. #63 taught this the hard way: a
+                // migration backfilled every existing row and hid that the write path still
+                // wrote whatever the default happened to be. Nobody registers into a
+                // privileged role; promotion is a separate, deliberate act.
+                Role = WorkspaceRole.Member,
+
                 // Present from creation: a null stamp would make the very first token
                 // unverifiable against the user it was issued for.
                 SecurityStamp = Guid.NewGuid().ToString()

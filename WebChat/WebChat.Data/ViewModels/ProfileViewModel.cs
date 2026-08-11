@@ -15,5 +15,12 @@ namespace WebChat.Models.ViewModels
         public string Email { get; set; }
 
         public string AvatarFileName { get; set; }
+
+        /// <summary>
+        /// Workspace role, so the settings drawer can render the role chip and decide whether
+        /// to show the admin console row at all. Presentation only - every admin endpoint
+        /// re-checks server-side, because hiding a row is not authorization.
+        /// </summary>
+        public string Role { get; set; }
     }
 }

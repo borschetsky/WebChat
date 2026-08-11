@@ -147,6 +147,15 @@ even then.
 console becoming a backdoor into private conversations. Relaxing that must be an explicit,
 audited action — never an implicit grant.
 
+That workspace role now exists (#67): `User.Role` (`WorkspaceRole.cs` — owner/admin/member,
+string constants for the same wire reason as `GroupRole`) gates the admin console, nothing
+group-scoped. `GroupPermissions.Can` takes a group role and a `Thread`, full stop — no `User`,
+so it cannot see the workspace role even if a caller wanted it to.
+`WorkspaceRoleTests.The_workspace_owner_gets_no_authority_inside_a_group` pins exactly this:
+an owner with only `member`-level `GRole` in a thread gets none of that thread's owner/admin
+powers. If `GroupPermissions`'s signature ever grows a `User`, that test's closing assertion
+is where to argue about it.
+
 `Thread.Version` is the optimistic-concurrency token the group wire contract requires:
 mutations carry `If-Match`, and a stale value is refused with `409 VERSION_CONFLICT` and the
 current group attached.
