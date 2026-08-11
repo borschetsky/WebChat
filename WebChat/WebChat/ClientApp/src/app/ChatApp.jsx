@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Snackbar } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import AppShell, { useIsMobile } from '@/app/AppShell';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import {
@@ -85,6 +86,7 @@ const { selectAll: selectAllMessages } = messagesAdapter.getSelectors();
  */
 export default function ChatApp({ user, onSignOut }) {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const { density } = useThemeMode();
   const isMobile = useIsMobile();
 
@@ -421,6 +423,7 @@ export default function ChatApp({ user, onSignOut }) {
         onSaveProfile={handleSaveProfile}
         onUploadAvatar={handleUploadAvatar}
         onLogout={onSignOut}
+        onOpenAdmin={() => navigate('/admin')}
         fullWidth={isMobile}
       />
 

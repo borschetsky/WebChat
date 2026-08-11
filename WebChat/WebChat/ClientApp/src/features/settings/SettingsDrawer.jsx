@@ -16,6 +16,9 @@ import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import PresenceAvatar from '@/components/PresenceAvatar';
 import AppearanceControls from '@/features/settings/AppearanceControls';
 import MockDisclosure from '@/features/settings/MockDisclosure';
+import SectionLabel from '@/components/SectionLabel';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import { isAdminRole } from '@/features/admin/adminAccess';
 
 /**
  * Profile and settings drawer.
@@ -39,6 +42,7 @@ export default function SettingsDrawer({
   saveError = null,
   onUploadAvatar,
   onLogout,
+  onOpenAdmin,
   fullWidth,
 }) {
   // The two text fields stay local on purpose - they are controlled inputs, and a keystroke
@@ -187,6 +191,63 @@ export default function SettingsDrawer({
                 </Box>
               </Stack>
             ))}
+          </>
+        )}
+
+        {/* Absent for non-admins rather than disabled. A greyed row tells a member that a
+            private console exists, which is a small information leak in itself - and this
+            is presentation only, since /admin and everything behind it re-check the role. */}
+        {isAdminRole(profile?.role) && (
+          <>
+            <SectionLabel>Workspace</SectionLabel>
+            <Stack
+              component="button"
+              type="button"
+              direction="row"
+              spacing={1.75}
+              onClick={onOpenAdmin}
+              sx={{
+                alignItems: 'center',
+                width: '100%',
+                p: '13px 14px',
+                borderRadius: '12px',
+                border: 1,
+                borderColor: 'divider',
+                bgcolor: 'background.quote',
+                color: 'text.primary',
+                font: 'inherit',
+                textAlign: 'left',
+                cursor: 'pointer',
+                '&:hover': { borderColor: 'primary.main' },
+              }}
+            >
+              <Box
+                sx={{
+                  width: 38,
+                  height: 38,
+                  flex: 'none',
+                  borderRadius: '10px',
+                  bgcolor: 'primary.main',
+                  color: 'primary.contrastText',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <AdminPanelSettingsIcon sx={{ fontSize: 21 }} />
+              </Box>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography sx={{ fontSize: 14, fontWeight: 500 }}>Admin console</Typography>
+                <Typography
+                  sx={{ fontSize: 12, color: 'text.secondary', mt: 0.25, lineHeight: 1.4 }}
+                >
+                  Members, invitations, policies, UI errors
+                </Typography>
+              </Box>
+            </Stack>
+            <Typography sx={{ fontSize: 12, color: 'text.disabled', mt: 1, lineHeight: 1.5 }}>
+              You see this because you are a workspace {profile?.role}.
+            </Typography>
           </>
         )}
 

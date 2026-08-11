@@ -21,6 +21,8 @@ import {
   resetPassword,
 } from '@/services';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
+import { useGetProfileQuery } from '@/app/api/chatApi';
+import { isAdminRole } from '@/features/admin/adminAccess';
 import {
   authBusy,
   signedIn,
@@ -43,6 +45,10 @@ import {
  */
 const importChatApp = () => import('@/app/ChatApp');
 const ChatApp = lazy(importChatApp);
+
+// Lazy and never prefetched: almost nobody is an admin, and the console is a large screen
+// nobody should download on the chance that they are.
+const AdminConsole = lazy(() => import('@/features/admin/AdminConsole'));
 
 /**
  * Start downloading the chat chunk without rendering it.
@@ -246,6 +252,25 @@ function AppRoutes() {
         }
       />
 
+      {/* The admin console, at its own route rather than a pane inside the chat app.
+
+          Guarded here only so a non-admin who types the URL lands somewhere sensible - it is
+          navigation, not authorization. Every endpoint the console will eventually call is
+          re-checked server-side against the workspace role, because a client-side route
+          guard protects nothing at all. */}
+      <Route
+        path="/admin"
+        element={
+          user ? (
+            <Suspense fallback={null}>
+              <AdminRoute />
+            </Suspense>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+
       {/* v6+ matches paths exactly, so the catch-all has to be "*" rather than "/". */}
       <Route path="*" element={<Navigate to={user ? '/dashboard' : '/login'} replace />} />
     </Routes>
@@ -294,4 +319,20 @@ export default function App() {
       <AppRoutes />
     </BrowserRouter>
   );
+}
+
+/**
+ * Resolves the profile before deciding whether the console may be shown.
+ *
+ * Split into its own component because the profile arrives asynchronously: rendering the
+ * redirect while it is still loading would bounce an owner straight back to the dashboard
+ * on every hard refresh of /admin.
+ */
+function AdminRoute() {
+  const { data: profile, isLoading } = useGetProfileQuery();
+
+  if (isLoading) return null;
+  if (!profile || !isAdminRole(profile.role)) return <Navigate to="/dashboard" replace />;
+
+  return <AdminConsole profile={profile} />;
 }

@@ -1,5 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { chatApi } from '@/app/api/chatApi';
+import { adminApi } from '@/app/api/adminApi';
 import authReducer, { readStoredUser } from '@/features/auth/authSlice';
 import type { AuthState } from '@/features/auth/authSlice';
 import composerReducer from '@/features/composer/composerSlice';
@@ -23,12 +24,18 @@ export const makeStore = (auth?: AuthState) =>
       ui: uiReducer,
       realtime: realtimeReducer,
       [chatApi.reducerPath]: chatApi.reducer,
+      // Registered up front rather than injected with the lazy route: the reducer is a
+      // few bytes and injection would mean every admin component guarding against the
+      // slice not existing yet.
+      [adminApi.reducerPath]: adminApi.reducer,
     },
     preloadedState: { auth: auth ?? { user: readStoredUser(), busy: false } },
     // The realtime listener must run before the API middleware so a hub event that
     // patches the cache is not racing an in-flight query.
     middleware: (getDefault) =>
-      getDefault().prepend(realtimeMiddleware.middleware).concat(chatApi.middleware),
+      getDefault()
+        .prepend(realtimeMiddleware.middleware)
+        .concat(chatApi.middleware, adminApi.middleware),
   });
 
 export const store = makeStore();
