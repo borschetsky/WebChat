@@ -240,12 +240,27 @@ namespace WebChat.Services
 
         public string GetUserIdByName(string name)
         {
-            return ctx.User.FirstOrDefault(u => u.Username == name).Id;
+            return ctx.User.FirstOrDefault(u => u.Username == name)?.Id;
         }
 
+        /// <summary>
+        /// The username, or null when there is no such user.
+        ///
+        /// Null rather than an exception, because a missing user here is ordinary rather than
+        /// exceptional. Every caller before the audit log passed an id taken from a thread's
+        /// current members or a message's sender - ids that exist by construction - so the
+        /// missing `?.` went unnoticed for as long as that stayed true. The audit log breaks
+        /// it deliberately: an entry naming a deactivated account is precisely the entry worth
+        /// keeping, and resolving names at read time is why the endpoint asks at all. One such
+        /// row turned the whole page into a 500.
+        ///
+        /// Callers already treat null as "leave the name out", and the client renders
+        /// "someone" for an id it cannot resolve - so there is exactly one fallback, on the
+        /// side that displays it.
+        /// </summary>
         public string GetUserNameById(string id)
         {
-            return ctx.User.FirstOrDefault(u => u.Id == id).Username;
+            return ctx.User.FirstOrDefault(u => u.Id == id)?.Username;
         }
 
         public ProfileViewModel GetUserProfile(string userId)
