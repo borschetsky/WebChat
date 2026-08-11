@@ -16,6 +16,7 @@ using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
 using System.Threading.Tasks;
@@ -213,16 +214,34 @@ namespace WebChat
                             }
 
                             var db = context.HttpContext.RequestServices.GetRequiredService<WebChatContext>();
-                            var current = await db.User
+                            var account = await db.User
                                 .Where(u => u.Id == userId)
-                                .Select(u => u.SecurityStamp)
+                                .Select(u => new { u.SecurityStamp, u.Role })
                                 .FirstOrDefaultAsync();
 
                             // A deleted user has no stamp, which fails here too - previously a
                             // token for a deleted account kept working until it expired.
-                            if (current == null || current != presented)
+                            if (account == null || account.SecurityStamp != presented)
                             {
                                 context.Fail("Security stamp no longer valid.");
+                                return;
+                            }
+
+                            // The workspace role is attached here rather than issued in the
+                            // token, and this is the reason it can be: the row is already
+                            // being read. One extra column on a query that has to happen
+                            // anyway costs nothing, and it means demoting an admin takes
+                            // effect on their next request instead of whenever their
+                            // seven-day token expires. Rotating the security stamp would
+                            // also work, but that is the password-reset path and signs the
+                            // user out of every device over a change of role.
+                            //
+                            // If this database read is ever removed for performance, that
+                            // change owns this decision too.
+                            if (!string.IsNullOrEmpty(account.Role) &&
+                                context.Principal?.Identity is ClaimsIdentity identity)
+                            {
+                                identity.AddClaim(new Claim(ClaimTypes.Role, account.Role));
                             }
                         },
 

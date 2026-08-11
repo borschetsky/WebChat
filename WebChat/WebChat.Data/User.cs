@@ -26,6 +26,20 @@ namespace WebChat.Models
         public string AvatarFileName { get; set; }
 
         /// <summary>
+        /// Workspace role: see <see cref="WorkspaceRole"/>. Defaults to member, and
+        /// registration sets it explicitly rather than relying on that default - the #63
+        /// group-role migration backfilled existing rows and thereby disguised a write path
+        /// that never assigned the column at all.
+        ///
+        /// Read on every authenticated request, in the same query that checks
+        /// <see cref="SecurityStamp"/>, so a change takes effect immediately rather than when
+        /// the token expires. Not carried in the JWT for that reason.
+        /// </summary>
+        [Required]
+        [MaxLength(20)]
+        public string Role { get; set; } = WorkspaceRole.Member;
+
+        /// <summary>
         /// False until the address has been proven reachable. Sign-in is refused while this
         /// is false, so it is the only thing standing between the app and accounts registered
         /// against mistyped or someone else's addresses.
