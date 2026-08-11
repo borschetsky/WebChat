@@ -4,6 +4,7 @@ import {
   useGetInvitesQuery,
   useRevokeInviteMutation,
 } from '@/app/api/adminApi';
+import { getDaysUntil, getRelativeTime } from '@/lib/date-time-format';
 import Panel from '../Panel';
 
 /**
@@ -41,7 +42,11 @@ export default function AdminInvitations({ query, isMobile, onNotify, onInvite }
   return (
     <Panel sx={{ p: isMobile ? '4px 16px 12px' : '4px 24px 12px' }}>
       {rows.map((i) => {
-        const soon = i.days <= 7;
+        // Computed here, not sent: the server would have to guess when the page is read,
+        // and this one sits open. An invitation that lapses at 09:00 is "expires tomorrow"
+        // at 23:00 and "expired" an hour later, on the same never-reloaded screen.
+        const days = getDaysUntil(i.expiresAtUtc);
+        const soon = days !== null && days <= 7;
         return (
           <Stack
             key={i.id}
@@ -59,7 +64,7 @@ export default function AdminInvitations({ query, isMobile, onNotify, onInvite }
                 {i.email}
               </Typography>
               <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.25 }}>
-                Invited by {i.by} · sent {i.sent}
+                Invited by {i.by} · sent {getRelativeTime(i.sentAtUtc)}
               </Typography>
             </Box>
 
@@ -73,7 +78,7 @@ export default function AdminInvitations({ query, isMobile, onNotify, onInvite }
                 whiteSpace: 'nowrap',
               }}
             >
-              {i.days === 1 ? 'Expires tomorrow' : `Expires in ${i.days} days`}
+              {days === 0 ? 'Expired' : days === 1 ? 'Expires tomorrow' : `Expires in ${days} days`}
             </Box>
 
             <Stack direction="row" spacing={1} sx={{ flex: 'none' }}>

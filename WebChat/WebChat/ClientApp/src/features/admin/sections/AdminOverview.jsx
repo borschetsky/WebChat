@@ -3,7 +3,7 @@ import GroupIcon from '@mui/icons-material/Group';
 import TaskAltIcon from '@mui/icons-material/TaskAlt';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import BlockIcon from '@mui/icons-material/Block';
-import { useGetOverviewQuery } from '@/app/api/adminApi';
+import { useGetAuditQuery, useGetOverviewQuery } from '@/app/api/adminApi';
 import AuditRow from '../AuditRow';
 import Panel from '../Panel';
 
@@ -22,6 +22,12 @@ const STAT_ICON = {
  */
 export default function AdminOverview({ isMobile, onNavigate }) {
   const { data } = useGetOverviewQuery();
+
+  // Real, unlike everything else on this screen (#70). Asking for a few more than are shown
+  // is pointless, so the page size is the row count - and the audit log is the one section
+  // where "just fetch them all" would be genuinely unbounded.
+  const { data: recent = [] } = useGetAuditQuery({ limit: 6 });
+
   if (!data) return null;
 
   const pct = (n) => (data.total ? Math.round((n / data.total) * 100) : 0);
@@ -254,9 +260,14 @@ export default function AdminOverview({ isMobile, onNavigate }) {
             View audit log
           </Box>
         </Stack>
-        {data.recentAudit.map((a) => (
+        {recent.map((a) => (
           <AuditRow key={a.id} entry={a} compact />
         ))}
+        {recent.length === 0 && (
+          <Typography sx={{ py: 3, fontSize: 13, color: 'text.secondary' }}>
+            Nothing administrative has happened yet.
+          </Typography>
+        )}
       </Panel>
     </>
   );

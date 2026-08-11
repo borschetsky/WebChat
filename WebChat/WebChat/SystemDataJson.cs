@@ -68,6 +68,16 @@ namespace WebChat
         }
 
         /// <summary>
+        /// The stored JSON as an object, for callers that build their own wire shape. Returns
+        /// null for null or empty, which serializes as <c>null</c> rather than <c>""</c> -
+        /// the client checks for the object's absence, not for an empty string.
+        ///
+        /// A JToken and not a JsonElement on purpose: Newtonsoft serializes the former back
+        /// out unchanged, and Newtonsoft is what serializes responses here.
+        /// </summary>
+        public static object Data(string json) => Parse(json);
+
+        /// <summary>
         /// The name map for a raw <c>systemData</c> string, for callers that build their own
         /// message shape rather than going through a view model.
         /// </summary>

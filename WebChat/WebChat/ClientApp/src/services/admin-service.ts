@@ -8,8 +8,9 @@
 // the endpoints that replace them will not be - a call site written against a synchronous
 // mock has to be rewritten, which is exactly the coupling this seam exists to avoid.
 
+import { getAuditLog } from './api-service';
+
 import {
-  mockAudit,
   mockErrors,
   mockExtendInvite,
   mockInvites,
@@ -39,7 +40,22 @@ export const loadMembers = async (): Promise<AdminMember[]> => mockMembers();
 
 export const loadInvites = async (): Promise<AdminInvite[]> => mockInvites();
 
-export const loadAudit = async (): Promise<AdminAudit[]> => mockAudit();
+/**
+ * The audit log - the first section of this console with a real backend behind it (#70).
+ *
+ * `before` is the `occurredAtUtc` of the oldest entry already held, not a page number; the
+ * server pages by keyset because this table grows at the end being read.
+ */
+export const loadAudit = async (
+  token: string,
+  options: { before?: string; limit?: number } = {},
+): Promise<AdminAudit[]> => {
+  const result: { status: number; data: AdminAudit[] } | undefined = await getAuditLog(
+    options,
+    token,
+  );
+  return result && result.status !== 204 && Array.isArray(result.data) ? result.data : [];
+};
 
 export const loadErrors = async (): Promise<AdminError[]> => mockErrors();
 

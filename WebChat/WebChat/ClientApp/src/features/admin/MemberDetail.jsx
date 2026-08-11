@@ -2,6 +2,7 @@ import { Box, Button, Divider, Drawer, IconButton, Stack, Typography } from '@mu
 import CloseIcon from '@mui/icons-material/Close';
 import PresenceAvatar from '@/components/PresenceAvatar';
 import { avatarColor } from '@/theme/tokens';
+import { getAbsoluteDate, getRelativeTime } from '@/lib/date-time-format';
 import { useSetMemberRoleMutation, useSetMemberStatusMutation } from '@/app/api/adminApi';
 import StatusChip from './StatusChip';
 
@@ -20,11 +21,13 @@ export default function MemberDetail({ member, onClose, onNotify, fullWidth }) {
   const facts = member
     ? [
         ['Email', member.email],
-        ['Joined', member.joined],
+        ['Joined', getAbsoluteDate(member.joinedUtc)],
         ['Groups', String(member.groups)],
         ['Active sessions', String(member.sessions)],
         ['Two-factor', member.mfa ? 'On' : 'Off'],
-        ['Last active', member.last],
+        // An em dash, not "Never": a pending account has genuinely no last-active value,
+        // and "Never signed in" is the status chip's job, not this row's.
+        ['Last active', getRelativeTime(member.lastActiveUtc) || '—'],
       ]
     : [];
 
