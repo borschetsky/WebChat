@@ -133,9 +133,55 @@ const groupHeaders = (token, version) => ({
 
 const conversationUrl = (groupId) => `${_baseUrl}conversations/${encodeURIComponent(groupId)}`;
 
-// `before` is a keyset cursor - the occurredAtUtc of the oldest row already held - not a
-// page number. The audit table only grows, and grows at the end being read, so an offset
-// would re-show rows that arrived between one request and the next.
+const getAdminInvitations = async (token) => {
+  const result = await Axios.get(`${_baseUrl}admin/invitations`, { headers: authHeader(token) });
+  return await result;
+};
+
+const sendAdminInvitations = async (emails, role, token) => {
+  const result = await Axios.post(
+    `${_baseUrl}admin/invitations`,
+    { emails, role },
+    { headers: authHeader(token) },
+  );
+  return await result;
+};
+
+// Resend *is* extend: it rotates the token, which kills the previous link, so the new one
+// has to be mailed. There is deliberately no separate extend endpoint to call.
+const resendAdminInvitation = async (id, token) => {
+  const result = await Axios.post(
+    `${_baseUrl}admin/invitations/${encodeURIComponent(id)}/resend`,
+    {},
+    { headers: authHeader(token) },
+  );
+  return await result;
+};
+
+const revokeAdminInvitation = async (id, token) => {
+  const result = await Axios.post(
+    `${_baseUrl}admin/invitations/${encodeURIComponent(id)}/revoke`,
+    {},
+    { headers: authHeader(token) },
+  );
+  return await result;
+};
+
+// Anonymous: the landing page has to render before anybody signs in.
+const inspectInvitation = async (inviteToken) => {
+  const result = await Axios.get(`${_baseUrl}invitations/${encodeURIComponent(inviteToken)}`);
+  return await result;
+};
+
+const redeemInvitation = async (inviteToken, token) => {
+  const result = await Axios.post(
+    `${_baseUrl}invitations/${encodeURIComponent(inviteToken)}/redeem`,
+    {},
+    { headers: authHeader(token) },
+  );
+  return await result;
+};
+
 const getAdminMembers = async (token) => {
   const result = await Axios.get(`${_baseUrl}admin/members`, { headers: authHeader(token) });
   return await result;
@@ -161,6 +207,9 @@ const setAdminMemberRole = async (id, role, token) => {
   return await result;
 };
 
+// `before` is a keyset cursor - the occurredAtUtc of the oldest row already held - not a
+// page number. The audit table only grows, and grows at the end being read, so an offset
+// would re-show rows that arrived between one request and the next.
 const getAuditLog = async ({ before, limit } = {}, token) => {
   const result = await Axios.get(`${_baseUrl}admin/audit`, {
     headers: authHeader(token),
@@ -262,4 +311,10 @@ export {
   getAdminMembers,
   setAdminMemberStatus,
   setAdminMemberRole,
+  getAdminInvitations,
+  sendAdminInvitations,
+  resendAdminInvitation,
+  revokeAdminInvitation,
+  inspectInvitation,
+  redeemInvitation,
 };

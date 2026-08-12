@@ -1,5 +1,27 @@
 import { useState } from 'react';
 import { ROLE_LABEL } from '@/types/admin';
+import { errorMessage } from './adminErrors';
+
+/**
+ * What actually happened, which is rarely just "sent".
+ *
+ * Three outcomes have to stay distinguishable. Skipped addresses already had an account -
+ * those people are in and nothing is owed. Failed ones have an invitation stored but no mail
+ * delivered, so somebody has to resend and the recipient has been told nothing. Reporting
+ * "5 invitations sent" over either would be a straightforward lie.
+ */
+const summarise = (result, attempted) => {
+  const sent = attempted.length - (result?.skipped?.length ?? 0) - (result?.failed?.length ?? 0);
+  const parts = [];
+
+  if (sent > 0) parts.push(sent === 1 ? '1 invitation sent' : `${sent} invitations sent`);
+  if (result?.skipped?.length) parts.push(`${result.skipped.length} already a member`);
+  if (result?.failed?.length) {
+    parts.push(`${result.failed.length} could not be emailed — resend from the list`);
+  }
+
+  return parts.length > 0 ? parts.join(' · ') : 'Nothing to send';
+};
 import {
   Box,
   Button,
@@ -36,12 +58,19 @@ export default function InviteDialog({ open, onClose, onSent, fullScreen }) {
 
   const submit = async () => {
     if (emails.length === 0) return;
-    await send({ emails, role });
-    onSent?.(
-      emails.length === 1 ? `Invitation sent to ${emails[0]}` : `${emails.length} invitations sent`,
-    );
+
+    const result = await send({ emails, role });
+
+    if (result?.error) {
+      // The dialog stays open with the addresses still in it. Closing on a failure would
+      // lose a pasted list of twenty and give no way to retry except retyping them.
+      onSent?.(errorMessage(result.error));
+      return;
+    }
+
+    onSent?.(summarise(result.data, emails));
     setText('');
-    setRole('Member');
+    setRole('member');
     onClose();
   };
 

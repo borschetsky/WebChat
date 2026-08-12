@@ -11,7 +11,7 @@
 // The data is the design handoff's own fixture set (`Chat Admin Console.dc.html`), kept
 // verbatim so the rendered screen can be compared against the design directly.
 
-import type { AdminRole, AdminError, AdminInvite, AdminMember, AdminOverview } from '@/types/admin';
+import type { AdminError, AdminMember, AdminOverview } from '@/types/admin';
 
 // Fixture timestamps are offsets from load, not fixed dates.
 //
@@ -23,49 +23,10 @@ import type { AdminRole, AdminError, AdminInvite, AdminMember, AdminOverview } f
 const minutesAgo = (n: number): string => new Date(Date.now() - n * 60_000).toISOString();
 const hoursAgo = (n: number): string => minutesAgo(n * 60);
 const daysAgo = (n: number): string => minutesAgo(n * 1440);
-const inDays = (n: number): string => minutesAgo(-n * 1440);
 
-// The MEMBERS fixture is gone: GET /api/admin/members is real as of #71, and Overview's
-// counts are derived from that same list rather than from a fixture of their own.
-
-/** MOCK BECAUSE: no GET /api/admin/invitations. */
-const INVITES: AdminInvite[] = [
-  {
-    id: 'i1',
-    email: 'dev.sharma@acme.com',
-    by: 'Maya Rodriguez',
-    sentAtUtc: daysAgo(10),
-    expiresAtUtc: inDays(20),
-  },
-  {
-    id: 'i2',
-    email: 'farid.haddad@acme.com',
-    by: 'test',
-    sentAtUtc: daysAgo(5),
-    expiresAtUtc: inDays(25),
-  },
-  {
-    id: 'i3',
-    email: 'noor.haddad@acme.com',
-    by: 'Clara Weiss',
-    sentAtUtc: daysAgo(24),
-    expiresAtUtc: inDays(6),
-  },
-  {
-    id: 'i4',
-    email: 'sam.pereira@acme.com',
-    by: 'test',
-    sentAtUtc: daysAgo(27),
-    expiresAtUtc: inDays(3),
-  },
-  {
-    id: 'i5',
-    email: 'kai.lindqvist@contractor.io',
-    by: 'Maya Rodriguez',
-    sentAtUtc: daysAgo(29),
-    expiresAtUtc: inDays(1),
-  },
-];
+// Only the UI-errors fixtures are left. Members (#71), invitations (#72), the audit log
+// (#70) and Overview's stat cards all read real endpoints now; the MEMBERS and INVITES
+// fixtures and their mutation helpers went with them.
 
 /** MOCK BECAUSE: the client posts nothing to /api/client-errors, and nothing ingests it. */
 const ERRORS: AdminError[] = [
@@ -203,13 +164,10 @@ const ERRORS: AdminError[] = [
 const CHART = [42, 58, 51, 74, 66, 89, 23, 18, 71, 84, 79, 92, 61, 48];
 const DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S', 'M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
-// Session-scoped mutable copies, so the console's actions visibly do something. Resets on
-// reload - never mistake it for persistence.
-let invites = [...INVITES];
-
+// Session-scoped mutable copy, so error triage visibly does something. Resets on reload -
+// never mistake it for persistence. Only errors remain: members, invitations, the audit log
+// and Overview's counts are all real now.
 let errors = [...ERRORS];
-
-export const mockInvites = (): AdminInvite[] => invites;
 
 export const mockErrors = (): AdminError[] => errors;
 
@@ -235,37 +193,8 @@ export const mockOverview = (members: AdminMember[]): AdminOverview => {
   };
 };
 
-export const mockRevokeInvite = (id: string) => {
-  invites = invites.filter((i) => i.id !== id);
-  return invites;
-};
-
-/** Extending moves the deadline without issuing a new link - the spec is explicit. */
-export const mockExtendInvite = (id: string) => {
-  invites = invites.map((i) => (i.id === id ? { ...i, days: 30 } : i));
-  return invites;
-};
-
-/**
- * No audit entry is written here any more. The audit log is real as of #70, and a mock
- * invitation cannot produce a real one - so a fixture appended here would be a fabricated
- * record sitting alongside genuine ones, in the one list whose whole value is that its
- * contents actually happened. It comes back when invitations do (#72).
- */
-export const mockSendInvites = (emails: string[], role: AdminRole) => {
-  void role;
-  invites = [
-    ...emails.map((email, i) => ({
-      id: `new-${i}-${email}`,
-      email,
-      by: 'you',
-      sentAtUtc: new Date().toISOString(),
-      expiresAtUtc: inDays(30),
-    })),
-    ...invites,
-  ];
-  return invites;
-};
+// The invitation mocks are gone: sending, resending and revoking all reach real endpoints
+// as of #72, and each one writes a real audit entry.
 
 export const mockSetErrorStatus = (id: string, status: AdminError['status']) => {
   errors = errors.map((e) => (e.id === id ? { ...e, status } : e));

@@ -4,8 +4,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Configuration;
 using WebChat.Models;
 using WebChat.Services;
+using WebChat.Services.Email;
 
 namespace WebChat.Controllers
 {
@@ -37,12 +40,27 @@ namespace WebChat.Controllers
         private readonly IAuditService audit;
         private readonly IUserService users;
         private readonly IMemberAdminService members;
+        private readonly IInvitationService invitations;
+        private readonly IEmailSender emailSender;
+        private readonly EmailOptions emailOptions;
+        private readonly IConfiguration configuration;
 
-        public AdminController(IAuditService audit, IUserService users, IMemberAdminService members)
+        public AdminController(
+            IAuditService audit,
+            IUserService users,
+            IMemberAdminService members,
+            IInvitationService invitations,
+            IEmailSender emailSender,
+            EmailOptions emailOptions,
+            IConfiguration configuration)
         {
             this.audit = audit;
             this.users = users;
             this.members = members;
+            this.invitations = invitations;
+            this.emailSender = emailSender;
+            this.emailOptions = emailOptions;
+            this.configuration = configuration;
         }
 
         /// <summary>The caller's workspace role, which the role endpoint below branches on.</summary>
@@ -110,6 +128,130 @@ namespace WebChat.Controllers
                 this.User.Identity?.Name, this.ActorRole(), id, request?.Role);
 
             return result.Ok ? this.Ok(result.Members) : this.Refuse(result.Error);
+        }
+
+        [HttpGet("invitations")]
+        public async Task<IActionResult> Invitations() => this.Ok(await this.invitations.ListAsync());
+
+        /// <summary>
+        /// Issues invitations and mails them.
+        ///
+        /// Rate-limited by the same policy the activation and reset mails use: each address
+        /// here costs a send, and per CLAUDE.md that limiter partitions by remote IP and so
+        /// depends on <c>ForwardedHeaders__Enabled</c> behind a proxy.
+        /// </summary>
+        [EnableRateLimiting(Startup.EmailSendPolicy)]
+        [HttpPost("invitations")]
+        public async Task<IActionResult> Invite([FromBody] InviteRequest request)
+        {
+            var result = await this.invitations.SendAsync(
+                this.User.Identity?.Name, request?.Emails, request?.Role);
+
+            if (!result.Ok) return this.RefuseInvitation(result.Error);
+
+            var failed = await this.MailAll(result.Issued);
+
+            return this.Ok(new
+            {
+                invitations = result.Invitations,
+
+                // Both reported, because they mean different things to the sender: skipped
+                // people are already in, failed ones are not and nobody has told them.
+                skipped = result.Skipped,
+                failed,
+            });
+        }
+
+        /// <summary>
+        /// Resend, which is also extend - one operation with two labels.
+        ///
+        /// It rotates the token, so the previous link stops working. That is what bounds how
+        /// long a mailed secret stays live; and because the old link dies here, *not* mailing
+        /// the new one would silently break the link the invitee already holds. The two
+        /// cannot be separate endpoints without one of them being a trap.
+        /// </summary>
+        [EnableRateLimiting(Startup.EmailSendPolicy)]
+        [HttpPost("invitations/{id}/resend")]
+        public async Task<IActionResult> Resend(string id)
+        {
+            var result = await this.invitations.ResendAsync(this.User.Identity?.Name, id);
+            if (!result.Ok) return this.RefuseInvitation(result.Error);
+
+            var failed = await this.MailAll(result.Issued);
+
+            return this.Ok(new { invitations = result.Invitations, failed });
+        }
+
+        [HttpPost("invitations/{id}/revoke")]
+        public async Task<IActionResult> Revoke(string id)
+        {
+            var result = await this.invitations.RevokeAsync(this.User.Identity?.Name, id);
+
+            return result.Ok ? this.Ok(result.Invitations) : this.RefuseInvitation(result.Error);
+        }
+
+        /// <summary>
+        /// Mails each freshly issued invitation and returns the addresses that could not be
+        /// reached. The invitation still exists for those - it is minted and stored before
+        /// this runs - so an administrator can resend rather than start again.
+        /// </summary>
+        private async Task<List<string>> MailAll(List<IssuedInvitation> issued)
+        {
+            var publicUrl = (this.configuration.GetValue<string>("App:PublicUrl") ?? string.Empty).TrimEnd('/');
+            var failed = new List<string>();
+
+            foreach (var invitation in issued)
+            {
+                // The SPA route, not the API endpoint - the same reasoning as the activation
+                // link. Pointing at the API would show the invitee raw JSON, with no way for
+                // the browser to keep the session that redeeming creates.
+                var acceptUrl = $"{publicUrl}/invite?token={Uri.EscapeDataString(invitation.Token)}";
+
+                var (html, text) = InvitationEmail.Render(
+                    this.emailOptions.FromName, invitation.InvitedByName, acceptUrl, publicUrl);
+
+                var result = await this.emailSender.SendAsync(
+                    invitation.Email,
+                    InvitationEmail.Subject(this.emailOptions.FromName, invitation.InvitedByName),
+                    html,
+                    text);
+
+                if (!result.Sent) failed.Add(invitation.Email);
+            }
+
+            return failed;
+        }
+
+        private IActionResult RefuseInvitation(InvitationError error) => error switch
+        {
+            InvitationError.NotFound => this.NotFound(new { error = "not_found" }),
+
+            InvitationError.NotOpen => this.BadRequest(new
+            {
+                error = "not_open",
+                message = "That invitation has already been used, revoked, or has lapsed.",
+            }),
+
+            InvitationError.InvalidRole => this.BadRequest(new
+            {
+                error = "invalid_role",
+                message = "An invitation cannot make somebody the workspace owner.",
+            }),
+
+            InvitationError.NoRecipients => this.BadRequest(new
+            {
+                error = "no_recipients",
+                message = "No email addresses were supplied.",
+            }),
+
+            _ => this.BadRequest(new { error = "refused" }),
+        };
+
+        public class InviteRequest
+        {
+            public List<string> Emails { get; set; }
+
+            public string Role { get; set; }
         }
 
         public class MemberStatusRequest

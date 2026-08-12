@@ -64,7 +64,7 @@ export const adminApi = createApi({
     }),
 
     getInvites: build.query<AdminInvite[], void>({
-      queryFn: () => run(() => admin.loadInvites()),
+      queryFn: (_arg, api) => run(() => admin.loadInvites(tokenOf(api.getState))),
       providesTags: ['Invites'],
     }),
 
@@ -94,18 +94,25 @@ export const adminApi = createApi({
     }),
 
     revokeInvite: build.mutation<AdminInvite[], string>({
-      queryFn: (id) => run(() => admin.revokeInvite(id)),
-      invalidatesTags: ['Invites', 'Overview', 'Audit'],
+      queryFn: (id, api) => run(() => admin.revokeInvite(id, tokenOf(api.getState))),
+      // Members too: revoking deactivates the pending account, so the row in the members
+      // table changes status at the same moment.
+      invalidatesTags: ['Invites', 'Members', 'Overview', 'Audit'],
     }),
 
-    extendInvite: build.mutation<AdminInvite[], string>({
-      queryFn: (id) => run(() => admin.extendInvite(id)),
-      invalidatesTags: ['Invites'],
+    // No extendInvite. Extending rotates the token and therefore has to re-send, so it is
+    // this same operation - see services/admin-service.ts.
+    resendInvite: build.mutation<AdminInvite[], string>({
+      queryFn: (id, api) => run(() => admin.resendInvite(id, tokenOf(api.getState))),
+      invalidatesTags: ['Invites', 'Audit'],
     }),
 
-    sendInvites: build.mutation<AdminInvite[], { emails: string[]; role: AdminRole }>({
-      queryFn: ({ emails, role }) => run(() => admin.sendInvites(emails, role)),
-      invalidatesTags: ['Invites', 'Overview', 'Audit'],
+    sendInvites: build.mutation<admin.SendInvitesResult, { emails: string[]; role: AdminRole }>({
+      queryFn: ({ emails, role }, api) =>
+        run(() => admin.sendInvites(emails, role, tokenOf(api.getState))),
+      // Each invitation creates a pending account, so the members table and the stat cards
+      // both move.
+      invalidatesTags: ['Invites', 'Members', 'Overview', 'Audit'],
     }),
 
     setErrorStatus: build.mutation<AdminError[], { id: string; status: AdminErrorStatus }>({
@@ -124,7 +131,7 @@ export const {
   useSetMemberStatusMutation,
   useSetMemberRoleMutation,
   useRevokeInviteMutation,
-  useExtendInviteMutation,
+  useResendInviteMutation,
   useSendInvitesMutation,
   useSetErrorStatusMutation,
 } = adminApi;

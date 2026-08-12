@@ -10,6 +10,7 @@ import {
 import AuthScreen from '@/features/auth/AuthScreen';
 import CheckYourEmail from '@/features/auth/CheckYourEmail';
 import ConfirmEmail from '@/features/auth/ConfirmEmail';
+import AcceptInvite from '@/features/auth/AcceptInvite';
 import ForgotPassword from '@/features/auth/ForgotPassword';
 import ResetPassword from '@/features/auth/ResetPassword';
 import {
@@ -213,6 +214,11 @@ function AppRoutes() {
 
       <Route path="/confirm" element={<ConfirmRoute onConfirm={activate} onDone={activated} />} />
 
+      {/* Statically imported like the other auth screens, not lazily like the console.
+          This is the first page an invited stranger ever sees, and a chunk fetch failing
+          here would leave them looking at nothing with no idea why. */}
+      <Route path="/invite" element={<InviteRoute user={user} />} />
+
       <Route
         path="/forgot-password"
         element={
@@ -281,6 +287,29 @@ function AppRoutes() {
  * Reads the token from the query string. Split out because useSearchParams is a hook and
  * cannot be called inside the Route element expression above.
  */
+/**
+ * Reads the token from the query string, like ConfirmRoute - useSearchParams is a hook and
+ * cannot be called inside a Route element expression.
+ *
+ * On success it goes to the dashboard rather than back to sign-in: the person is now a
+ * member and already has a session, so anything else would be an extra click for nothing.
+ */
+function InviteRoute({ user }) {
+  const [params] = useSearchParams();
+  const navigate = useNavigate();
+
+  return (
+    <AcceptInvite
+      token={params.get('token')}
+      user={user}
+      // The token is kept in the URL through the sign-in trip, so returning here works -
+      // the page is the same one either way.
+      onSignIn={() => navigate('/login')}
+      onDone={() => navigate('/dashboard', { replace: true })}
+    />
+  );
+}
+
 function ConfirmRoute({ onConfirm, onDone }) {
   const [params] = useSearchParams();
   const navigate = useNavigate();
