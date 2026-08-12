@@ -1,22 +1,23 @@
 import { Box, Button, Stack, Typography } from '@mui/material';
 import {
-  useExtendInviteMutation,
   useGetInvitesQuery,
+  useResendInviteMutation,
   useRevokeInviteMutation,
 } from '@/app/api/adminApi';
 import { getDaysUntil, getRelativeTime } from '@/lib/date-time-format';
 import Panel from '../Panel';
+import { errorMessage } from '../adminErrors';
 
 /**
- * Separate from Members on purpose: the actions differ (resend, extend, revoke) and expiry
- * is what you scan for, which is not something the members table is arranged to show.
+ * Separate from Members on purpose: the actions differ (resend, revoke) and expiry is what
+ * you scan for, which is not something the members table is arranged to show.
  *
  * Rows expiring within a week are highlighted - the whole reason to open this tab is to
  * catch those before they lapse.
  */
 export default function AdminInvitations({ query, isMobile, onNotify, onInvite }) {
   const { data: invites = [] } = useGetInvitesQuery();
-  const [extend] = useExtendInviteMutation();
+  const [resend] = useResendInviteMutation();
   const [revoke] = useRevokeInviteMutation();
 
   const q = query.trim().toLowerCase();
@@ -82,26 +83,37 @@ export default function AdminInvitations({ query, isMobile, onNotify, onInvite }
             </Box>
 
             <Stack direction="row" spacing={1} sx={{ flex: 'none' }}>
+              {/*
+                One button, not two. "Extend" and "Resend" are the same operation: extending
+                rotates the token - so the 30-day window bounds one mailed secret's life
+                rather than the invitation's - and once it is rotated the old link is dead,
+                so it has to be re-sent or the invitee is left holding a link that silently
+                stopped working. A separate "Extend" would be a button whose whole effect was
+                to break somebody's link.
+              */}
               <Button
                 size="small"
                 onClick={async () => {
-                  await extend(i.id);
-                  // Extending moves the deadline without issuing a new link - so the link
-                  // already in their inbox keeps working, and saying so avoids a resend.
-                  onNotify?.(`Extended — ${i.email} keeps the same link`);
+                  const result = await resend(i.id);
+                  onNotify?.(
+                    result?.error
+                      ? errorMessage(result.error)
+                      : `New link sent to ${i.email} — the previous one no longer works`,
+                  );
                 }}
               >
-                Extend
-              </Button>
-              <Button size="small" onClick={() => onNotify?.(`Invitation resent to ${i.email}`)}>
                 Resend
               </Button>
               <Button
                 size="small"
                 color="error"
                 onClick={async () => {
-                  await revoke(i.id);
-                  onNotify?.(`Revoked — ${i.email} can no longer activate`);
+                  const result = await revoke(i.id);
+                  onNotify?.(
+                    result?.error
+                      ? errorMessage(result.error)
+                      : `Revoked — ${i.email} can no longer activate`,
+                  );
                 }}
               >
                 Revoke

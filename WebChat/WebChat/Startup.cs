@@ -295,6 +295,7 @@ namespace WebChat
             services.AddTransient<IGroupService, GroupService>();
             services.AddTransient<IAuditService, AuditService>();
             services.AddTransient<IMemberAdminService, MemberAdminService>();
+            services.AddTransient<IInvitationService, InvitationService>();
             services.AddTransient<IMappingService, MappingService>();
             services.AddTransient<IValidator, Validator>();
             services.AddSingleton(typeof(IConnectionMapping<string>), typeof(ConnectionMapping<string>));
@@ -338,6 +339,13 @@ namespace WebChat
             services.AddSingleton<WebChat.Services.Email.IPasswordResetTokenService>(
                 new WebChat.Services.Email.PasswordResetTokenService(
                     TimeSpan.FromHours(email.PasswordResetLifetimeHours)));
+
+            // Thirty days - the longest of the three, and the only one measured in days. What
+            // bounds a single mailed secret's life is the resend, which rotates the token
+            // rather than moving this deadline.
+            services.AddSingleton<WebChat.Services.Email.IInvitationTokenService>(
+                new WebChat.Services.Email.InvitationTokenService(
+                    TimeSpan.FromDays(email.InvitationLifetimeDays)));
 
             if (email.IsConfigured)
             {

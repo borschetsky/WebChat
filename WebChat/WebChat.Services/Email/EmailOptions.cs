@@ -53,6 +53,17 @@ namespace WebChat.Services.Email
         public int PasswordResetLifetimeHours { get; set; } = 1;
 
         /// <summary>
+        /// How long an invitation link stays valid. Thirty days - by far the longest of the
+        /// three, because it has to survive someone being on leave when it arrives, and
+        /// because what it grants is workspace membership rather than account control.
+        ///
+        /// Extending an invitation rotates the token rather than moving this deadline, so
+        /// this bounds the life of any single mailed secret and not the life of the
+        /// invitation itself. See <see cref="InvitationTokenService"/>.
+        /// </summary>
+        public int InvitationLifetimeDays { get; set; } = 30;
+
+        /// <summary>
         /// Shortest gap between two confirmation emails to the same address. Stops
         /// resend-confirmation being used to mail-bomb someone, which the per-IP limiter
         /// alone would not: an attacker with many addresses to send *from* is rate-limited,

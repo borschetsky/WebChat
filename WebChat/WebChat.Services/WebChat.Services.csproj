@@ -10,6 +10,7 @@
          resource name and throws at send time, not at startup, if it does. -->
     <EmbeddedResource Include="Email\Templates\ActivateAccount.html" />
     <EmbeddedResource Include="Email\Templates\ResetPassword.html" />
+    <EmbeddedResource Include="Email\Templates\InviteToWorkspace.html" />
   </ItemGroup>
 
   <ItemGroup>

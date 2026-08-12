@@ -156,6 +156,15 @@ an owner with only `member`-level `GRole` in a thread gets none of that thread's
 powers. If `GroupPermissions`'s signature ever grows a `User`, that test's closing assertion
 is where to argue about it.
 
+**Deactivation is the one place a workspace action reaches into a group, and it is not an
+exception to the above.** Offboarding an account removes it from every group (#71), which is
+the account ceasing to participate rather than an administrator acting inside a conversation
+— so the group gets `SystemKind.MemberDeactivated`, never `MemberRemoved`, because a removal
+names an actor with authority there and the administrator has none.
+`MemberAdminTests.The_departure_is_not_recorded_as_a_removal_by_an_admin` is the assertion
+holding that line. If the group had an owner, ownership is handed on first, in **both** the
+places it is stored: `ThreadParticipant.GRole` and `Thread.OwnerId`.
+
 `Thread.Version` is the optimistic-concurrency token the group wire contract requires:
 mutations carry `If-Match`, and a stale value is refused with `409 VERSION_CONFLICT` and the
 current group attached.

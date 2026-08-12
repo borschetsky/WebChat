@@ -80,9 +80,15 @@ export interface AdminMember {
 export interface AdminInvite {
   id: string;
   email: string;
-  /** Who sent it. */
+  /** Display name of whoever sent it, resolved server-side. */
   by: string;
-  /** ISO instant. */
+  /** The role they will land in. Never `owner` — an invitation cannot hand over the workspace. */
+  role: AdminRole;
+  /**
+   * ISO instant, and it moves on every resend: resending mints a *new* token rather than
+   * re-mailing the old one, so "sent" means "this link was sent", not "you were first
+   * invited".
+   */
   sentAtUtc: string;
   /**
    * ISO instant. 30-day expiry; a week or less is highlighted.
@@ -90,6 +96,10 @@ export interface AdminInvite {
    * A deadline, not a countdown: "12 days left" computed by the server is wrong by one the
    * moment the page is left open past midnight, and wrong by more if it is left open
    * overnight. `getDaysUntil` does the arithmetic at render.
+   *
+   * It bounds *this token's* life rather than the invitation's — a resend rotates the token
+   * and starts the window again, which is what stops a single mailed secret staying live
+   * indefinitely.
    */
   expiresAtUtc: string;
 }
