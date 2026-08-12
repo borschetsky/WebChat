@@ -101,8 +101,14 @@ export const auditMeta = (entry: AdminAudit): string => {
 
   switch (entry.kind) {
     case 'block': {
-      const sessions = number(entry, 'sessionsEnded');
-      if (sessions !== null) parts.push(`${plural(sessions, 'session')} ended`);
+      // `connectionsClosed`, not the mock's `sessionsEnded`. A JWT cannot be counted once
+      // issued, so "4 sessions ended" was never a number the server could produce; live hub
+      // connections closed is a fact, and zero is the ordinary case - most people are not
+      // connected when they are blocked - so it is worth stating rather than hiding.
+      const closed = number(entry, 'connectionsClosed');
+      if (closed !== null) {
+        parts.push(closed === 0 ? 'no live connections' : `${plural(closed, 'connection')} closed`);
+      }
       break;
     }
     case 'deactivate': {

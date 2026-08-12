@@ -40,6 +40,24 @@ namespace WebChat.Models
         public string Role { get; set; } = WorkspaceRole.Member;
 
         /// <summary>
+        /// Account standing: see <see cref="AccountStatus"/>.
+        ///
+        /// **Deliberately has no property initializer**, unlike <see cref="Role"/> above. An
+        /// initializer here would have made the test that proves <c>CreateUser</c> assigns
+        /// this pass whether or not the write path had been touched - which is the exact
+        /// shape of the #63 bug, where a migration's backfill hid that new rows still got the
+        /// column default. Every write path must name a status, and a missing one should be a
+        /// loud failure rather than a quiet "active".
+        ///
+        /// Read on every authenticated request, in the same query that checks
+        /// <see cref="SecurityStamp"/> and <see cref="Role"/>, so blocking takes effect on the
+        /// caller's next request rather than when their token expires.
+        /// </summary>
+        [Required]
+        [MaxLength(20)]
+        public string Status { get; set; }
+
+        /// <summary>
         /// False until the address has been proven reachable. Sign-in is refused while this
         /// is false, so it is the only thing standing between the app and accounts registered
         /// against mistyped or someone else's addresses.

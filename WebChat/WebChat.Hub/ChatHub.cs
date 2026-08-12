@@ -12,11 +12,16 @@ namespace WebChat.Hubs
     {
         private readonly IConnectionMapping<string> connections;
         private readonly IHubDirectory directory;
+        private readonly IConnectionAborter aborter;
 
-        public ChatHub(IConnectionMapping<string> connections, IHubDirectory directory)
+        public ChatHub(
+            IConnectionMapping<string> connections,
+            IHubDirectory directory,
+            IConnectionAborter aborter)
         {
             this.connections = connections ?? throw new ArgumentNullException(nameof(connections));
             this.directory = directory ?? throw new ArgumentNullException(nameof(directory));
+            this.aborter = aborter ?? throw new ArgumentNullException(nameof(aborter));
         }
 
         // Typing notification
@@ -81,6 +86,11 @@ namespace WebChat.Hubs
 
             this.connections.Add(currentUserId, this.Context.ConnectionId);
 
+            // Tracked so an administrator can close this connection. The mapping above holds
+            // ids, which is enough to address a connection and not enough to end one - see
+            // IConnectionAborter for why that distinction matters here.
+            this.aborter.Track(currentUserId, this.Context);
+
             if (!alreadyOnline)
             {
                 await this.NotifyPeers(currentUserId, "ReciveConnectedStatus");
@@ -95,6 +105,10 @@ namespace WebChat.Hubs
             var currentUserId = this.Context.User.Identity.Name;
 
             this.connections.Remove(currentUserId, this.Context.ConnectionId);
+
+            // Runs for an aborted connection too - SignalR calls this after Abort() - which
+            // is what keeps the registry from holding dead connections forever.
+            this.aborter.Forget(currentUserId, this.Context.ConnectionId);
 
             // Only when the last connection goes: closing one of two tabs is not going offline.
             if (!this.connections.GetConnections(currentUserId).Any())

@@ -11,13 +11,7 @@
 // The data is the design handoff's own fixture set (`Chat Admin Console.dc.html`), kept
 // verbatim so the rendered screen can be compared against the design directly.
 
-import type {
-  AdminRoleLabel,
-  AdminError,
-  AdminInvite,
-  AdminMember,
-  AdminOverview,
-} from '@/types/admin';
+import type { AdminRole, AdminError, AdminInvite, AdminMember, AdminOverview } from '@/types/admin';
 
 // Fixture timestamps are offsets from load, not fixed dates.
 //
@@ -31,191 +25,8 @@ const hoursAgo = (n: number): string => minutesAgo(n * 60);
 const daysAgo = (n: number): string => minutesAgo(n * 1440);
 const inDays = (n: number): string => minutesAgo(-n * 1440);
 
-/** MOCK BECAUSE: no GET /api/admin/members. */
-const MEMBERS: AdminMember[] = [
-  {
-    id: 'u1',
-    name: 'test',
-    email: 'test@parley.app',
-    role: 'Owner',
-    status: 'active',
-    lastActiveUtc: minutesAgo(0),
-    online: true,
-    joinedUtc: '2025-03-12T09:14:00Z',
-    groups: 6,
-    sessions: 3,
-    mfa: true,
-  },
-  {
-    id: 'u2',
-    name: 'Maya Rodriguez',
-    email: 'maya.rodriguez@acme.com',
-    role: 'Admin',
-    status: 'active',
-    lastActiveUtc: minutesAgo(2),
-    online: true,
-    joinedUtc: '2025-03-14T10:02:00Z',
-    groups: 5,
-    sessions: 2,
-    mfa: true,
-  },
-  {
-    id: 'u3',
-    name: 'Tomás Lind',
-    email: 'tomas.lind@acme.com',
-    role: 'Member',
-    status: 'active',
-    lastActiveUtc: minutesAgo(26),
-    online: false,
-    joinedUtc: '2025-03-14T10:02:00Z',
-    groups: 4,
-    sessions: 1,
-    mfa: true,
-  },
-  {
-    id: 'u4',
-    name: 'Priya Nair',
-    email: 'priya.nair@acme.com',
-    role: 'Member',
-    status: 'active',
-    lastActiveUtc: hoursAgo(3),
-    online: false,
-    joinedUtc: '2025-04-02T08:40:00Z',
-    groups: 3,
-    sessions: 1,
-    mfa: false,
-  },
-  {
-    id: 'u5',
-    name: 'Aiko Tanaka',
-    email: 'aiko.tanaka@acme.com',
-    role: 'Member',
-    status: 'active',
-    lastActiveUtc: hoursAgo(26),
-    online: false,
-    joinedUtc: '2025-04-19T13:25:00Z',
-    groups: 2,
-    sessions: 2,
-    mfa: true,
-  },
-  {
-    id: 'u6',
-    name: 'Ben Okafor',
-    email: 'ben.okafor@acme.com',
-    role: 'Member',
-    status: 'blocked',
-    lastActiveUtc: daysAgo(6),
-    online: false,
-    joinedUtc: '2025-04-19T13:25:00Z',
-    groups: 2,
-    sessions: 0,
-    mfa: false,
-  },
-  {
-    id: 'u7',
-    name: 'Clara Weiss',
-    email: 'clara.weiss@acme.com',
-    role: 'Admin',
-    status: 'active',
-    lastActiveUtc: minutesAgo(41),
-    online: true,
-    joinedUtc: '2025-05-05T11:07:00Z',
-    groups: 5,
-    sessions: 2,
-    mfa: true,
-  },
-  {
-    id: 'u8',
-    name: 'Dev Sharma',
-    email: 'dev.sharma@acme.com',
-    role: 'Member',
-    status: 'pending',
-    lastActiveUtc: null,
-    online: false,
-    joinedUtc: '2026-07-28T15:30:00Z',
-    groups: 0,
-    sessions: 0,
-    mfa: false,
-  },
-  {
-    id: 'u9',
-    name: 'Elena Rossi',
-    email: 'elena.rossi@acme.com',
-    role: 'Member',
-    status: 'active',
-    lastActiveUtc: hoursAgo(5),
-    online: false,
-    joinedUtc: '2025-06-11T09:55:00Z',
-    groups: 3,
-    sessions: 1,
-    mfa: true,
-  },
-  {
-    id: 'u10',
-    name: 'Farid Haddad',
-    email: 'farid.haddad@acme.com',
-    role: 'Member',
-    status: 'pending',
-    lastActiveUtc: null,
-    online: false,
-    joinedUtc: '2026-08-02T12:10:00Z',
-    groups: 0,
-    sessions: 0,
-    mfa: false,
-  },
-  {
-    id: 'u11',
-    name: 'Grace Mbeki',
-    email: 'grace.mbeki@acme.com',
-    role: 'Member',
-    status: 'deactivated',
-    lastActiveUtc: daysAgo(92),
-    online: false,
-    joinedUtc: '2025-01-08T16:45:00Z',
-    groups: 0,
-    sessions: 0,
-    mfa: false,
-  },
-  {
-    id: 'u12',
-    name: 'Hugo Bernard',
-    email: 'hugo.bernard@contractor.io',
-    role: 'Guest',
-    status: 'active',
-    lastActiveUtc: hoursAgo(1),
-    online: false,
-    joinedUtc: '2025-07-21T07:20:00Z',
-    groups: 1,
-    sessions: 1,
-    mfa: false,
-  },
-  {
-    id: 'u13',
-    name: 'Ines Oliveira',
-    email: 'ines.oliveira@acme.com',
-    role: 'Member',
-    status: 'active',
-    lastActiveUtc: daysAgo(2),
-    online: false,
-    joinedUtc: '2025-06-30T14:05:00Z',
-    groups: 2,
-    sessions: 1,
-    mfa: true,
-  },
-  {
-    id: 'u14',
-    name: 'Release Bot',
-    email: 'bots+release@parley.app',
-    role: 'Member',
-    status: 'active',
-    lastActiveUtc: minutesAgo(8),
-    online: true,
-    joinedUtc: '2025-03-12T09:14:00Z',
-    groups: 2,
-    sessions: 1,
-    mfa: false,
-  },
-];
+// The MEMBERS fixture is gone: GET /api/admin/members is real as of #71, and Overview's
+// counts are derived from that same list rather than from a fixture of their own.
 
 /** MOCK BECAUSE: no GET /api/admin/invitations. */
 const INVITES: AdminInvite[] = [
@@ -394,17 +205,24 @@ const DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S', 'M', 'T', 'W', 'T', 'F', 'S', '
 
 // Session-scoped mutable copies, so the console's actions visibly do something. Resets on
 // reload - never mistake it for persistence.
-let members = [...MEMBERS];
 let invites = [...INVITES];
 
 let errors = [...ERRORS];
 
-export const mockMembers = (): AdminMember[] => members;
 export const mockInvites = (): AdminInvite[] => invites;
 
 export const mockErrors = (): AdminError[] => errors;
 
-export const mockOverview = (): AdminOverview => {
+/**
+ * The stat cards are counted from the **real** members list, which #71 made available; only
+ * the 14-day chart is still fixture.
+ *
+ * Deliberately not left counting a fixture of its own. Overview and Members sit one click
+ * apart, and a stat card reading "14 people" above a table listing three is worse than
+ * either being obviously fake - it reads as a bug in the product rather than as unfinished
+ * work. Passing the real list in was cheaper than explaining that.
+ */
+export const mockOverview = (members: AdminMember[]): AdminOverview => {
   const count = (status: AdminMember['status']) =>
     members.filter((m) => m.status === status).length;
 
@@ -415,16 +233,6 @@ export const mockOverview = (): AdminOverview => {
     blocked: count('blocked') + count('deactivated'),
     chart: CHART.map((value, i) => ({ value, day: DAYS[i] })),
   };
-};
-
-export const mockSetMemberStatus = (ids: string[], status: AdminMember['status']) => {
-  members = members.map((m) => (ids.includes(m.id) ? { ...m, status } : m));
-  return members;
-};
-
-export const mockSetMemberRole = (id: string, role: AdminMember['role']) => {
-  members = members.map((m) => (m.id === id ? { ...m, role } : m));
-  return members;
 };
 
 export const mockRevokeInvite = (id: string) => {
@@ -444,7 +252,7 @@ export const mockExtendInvite = (id: string) => {
  * record sitting alongside genuine ones, in the one list whose whole value is that its
  * contents actually happened. It comes back when invitations do (#72).
  */
-export const mockSendInvites = (emails: string[], role: AdminRoleLabel) => {
+export const mockSendInvites = (emails: string[], role: AdminRole) => {
   void role;
   invites = [
     ...emails.map((email, i) => ({

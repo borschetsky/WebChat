@@ -3,10 +3,15 @@ import CloseIcon from '@mui/icons-material/Close';
 import PresenceAvatar from '@/components/PresenceAvatar';
 import { avatarColor } from '@/theme/tokens';
 import { getAbsoluteDate, getRelativeTime } from '@/lib/date-time-format';
+import { ROLE_LABEL } from '@/types/admin';
+import { errorMessage } from './adminErrors';
 import { useSetMemberRoleMutation, useSetMemberStatusMutation } from '@/app/api/adminApi';
 import StatusChip from './StatusChip';
 
-const ROLES = ['Member', 'Admin', 'Owner'];
+// The wire values, lower-case, exactly as WorkspaceRole stores them. ROLE_LABEL is what
+// puts a capital on the button. There is no Guest: the mock had one, and nothing in this
+// app has ever had a permission level behind that name.
+const ROLES = ['member', 'admin', 'owner'];
 
 /**
  * One member, with the destructive actions separated from the rest by a rule.
@@ -23,8 +28,15 @@ export default function MemberDetail({ member, onClose, onNotify, fullWidth }) {
         ['Email', member.email],
         ['Joined', getAbsoluteDate(member.joinedUtc)],
         ['Groups', String(member.groups)],
-        ['Active sessions', String(member.sessions)],
-        ['Two-factor', member.mfa ? 'On' : 'Off'],
+
+        // Live hub connections, not "sessions". A JWT cannot be counted once issued, so the
+        // mock's "3 active sessions" was a number nobody could have produced; this one is
+        // read straight off the connection registry and is the same number blocking closes.
+        ['Open connections', String(member.connections)],
+
+        // Replaces the mock's "Two-factor". This app has no second factor at all, and a
+        // row asserting one is the worst kind of fiction to leave on an admin screen.
+        ['Email confirmed', member.emailConfirmed ? 'Yes' : 'No'],
         // An em dash, not "Never": a pending account has genuinely no last-active value,
         // and "Never signed in" is the status chip's job, not this row's.
         ['Last active', getRelativeTime(member.lastActiveUtc) || '—'],
@@ -56,6 +68,7 @@ export default function MemberDetail({ member, onClose, onNotify, fullWidth }) {
               <PresenceAvatar
                 name={member.name}
                 color={avatarColor(member.id)}
+                avatarFileName={member.avatarFileName}
                 presence={member.online ? 'online' : 'offline'}
                 size={64}
               />
@@ -90,8 +103,17 @@ export default function MemberDetail({ member, onClose, onNotify, fullWidth }) {
                   type="button"
                   aria-pressed={member.role === r}
                   onClick={async () => {
-                    await setRole({ id: member.id, role: r });
-                    onNotify?.(`${member.name} is now ${r}`);
+                    const result = await setRole({ id: member.id, role: r });
+
+                    // The server owns this decision, not the button: only an owner may
+                    // appoint or remove administrators, and an admin pressing "Owner" gets a
+                    // 403 rather than a change. Saying "X is now Owner" regardless would
+                    // report a promotion that did not happen.
+                    onNotify?.(
+                      result?.error
+                        ? errorMessage(result.error)
+                        : `${member.name} is now ${ROLE_LABEL[r]}`,
+                    );
                   }}
                   sx={{
                     flex: 1,
@@ -108,7 +130,7 @@ export default function MemberDetail({ member, onClose, onNotify, fullWidth }) {
                     color: member.role === r ? 'primary.main' : 'text.secondary',
                   }}
                 >
-                  {r}
+                  {ROLE_LABEL[r]}
                 </Box>
               ))}
             </Stack>
@@ -121,8 +143,12 @@ export default function MemberDetail({ member, onClose, onNotify, fullWidth }) {
                   fullWidth
                   variant="outlined"
                   onClick={async () => {
-                    await setStatus({ ids: [member.id], status: 'active' });
-                    onNotify?.(`${member.name} can sign in again`);
+                    const result = await setStatus({ ids: [member.id], status: 'active' });
+                    onNotify?.(
+                      result?.error
+                        ? errorMessage(result.error)
+                        : `${member.name} can sign in again`,
+                    );
                   }}
                 >
                   Unblock
@@ -133,10 +159,18 @@ export default function MemberDetail({ member, onClose, onNotify, fullWidth }) {
                   variant="outlined"
                   color="error"
                   onClick={async () => {
-                    await setStatus({ ids: [member.id], status: 'blocked' });
+                    const result = await setStatus({ ids: [member.id], status: 'blocked' });
+
                     // Naming what is kept matters: block is reversible, and an admin who
                     // thinks it deletes history will reach for the wrong action instead.
-                    onNotify?.(`${member.name} blocked — account and history kept`);
+                    // The refusal case matters just as much - blocking the last owner is
+                    // stopped by the server, and reporting success would be a lie about
+                    // who can still get in.
+                    onNotify?.(
+                      result?.error
+                        ? errorMessage(result.error)
+                        : `${member.name} blocked — account and history kept`,
+                    );
                   }}
                 >
                   Block
@@ -147,8 +181,12 @@ export default function MemberDetail({ member, onClose, onNotify, fullWidth }) {
                 variant="outlined"
                 color="error"
                 onClick={async () => {
-                  await setStatus({ ids: [member.id], status: 'deactivated' });
-                  onNotify?.(`${member.name} deactivated and removed from all groups`);
+                  const result = await setStatus({ ids: [member.id], status: 'deactivated' });
+                  onNotify?.(
+                    result?.error
+                      ? errorMessage(result.error)
+                      : `${member.name} deactivated and removed from all groups`,
+                  );
                 }}
               >
                 Deactivate

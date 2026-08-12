@@ -46,6 +46,7 @@ namespace WebChat.Tests.Threads
                 Username = name,
                 Email = name + "@example.com",
                 Password = "hashed",
+                Status = AccountStatus.Active,
                 CreatedOn = DateTime.UtcNow,
                 SecurityStamp = Guid.NewGuid().ToString(),
             };

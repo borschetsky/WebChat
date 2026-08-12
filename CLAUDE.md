@@ -90,7 +90,17 @@ and fill it in, or the command stops naming the variable it wanted.
   created, an activation link is emailed, and `login` answers 403 `email_not_confirmed`
   until it is opened — so any test or script that registered and used the token straight
   away must now confirm first. Without SMTP credentials the app logs the message instead of
-  sending, so the link is in the log and the flow still works offline.
+  sending, so the link is in the log and the flow still works offline. `login` also answers
+  403 `account_blocked` / `account_deactivated` — both checked *after* the password, so
+  neither becomes a way to probe which addresses exist.
+- **"Ending a user's sessions" takes two things, and the stamp is only one of them.**
+  Rotating `SecurityStamp` refuses the next request that presents a token — and a SignalR
+  connection presents its token once, at connect, then holds a socket nothing
+  re-authenticates. So a member blocked mid-session went on receiving everything their
+  groups produced until they reloaded. Anything that revokes access must also call
+  `IConnectionAborter.AbortAll`, which closes their live hub connections. It is a
+  process-local singleton: on a second instance it would silently disconnect nobody on the
+  other node.
 - **A system message is a real row with `Text = null`**, carrying `Type`, `SystemKind` and
   `SystemData` (JSON facts, never a rendered sentence — the client builds the wording, so it
   is not frozen in the actor's language). Any endpoint that returns messages must project all

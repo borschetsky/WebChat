@@ -3,6 +3,8 @@ import { Box, Button, Checkbox, Chip, Stack, Typography } from '@mui/material';
 import PresenceAvatar from '@/components/PresenceAvatar';
 import { avatarColor } from '@/theme/tokens';
 import { getRelativeTime } from '@/lib/date-time-format';
+import { ROLE_LABEL } from '@/types/admin';
+import { errorMessage } from '../adminErrors';
 import { useGetMembersQuery, useSetMemberStatusMutation } from '@/app/api/adminApi';
 import Panel from '../Panel';
 import StatusChip from '../StatusChip';
@@ -42,7 +44,16 @@ export default function AdminMembers({ query, isMobile, onNotify }) {
     setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
 
   const bulk = async (status, verb) => {
-    await setStatus({ ids: selected, status });
+    const result = await setStatus({ ids: selected, status });
+
+    if (result?.error) {
+      // The selection is kept on a refusal. The server rejects a batch whole - one owner,
+      // or the caller's own account, stops all of it - so the fix is to deselect the one
+      // that caused it, which is impossible if the selection has just been cleared.
+      onNotify?.(errorMessage(result.error));
+      return;
+    }
+
     onNotify?.(`${verb} ${selected.length === 1 ? '1 member' : `${selected.length} members`}`);
     setSelected([]);
   };
@@ -117,6 +128,7 @@ export default function AdminMembers({ query, isMobile, onNotify }) {
             <PresenceAvatar
               name={m.name}
               color={avatarColor(m.id)}
+              avatarFileName={m.avatarFileName}
               presence={m.online ? 'online' : 'offline'}
               size={36}
             />
@@ -140,8 +152,8 @@ export default function AdminMembers({ query, isMobile, onNotify }) {
                 <Typography noWrap sx={{ fontSize: 14 }}>
                   {m.name}
                 </Typography>
-                {m.role !== 'Member' && (
-                  <Chip label={m.role} size="small" sx={{ height: 19, fontSize: 11 }} />
+                {m.role !== 'member' && (
+                  <Chip label={ROLE_LABEL[m.role]} size="small" sx={{ height: 19, fontSize: 11 }} />
                 )}
               </Stack>
               <Typography noWrap sx={{ fontSize: 12, color: 'text.secondary' }}>
