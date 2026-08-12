@@ -1,13 +1,20 @@
 import { Box, Stack, Typography } from '@mui/material';
 import { alpha } from '@mui/material/styles';
+import { getRelativeTime } from '@/lib/date-time-format';
 import AdminIcon from './AdminIcon';
+import { auditMeta, auditSentence } from './auditSentence';
 
 /**
  * One audit entry. The icon and its colour carry the kind, so a page of entries can be
  * scanned for the destructive ones without reading a word.
+ *
+ * The wording is built here from the entry's facts rather than read off it - see
+ * `auditSentence.ts`. The timestamp likewise: this screen is one people leave open, and a
+ * pre-formatted "2 h ago" would still say that at closing time.
  */
 const STYLE = {
   block: ['block', '#d32f2f'],
+  unblock: ['task_alt', '#2e7d32'],
   deactivate: ['person_remove', '#d32f2f'],
   login: ['gpp_maybe', '#ef6c00'],
   invite: ['mail', '#1976d2'],
@@ -18,6 +25,7 @@ const STYLE = {
 
 export default function AuditRow({ entry, compact = false }) {
   const [icon, color] = STYLE[entry.kind] ?? STYLE.policy;
+  const meta = auditMeta(entry);
 
   return (
     <Stack
@@ -41,15 +49,13 @@ export default function AuditRow({ entry, compact = false }) {
         <AdminIcon name={icon} sx={{ fontSize: 18 }} />
       </Box>
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Typography sx={{ fontSize: 14 }}>{entry.text}</Typography>
-        {!compact && (
-          <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.25 }}>
-            {entry.meta}
-          </Typography>
+        <Typography sx={{ fontSize: 14 }}>{auditSentence(entry)}</Typography>
+        {!compact && meta && (
+          <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.25 }}>{meta}</Typography>
         )}
       </Box>
       <Typography sx={{ fontSize: 12, color: 'text.secondary', whiteSpace: 'nowrap' }}>
-        {entry.time}
+        {getRelativeTime(entry.occurredAtUtc)}
       </Typography>
     </Stack>
   );

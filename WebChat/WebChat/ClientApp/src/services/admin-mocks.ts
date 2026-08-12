@@ -12,12 +12,24 @@
 // verbatim so the rendered screen can be compared against the design directly.
 
 import type {
-  AdminAudit,
+  AdminRoleLabel,
   AdminError,
   AdminInvite,
   AdminMember,
   AdminOverview,
 } from '@/types/admin';
+
+// Fixture timestamps are offsets from load, not fixed dates.
+//
+// They used to be the strings the design file showed - 'last: 2 min ago'. A server cannot
+// send those: it does not know when the page will be read, and the console is exactly the
+// screen somebody leaves open all afternoon. Now every one of these is an instant and the
+// wording is computed at render (`lib/date-time-format.ts`), which is also what keeps the
+// fixtures looking plausible however long the dev server has been up.
+const minutesAgo = (n: number): string => new Date(Date.now() - n * 60_000).toISOString();
+const hoursAgo = (n: number): string => minutesAgo(n * 60);
+const daysAgo = (n: number): string => minutesAgo(n * 1440);
+const inDays = (n: number): string => minutesAgo(-n * 1440);
 
 /** MOCK BECAUSE: no GET /api/admin/members. */
 const MEMBERS: AdminMember[] = [
@@ -27,9 +39,9 @@ const MEMBERS: AdminMember[] = [
     email: 'test@parley.app',
     role: 'Owner',
     status: 'active',
-    last: 'Now',
+    lastActiveUtc: minutesAgo(0),
     online: true,
-    joined: '12 Mar 2025',
+    joinedUtc: '2025-03-12T09:14:00Z',
     groups: 6,
     sessions: 3,
     mfa: true,
@@ -40,9 +52,9 @@ const MEMBERS: AdminMember[] = [
     email: 'maya.rodriguez@acme.com',
     role: 'Admin',
     status: 'active',
-    last: '2 min ago',
+    lastActiveUtc: minutesAgo(2),
     online: true,
-    joined: '14 Mar 2025',
+    joinedUtc: '2025-03-14T10:02:00Z',
     groups: 5,
     sessions: 2,
     mfa: true,
@@ -53,9 +65,9 @@ const MEMBERS: AdminMember[] = [
     email: 'tomas.lind@acme.com',
     role: 'Member',
     status: 'active',
-    last: '26 min ago',
+    lastActiveUtc: minutesAgo(26),
     online: false,
-    joined: '14 Mar 2025',
+    joinedUtc: '2025-03-14T10:02:00Z',
     groups: 4,
     sessions: 1,
     mfa: true,
@@ -66,9 +78,9 @@ const MEMBERS: AdminMember[] = [
     email: 'priya.nair@acme.com',
     role: 'Member',
     status: 'active',
-    last: '3 h ago',
+    lastActiveUtc: hoursAgo(3),
     online: false,
-    joined: '02 Apr 2025',
+    joinedUtc: '2025-04-02T08:40:00Z',
     groups: 3,
     sessions: 1,
     mfa: false,
@@ -79,9 +91,9 @@ const MEMBERS: AdminMember[] = [
     email: 'aiko.tanaka@acme.com',
     role: 'Member',
     status: 'active',
-    last: 'Yesterday',
+    lastActiveUtc: hoursAgo(26),
     online: false,
-    joined: '19 Apr 2025',
+    joinedUtc: '2025-04-19T13:25:00Z',
     groups: 2,
     sessions: 2,
     mfa: true,
@@ -92,9 +104,9 @@ const MEMBERS: AdminMember[] = [
     email: 'ben.okafor@acme.com',
     role: 'Member',
     status: 'blocked',
-    last: '6 days ago',
+    lastActiveUtc: daysAgo(6),
     online: false,
-    joined: '19 Apr 2025',
+    joinedUtc: '2025-04-19T13:25:00Z',
     groups: 2,
     sessions: 0,
     mfa: false,
@@ -105,9 +117,9 @@ const MEMBERS: AdminMember[] = [
     email: 'clara.weiss@acme.com',
     role: 'Admin',
     status: 'active',
-    last: '41 min ago',
+    lastActiveUtc: minutesAgo(41),
     online: true,
-    joined: '05 May 2025',
+    joinedUtc: '2025-05-05T11:07:00Z',
     groups: 5,
     sessions: 2,
     mfa: true,
@@ -118,9 +130,9 @@ const MEMBERS: AdminMember[] = [
     email: 'dev.sharma@acme.com',
     role: 'Member',
     status: 'pending',
-    last: '—',
+    lastActiveUtc: null,
     online: false,
-    joined: 'Invited 28 Jul',
+    joinedUtc: '2026-07-28T15:30:00Z',
     groups: 0,
     sessions: 0,
     mfa: false,
@@ -131,9 +143,9 @@ const MEMBERS: AdminMember[] = [
     email: 'elena.rossi@acme.com',
     role: 'Member',
     status: 'active',
-    last: '5 h ago',
+    lastActiveUtc: hoursAgo(5),
     online: false,
-    joined: '11 Jun 2025',
+    joinedUtc: '2025-06-11T09:55:00Z',
     groups: 3,
     sessions: 1,
     mfa: true,
@@ -144,9 +156,9 @@ const MEMBERS: AdminMember[] = [
     email: 'farid.haddad@acme.com',
     role: 'Member',
     status: 'pending',
-    last: '—',
+    lastActiveUtc: null,
     online: false,
-    joined: 'Invited 02 Aug',
+    joinedUtc: '2026-08-02T12:10:00Z',
     groups: 0,
     sessions: 0,
     mfa: false,
@@ -157,9 +169,9 @@ const MEMBERS: AdminMember[] = [
     email: 'grace.mbeki@acme.com',
     role: 'Member',
     status: 'deactivated',
-    last: '3 months ago',
+    lastActiveUtc: daysAgo(92),
     online: false,
-    joined: '08 Jan 2025',
+    joinedUtc: '2025-01-08T16:45:00Z',
     groups: 0,
     sessions: 0,
     mfa: false,
@@ -170,9 +182,9 @@ const MEMBERS: AdminMember[] = [
     email: 'hugo.bernard@contractor.io',
     role: 'Guest',
     status: 'active',
-    last: '1 h ago',
+    lastActiveUtc: hoursAgo(1),
     online: false,
-    joined: '21 Jul 2025',
+    joinedUtc: '2025-07-21T07:20:00Z',
     groups: 1,
     sessions: 1,
     mfa: false,
@@ -183,9 +195,9 @@ const MEMBERS: AdminMember[] = [
     email: 'ines.oliveira@acme.com',
     role: 'Member',
     status: 'active',
-    last: '2 days ago',
+    lastActiveUtc: daysAgo(2),
     online: false,
-    joined: '30 Jun 2025',
+    joinedUtc: '2025-06-30T14:05:00Z',
     groups: 2,
     sessions: 1,
     mfa: true,
@@ -196,9 +208,9 @@ const MEMBERS: AdminMember[] = [
     email: 'bots+release@parley.app',
     role: 'Member',
     status: 'active',
-    last: '8 min ago',
+    lastActiveUtc: minutesAgo(8),
     online: true,
-    joined: '12 Mar 2025',
+    joinedUtc: '2025-03-12T09:14:00Z',
     groups: 2,
     sessions: 1,
     mfa: false,
@@ -207,70 +219,40 @@ const MEMBERS: AdminMember[] = [
 
 /** MOCK BECAUSE: no GET /api/admin/invitations. */
 const INVITES: AdminInvite[] = [
-  { id: 'i1', email: 'dev.sharma@acme.com', by: 'Maya Rodriguez', sent: '28 Jul', days: 20 },
-  { id: 'i2', email: 'farid.haddad@acme.com', by: 'test', sent: '02 Aug', days: 25 },
-  { id: 'i3', email: 'noor.haddad@acme.com', by: 'Clara Weiss', sent: '14 Jul', days: 6 },
-  { id: 'i4', email: 'sam.pereira@acme.com', by: 'test', sent: '11 Jul', days: 3 },
-  { id: 'i5', email: 'kai.lindqvist@contractor.io', by: 'Maya Rodriguez', sent: '09 Jul', days: 1 },
-];
-
-/** MOCK BECAUSE: nothing writes an audit trail yet - deferred from #63 to #64. */
-const AUDIT: AdminAudit[] = [
   {
-    id: 'a1',
-    kind: 'block',
-    text: 'test blocked Ben Okafor',
-    meta: 'ben.okafor@acme.com · 4 sessions ended',
-    time: '12 min ago',
+    id: 'i1',
+    email: 'dev.sharma@acme.com',
+    by: 'Maya Rodriguez',
+    sentAtUtc: daysAgo(10),
+    expiresAtUtc: inDays(20),
   },
   {
-    id: 'a2',
-    kind: 'invite',
-    text: 'test invited farid.haddad@acme.com',
-    meta: 'Role: Member · expires 01 Sep',
-    time: '2 h ago',
+    id: 'i2',
+    email: 'farid.haddad@acme.com',
+    by: 'test',
+    sentAtUtc: daysAgo(5),
+    expiresAtUtc: inDays(25),
   },
   {
-    id: 'a3',
-    kind: 'role',
-    text: 'Maya Rodriguez promoted Clara Weiss to Admin',
-    meta: 'Member → Admin',
-    time: 'Yesterday, 16:42',
+    id: 'i3',
+    email: 'noor.haddad@acme.com',
+    by: 'Clara Weiss',
+    sentAtUtc: daysAgo(24),
+    expiresAtUtc: inDays(6),
   },
   {
-    id: 'a4',
-    kind: 'policy',
-    text: 'test turned on Require admin approval for invites',
-    meta: 'Workspace policy',
-    time: 'Yesterday, 09:15',
+    id: 'i4',
+    email: 'sam.pereira@acme.com',
+    by: 'test',
+    sentAtUtc: daysAgo(27),
+    expiresAtUtc: inDays(3),
   },
   {
-    id: 'a5',
-    kind: 'activate',
-    text: 'Elena Rossi activated her account',
-    meta: 'Invited 04 Jun by Maya Rodriguez',
-    time: '2 days ago',
-  },
-  {
-    id: 'a6',
-    kind: 'deactivate',
-    text: 'test deactivated Grace Mbeki',
-    meta: 'Offboarding · removed from 4 groups',
-    time: '3 days ago',
-  },
-  {
-    id: 'a7',
-    kind: 'login',
-    text: 'Failed sign-in for hugo.bernard@contractor.io',
-    meta: '3 attempts · 88.12.44.9',
-    time: '4 days ago',
-  },
-  {
-    id: 'a8',
-    kind: 'invite',
-    text: 'Clara Weiss invited noor.haddad@acme.com',
-    meta: 'Role: Member · expires 13 Aug',
-    time: '5 days ago',
+    id: 'i5',
+    email: 'kai.lindqvist@contractor.io',
+    by: 'Maya Rodriguez',
+    sentAtUtc: daysAgo(29),
+    expiresAtUtc: inDays(1),
   },
 ];
 
@@ -286,8 +268,8 @@ const ERRORS: AdminError[] = [
     release: 'web@2.14.0',
     events: 184,
     users: 31,
-    first: '2 days ago',
-    last: '4 min ago',
+    firstSeenUtc: daysAgo(2),
+    lastSeenUtc: minutesAgo(4),
     status: 'new',
     browsers: 'Chrome 141 · Safari 18 · Edge 141',
     spark: [2, 4, 9, 14, 22, 31, 28, 40, 37, 52, 44, 61, 58, 73],
@@ -315,8 +297,8 @@ const ERRORS: AdminError[] = [
     release: 'web@2.14.0',
     events: 96,
     users: 44,
-    first: '6 days ago',
-    last: '22 min ago',
+    firstSeenUtc: daysAgo(6),
+    lastSeenUtc: minutesAgo(22),
     status: 'new',
     browsers: 'Chrome 141 · Firefox 133',
     spark: [12, 9, 14, 8, 11, 6, 9, 7, 12, 10, 8, 14, 11, 9],
@@ -341,8 +323,8 @@ const ERRORS: AdminError[] = [
     release: 'web@2.13.4',
     events: 57,
     users: 12,
-    first: '9 days ago',
-    last: '1 h ago',
+    firstSeenUtc: daysAgo(9),
+    lastSeenUtc: hoursAgo(1),
     status: 'acknowledged',
     browsers: 'Chrome 141 · Safari 18',
     spark: [6, 8, 5, 9, 7, 4, 6, 3, 5, 7, 4, 6, 5, 4],
@@ -367,8 +349,8 @@ const ERRORS: AdminError[] = [
     release: 'web@2.14.0',
     events: 311,
     users: 78,
-    first: '3 weeks ago',
-    last: '8 min ago',
+    firstSeenUtc: daysAgo(21),
+    lastSeenUtc: minutesAgo(8),
     status: 'acknowledged',
     browsers: 'All',
     spark: [20, 24, 19, 26, 22, 28, 25, 30, 27, 24, 29, 26, 31, 28],
@@ -392,8 +374,8 @@ const ERRORS: AdminError[] = [
     release: 'web@2.13.4',
     events: 23,
     users: 9,
-    first: '1 month ago',
-    last: '3 days ago',
+    firstSeenUtc: daysAgo(31),
+    lastSeenUtc: daysAgo(3),
     status: 'resolved',
     browsers: 'Safari 18',
     spark: [4, 3, 2, 4, 1, 2, 0, 1, 0, 0, 1, 0, 0, 0],
@@ -414,12 +396,12 @@ const DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S', 'M', 'T', 'W', 'T', 'F', 'S', '
 // reload - never mistake it for persistence.
 let members = [...MEMBERS];
 let invites = [...INVITES];
-let audit = [...AUDIT];
+
 let errors = [...ERRORS];
 
 export const mockMembers = (): AdminMember[] => members;
 export const mockInvites = (): AdminInvite[] => invites;
-export const mockAudit = (): AdminAudit[] => audit;
+
 export const mockErrors = (): AdminError[] => errors;
 
 export const mockOverview = (): AdminOverview => {
@@ -432,7 +414,6 @@ export const mockOverview = (): AdminOverview => {
     pending: count('pending'),
     blocked: count('blocked') + count('deactivated'),
     chart: CHART.map((value, i) => ({ value, day: DAYS[i] })),
-    recentAudit: audit.slice(0, 4),
   };
 };
 
@@ -457,26 +438,23 @@ export const mockExtendInvite = (id: string) => {
   return invites;
 };
 
-export const mockSendInvites = (emails: string[], role: AdminMember['role']) => {
+/**
+ * No audit entry is written here any more. The audit log is real as of #70, and a mock
+ * invitation cannot produce a real one - so a fixture appended here would be a fabricated
+ * record sitting alongside genuine ones, in the one list whose whole value is that its
+ * contents actually happened. It comes back when invitations do (#72).
+ */
+export const mockSendInvites = (emails: string[], role: AdminRoleLabel) => {
+  void role;
   invites = [
     ...emails.map((email, i) => ({
       id: `new-${i}-${email}`,
       email,
       by: 'you',
-      sent: 'Just now',
-      days: 30,
+      sentAtUtc: new Date().toISOString(),
+      expiresAtUtc: inDays(30),
     })),
     ...invites,
-  ];
-  audit = [
-    {
-      id: `audit-${emails.join(',')}`,
-      kind: 'invite' as const,
-      text: `You invited ${emails.length === 1 ? emails[0] : `${emails.length} people`}`,
-      meta: `Role: ${role} · expires in 30 days`,
-      time: 'Just now',
-    },
-    ...audit,
   ];
   return invites;
 };

@@ -133,6 +133,17 @@ const groupHeaders = (token, version) => ({
 
 const conversationUrl = (groupId) => `${_baseUrl}conversations/${encodeURIComponent(groupId)}`;
 
+// `before` is a keyset cursor - the occurredAtUtc of the oldest row already held - not a
+// page number. The audit table only grows, and grows at the end being read, so an offset
+// would re-show rows that arrived between one request and the next.
+const getAuditLog = async ({ before, limit } = {}, token) => {
+  const result = await Axios.get(`${_baseUrl}admin/audit`, {
+    headers: authHeader(token),
+    params: { before, limit },
+  });
+  return await result;
+};
+
 const getGroup = async (groupId, token) => {
   const result = await Axios.get(conversationUrl(groupId), { headers: authHeader(token) });
   return await result;
@@ -222,4 +233,5 @@ export {
   setGroupRole,
   transferGroupOwnership,
   setGroupPermissions,
+  getAuditLog,
 };

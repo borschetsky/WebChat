@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Box, Button, Chip, Drawer, IconButton, Stack, Typography } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { useGetErrorsQuery, useSetErrorStatusMutation } from '@/app/api/adminApi';
+import { getRelativeTime } from '@/lib/date-time-format';
 import Panel from '../Panel';
 
 const LEVELS = {
@@ -174,8 +175,8 @@ export default function AdminErrors({ query, isMobile, onNotify }) {
                 ['Route', open.route],
                 ['Release', open.release],
                 ['Events', `${open.events} · ${open.users} users`],
-                ['First seen', open.first],
-                ['Last seen', open.last],
+                ['First seen', getRelativeTime(open.firstSeenUtc)],
+                ['Last seen', getRelativeTime(open.lastSeenUtc)],
                 ['Browsers', open.browsers],
               ].map(([k, v]) => (
                 <Stack

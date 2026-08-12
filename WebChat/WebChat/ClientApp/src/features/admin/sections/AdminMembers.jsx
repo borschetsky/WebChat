@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Box, Button, Checkbox, Chip, Stack, Typography } from '@mui/material';
 import PresenceAvatar from '@/components/PresenceAvatar';
 import { avatarColor } from '@/theme/tokens';
+import { getRelativeTime } from '@/lib/date-time-format';
 import { useGetMembersQuery, useSetMemberStatusMutation } from '@/app/api/adminApi';
 import Panel from '../Panel';
 import StatusChip from '../StatusChip';
@@ -150,7 +151,7 @@ export default function AdminMembers({ query, isMobile, onNotify }) {
 
             {!isMobile && (
               <Typography sx={{ width: 110, fontSize: 12.5, color: 'text.secondary' }}>
-                {m.last}
+                {getRelativeTime(m.lastActiveUtc) || '—'}
               </Typography>
             )}
 

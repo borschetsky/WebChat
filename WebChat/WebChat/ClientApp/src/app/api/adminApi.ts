@@ -23,6 +23,13 @@ import type {
  * gains a backend is a change inside `services/admin-service.ts` alone.
  */
 
+/** Same shape as chatApi's: read from the store inside the queryFn, never threaded in. */
+const tokenOf = (getState: () => unknown): string => {
+  const token = (getState() as { auth: { user?: { token?: string } } }).auth.user?.token;
+  if (!token) throw new Error('Not authenticated');
+  return token;
+};
+
 type Result<T> = { data: T; error?: undefined } | { data?: undefined; error: unknown };
 
 const run = async <T>(fn: () => Promise<T>): Promise<Result<T>> => {
@@ -59,8 +66,11 @@ export const adminApi = createApi({
       providesTags: ['Invites'],
     }),
 
-    getAudit: build.query<AdminAudit[], void>({
-      queryFn: () => run(() => admin.loadAudit()),
+    // The one endpoint on this api with a real backend (#70), which is why it alone needs
+    // the token. The others still resolve against fixtures and ignore authentication
+    // entirely - see services/admin-mocks.ts.
+    getAudit: build.query<AdminAudit[], { before?: string; limit?: number } | void>({
+      queryFn: (arg, api) => run(() => admin.loadAudit(tokenOf(api.getState), arg ?? {})),
       providesTags: ['Audit'],
     }),
 

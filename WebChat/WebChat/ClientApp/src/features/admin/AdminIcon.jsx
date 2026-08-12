@@ -1,6 +1,11 @@
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import GroupIcon from '@mui/icons-material/Group';
-import MailIcon from '@mui/icons-material/MailOutline';
+// MailOutlined, not MailOutline. There is no `MailOutline` export in @mui/icons-material -
+// only `Mail`, `MailOutlined`, and the `MailOutline*` family (`MailOutlineOutlined` and
+// friends). The wrong name cost a broken production build that nothing caught: `npm run
+// verify` does not run `vite build`, and the dev server resolves the import lazily, so the
+// console looked fine right up until `docker compose build` failed on it.
+import MailIcon from '@mui/icons-material/MailOutlined';
 import BugReportIcon from '@mui/icons-material/BugReport';
 import HistoryIcon from '@mui/icons-material/History';
 import PolicyIcon from '@mui/icons-material/Policy';

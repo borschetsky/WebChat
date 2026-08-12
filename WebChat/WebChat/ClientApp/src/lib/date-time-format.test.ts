@@ -1,8 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
+  getAbsoluteDate,
   getDateInfoForThread,
   getDateInfoForMessage,
   getDateInfoForSeparator,
+  getDaysUntil,
+  getRelativeTime,
 } from './date-time-format';
 
 /**
@@ -88,6 +91,63 @@ describe('date-time-format', () => {
     it('returns empty for invalid input', () => {
       expect(getDateInfoForMessage(null)).toBe('');
       expect(getDateInfoForMessage('nonsense')).toBe('');
+    });
+  });
+
+  /**
+   * The admin console's timestamps. These exist because the console's fixtures used to hold
+   * the *rendered* strings - `'2 h ago'` - which a server cannot send and which stop being
+   * true the moment the page is left open.
+   */
+  describe('getRelativeTime', () => {
+    const minutesAgo = (n: number) => new Date(Date.now() - n * 60_000).toISOString();
+
+    it('reads as an age up to an hour', () => {
+      expect(getRelativeTime(minutesAgo(0))).toBe('Just now');
+      expect(getRelativeTime(minutesAgo(1))).toBe('1 min ago');
+      expect(getRelativeTime(minutesAgo(59))).toBe('59 min ago');
+    });
+
+    it('switches to hours, then to yesterday with a clock time', () => {
+      expect(getRelativeTime(minutesAgo(60))).toBe('1 h ago');
+      expect(getRelativeTime(minutesAgo(11 * 60))).toBe('11 h ago');
+      expect(getRelativeTime(minutesAgo(24 * 60))).toMatch(/^Yesterday, \d{2}:\d{2}$/);
+    });
+
+    it('counts days up to a week, then falls back to the date', () => {
+      expect(getRelativeTime(minutesAgo(3 * 1440))).toBe('3 days ago');
+      expect(getRelativeTime(minutesAgo(30 * 1440))).toBe(getAbsoluteDate(minutesAgo(30 * 1440)));
+    });
+
+    /** A client clock a few seconds ahead of the server must not say "-1 min ago". */
+    it('does not go negative for a timestamp slightly in the future', () => {
+      expect(getRelativeTime(minutesAgo(-0.5))).toBe('Just now');
+    });
+
+    it('returns empty for invalid input', () => {
+      expect(getRelativeTime(null)).toBe('');
+      expect(getRelativeTime('nonsense')).toBe('');
+    });
+  });
+
+  describe('getDaysUntil', () => {
+    const inMinutes = (n: number) => new Date(Date.now() + n * 60_000).toISOString();
+
+    /** Rounded up: 18 hours left is one day left, and "expires in 0 days" reads as expired. */
+    it('rounds a part-day up', () => {
+      expect(getDaysUntil(inMinutes(18 * 60))).toBe(1);
+      expect(getDaysUntil(inMinutes(25 * 60))).toBe(2);
+    });
+
+    /** Floored, so a lapsed invitation shows as expired rather than counting backwards. */
+    it('never goes negative', () => {
+      expect(getDaysUntil(inMinutes(-60))).toBe(0);
+      expect(getDaysUntil(inMinutes(-90 * 1440))).toBe(0);
+    });
+
+    it('returns null for invalid input', () => {
+      expect(getDaysUntil(null)).toBeNull();
+      expect(getDaysUntil('nonsense')).toBeNull();
     });
   });
 });

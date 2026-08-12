@@ -72,10 +72,15 @@ column, no claim, no check, and therefore no way to make anyone one.
   effect on the very next request. This is the central decision of the note; see the comment
   in `Startup.cs` for the exact wording that ties it to that database read.
 - **`BootstrapAdmins` was moved from `WebChat/Seed/` (the host project) into
-  `WebChat.Services`** because `WebChat.Tests` does not reference the host project — logic
-  that needs a test cannot live there. This is a general constraint, not specific to this
-  feature: `SystemDataJson` (from #63) is still in the host project and still untested for
-  the identical reason.
+  `WebChat.Services`** because `WebChat.Tests` did not reference the host project — logic
+  that needs a test could not live there.
+
+  > **No longer true as of #70** (2026-08-11). `WebChat.Tests` now references
+  > `WebChat.csproj` and takes `Microsoft.AspNetCore.Mvc.Testing`, so host code *is*
+  > testable — see `2026-08-11-admin-api-and-audit-log.md`. The constraint was never a hard
+  > one; nobody had tried. `BootstrapAdmins` stays in `WebChat.Services` regardless, because
+  > it is service logic and a unit test beats booting a host. What changes is that
+  > `SystemDataJson` and anything else host-side is no longer untestable by definition.
 - No security-stamp rotation on promotion — same reasoning as the JWT decision above; the
   role is live on the next request regardless.
 
