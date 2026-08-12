@@ -81,13 +81,26 @@ describe('auditSentence', () => {
 });
 
 describe('auditMeta', () => {
-  it('counts sessions and groups, singular and plural', () => {
-    expect(auditMeta(entry({ kind: 'block', data: { sessionsEnded: 4 } }))).toBe(
-      '4 sessions ended',
+  it('counts connections and groups, singular and plural', () => {
+    expect(auditMeta(entry({ kind: 'block', data: { connectionsClosed: 4 } }))).toBe(
+      '4 connections closed',
     );
-    expect(auditMeta(entry({ kind: 'block', data: { sessionsEnded: 1 } }))).toBe('1 session ended');
+    expect(auditMeta(entry({ kind: 'block', data: { connectionsClosed: 1 } }))).toBe(
+      '1 connection closed',
+    );
     expect(auditMeta(entry({ kind: 'deactivate', data: { groupsRemoved: 1 } }))).toBe(
       'removed from 1 group',
+    );
+  });
+
+  /**
+   * Zero is the ordinary case — most people are not connected when they are blocked — and
+   * it is worth saying, because "blocked" with nothing after it invites the question this
+   * line exists to answer.
+   */
+  it('says so when there was nothing live to close', () => {
+    expect(auditMeta(entry({ kind: 'block', data: { connectionsClosed: 0 } }))).toBe(
+      'no live connections',
     );
   });
 
@@ -99,8 +112,8 @@ describe('auditMeta', () => {
 
   it('joins the email with the rest when there is one', () => {
     expect(
-      auditMeta(entry({ kind: 'block', data: { email: 'ben@acme.com', sessionsEnded: 2 } })),
-    ).toBe('ben@acme.com · 2 sessions ended');
+      auditMeta(entry({ kind: 'block', data: { email: 'ben@acme.com', connectionsClosed: 2 } })),
+    ).toBe('ben@acme.com · 2 connections closed');
   });
 
   /** The row hides the second line rather than reserving empty space for it. */

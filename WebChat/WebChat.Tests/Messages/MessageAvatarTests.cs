@@ -50,6 +50,7 @@ public class MessageAvatarTests : IDisposable
             Email = name + "@example.com",
             Password = "hashed",
             AvatarFileName = avatarFileName,
+            Status = AccountStatus.Active,
             CreatedOn = DateTime.UtcNow,
             SecurityStamp = Guid.NewGuid().ToString(),
         };

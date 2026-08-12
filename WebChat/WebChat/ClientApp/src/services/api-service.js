@@ -136,6 +136,31 @@ const conversationUrl = (groupId) => `${_baseUrl}conversations/${encodeURICompon
 // `before` is a keyset cursor - the occurredAtUtc of the oldest row already held - not a
 // page number. The audit table only grows, and grows at the end being read, so an offset
 // would re-show rows that arrived between one request and the next.
+const getAdminMembers = async (token) => {
+  const result = await Axios.get(`${_baseUrl}admin/members`, { headers: authHeader(token) });
+  return await result;
+};
+
+// Bulk, because the members table has a bulk action bar - and the server refuses a batch
+// whole rather than applying the part that passes, so there is no partial state to reconcile.
+const setAdminMemberStatus = async (ids, status, token) => {
+  const result = await Axios.post(
+    `${_baseUrl}admin/members/status`,
+    { ids, status },
+    { headers: authHeader(token) },
+  );
+  return await result;
+};
+
+const setAdminMemberRole = async (id, role, token) => {
+  const result = await Axios.post(
+    `${_baseUrl}admin/members/${encodeURIComponent(id)}/role`,
+    { role },
+    { headers: authHeader(token) },
+  );
+  return await result;
+};
+
 const getAuditLog = async ({ before, limit } = {}, token) => {
   const result = await Axios.get(`${_baseUrl}admin/audit`, {
     headers: authHeader(token),
@@ -234,4 +259,7 @@ export {
   transferGroupOwnership,
   setGroupPermissions,
   getAuditLog,
+  getAdminMembers,
+  setAdminMemberStatus,
+  setAdminMemberRole,
 };

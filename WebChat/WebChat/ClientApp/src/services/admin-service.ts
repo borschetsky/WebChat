@@ -8,19 +8,21 @@
 // the endpoints that replace them will not be - a call site written against a synchronous
 // mock has to be rewritten, which is exactly the coupling this seam exists to avoid.
 
-import { getAuditLog } from './api-service';
+import {
+  getAdminMembers,
+  getAuditLog,
+  setAdminMemberRole,
+  setAdminMemberStatus,
+} from './api-service';
 
 import {
   mockErrors,
   mockExtendInvite,
   mockInvites,
-  mockMembers,
   mockOverview,
   mockRevokeInvite,
   mockSendInvites,
   mockSetErrorStatus,
-  mockSetMemberRole,
-  mockSetMemberStatus,
 } from './admin-mocks';
 
 import type {
@@ -30,13 +32,34 @@ import type {
   AdminInvite,
   AdminMember,
   AdminOverview,
-  AdminRoleLabel,
+  AdminRole,
   AdminStatus,
 } from '@/types/admin';
 
-export const loadOverview = async (): Promise<AdminOverview> => mockOverview();
+/**
+ * An array from an axios response, or an empty one.
+ *
+ * Deliberately not `res.data ?? []`: a 204 carries no body, and some error shapes carry a
+ * body that is not an array at all. Returning [] rather than letting either through keeps
+ * every caller free of a guard.
+ */
+const listOf = <T>(res: { status: number; data: unknown } | undefined): T[] =>
+  res && res.status !== 204 && Array.isArray(res.data) ? (res.data as T[]) : [];
 
-export const loadMembers = async (): Promise<AdminMember[]> => mockMembers();
+/**
+ * Half real: the four stat cards are counted from the live members list, the 14-day chart
+ * is still fixture (#73).
+ *
+ * It takes the token because of that first half. A section that is partly real needs the
+ * same plumbing as a fully real one - which is the argument for wiring it here rather than
+ * leaving Overview counting a fixture until #73.
+ */
+export const loadOverview = async (token: string): Promise<AdminOverview> =>
+  mockOverview(await loadMembers(token));
+
+/** Real as of #71. The list is the workspace's people, presence included. */
+export const loadMembers = async (token: string): Promise<AdminMember[]> =>
+  listOf<AdminMember>(await getAdminMembers(token));
 
 export const loadInvites = async (): Promise<AdminInvite[]> => mockInvites();
 
@@ -50,28 +73,36 @@ export const loadAudit = async (
   token: string,
   options: { before?: string; limit?: number } = {},
 ): Promise<AdminAudit[]> => {
-  const result: { status: number; data: AdminAudit[] } | undefined = await getAuditLog(
-    options,
-    token,
-  );
-  return result && result.status !== 204 && Array.isArray(result.data) ? result.data : [];
+  return listOf<AdminAudit>(await getAuditLog(options, token));
 };
 
 export const loadErrors = async (): Promise<AdminError[]> => mockErrors();
 
-/** Bulk, because the members table supports multi-select with a bulk action bar. */
-export const setMemberStatus = async (ids: string[], status: AdminStatus): Promise<AdminMember[]> =>
-  mockSetMemberStatus(ids, status);
+/**
+ * Bulk, because the members table supports multi-select with a bulk action bar.
+ *
+ * The server refuses a batch **whole** rather than applying the part that passes - a bulk
+ * block naming the caller, or every owner, changes nothing at all. So there is no partial
+ * state for this to reconcile, and the returned list is the workspace as it now stands.
+ */
+export const setMemberStatus = async (
+  ids: string[],
+  status: AdminStatus,
+  token: string,
+): Promise<AdminMember[]> => listOf<AdminMember>(await setAdminMemberStatus(ids, status, token));
 
-export const setMemberRole = async (id: string, role: AdminRoleLabel): Promise<AdminMember[]> =>
-  mockSetMemberRole(id, role);
+export const setMemberRole = async (
+  id: string,
+  role: AdminRole,
+  token: string,
+): Promise<AdminMember[]> => listOf<AdminMember>(await setAdminMemberRole(id, role, token));
 
 export const revokeInvite = async (id: string): Promise<AdminInvite[]> => mockRevokeInvite(id);
 
 /** Moves the deadline without issuing a new link. */
 export const extendInvite = async (id: string): Promise<AdminInvite[]> => mockExtendInvite(id);
 
-export const sendInvites = async (emails: string[], role: AdminRoleLabel): Promise<AdminInvite[]> =>
+export const sendInvites = async (emails: string[], role: AdminRole): Promise<AdminInvite[]> =>
   mockSendInvites(emails, role);
 
 export const setErrorStatus = async (id: string, status: AdminErrorStatus): Promise<AdminError[]> =>

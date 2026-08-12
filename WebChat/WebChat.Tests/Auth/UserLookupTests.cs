@@ -50,6 +50,7 @@ namespace WebChat.Tests.Auth
                 Username = username,
                 Email = email,
                 Password = "hashed",
+                Status = AccountStatus.Active,
                 CreatedOn = DateTime.UtcNow,
                 EmailConfirmed = true,
             };

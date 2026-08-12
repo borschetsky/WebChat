@@ -103,7 +103,15 @@ public sealed class FakeCallerContext : HubCallerContext
 
     public override IFeatureCollection Features => throw new NotImplementedException();
 
-    public override void Abort() => throw new NotImplementedException();
+    /// <summary>
+    /// Records rather than throws, because aborting is now something the app does on purpose
+    /// - blocking a member closes their live connections. A test needs to see that it
+    /// happened, and a real <c>Abort()</c> would also drive <c>OnDisconnectedAsync</c>, which
+    /// the caller triggers explicitly where it matters.
+    /// </summary>
+    public bool Aborted { get; private set; }
+
+    public override void Abort() => this.Aborted = true;
 }
 
 /// <summary>Directory backed by plain dictionaries - no EF, no database.</summary>

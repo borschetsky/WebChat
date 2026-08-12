@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Threading.Tasks;
+using WebChat.Models;
 using WebChat.Models.ViewModels;
 using WebChat.Services;
 using WebChat.Services.Email;
@@ -69,6 +70,28 @@ namespace WebChat.Controllers
                     // password, so they already hold the account.
                     email = user.Email,
                 });
+            }
+
+            // The second gate, after the password for the same reason as the first: it must
+            // not become a way to ask whether an address is registered, or whether somebody
+            // has been blocked.
+            //
+            // Distinct codes rather than one, because the two are not the same news and the
+            // client says different things about them. Neither message says who did it or
+            // why - the audit log answers that, to an administrator, not to the account.
+            if (!AccountStatus.CanSignIn(user.Status))
+            {
+                return StatusCode(403, user.Status == AccountStatus.Deactivated
+                    ? new
+                    {
+                        error = "account_deactivated",
+                        message = "This account has been deactivated. Contact a workspace administrator.",
+                    }
+                    : new
+                    {
+                        error = "account_blocked",
+                        message = "This account has been blocked. Contact a workspace administrator.",
+                    });
             }
 
             return authService.GetToken(user.Id, user.SecurityStamp);

@@ -25,6 +25,7 @@ using WebChat.Handler;
 using WebChat.Hubs;
 using WebChat.Hubs.ConnectionMapper;
 using WebChat.Hubs.Interfaces;
+using WebChat.Models;
 using WebChat.Services;
 using WebChat.Services.Helpers;
 using WebChat.Services.Inerfaces;
@@ -216,7 +217,7 @@ namespace WebChat
                             var db = context.HttpContext.RequestServices.GetRequiredService<WebChatContext>();
                             var account = await db.User
                                 .Where(u => u.Id == userId)
-                                .Select(u => new { u.SecurityStamp, u.Role })
+                                .Select(u => new { u.SecurityStamp, u.Role, u.Status })
                                 .FirstOrDefaultAsync();
 
                             // A deleted user has no stamp, which fails here too - previously a
@@ -224,6 +225,21 @@ namespace WebChat
                             if (account == null || account.SecurityStamp != presented)
                             {
                                 context.Fail("Security stamp no longer valid.");
+                                return;
+                            }
+
+                            // Blocking rotates the stamp, so the check above already refuses
+                            // every token issued before it. This is what refuses the ones
+                            // issued after - a blocked account that signs in again, or any
+                            // path that hands out a token without consulting the status.
+                            //
+                            // It rides the same row read, so it costs one more selected
+                            // column on a query that has to happen anyway. That is the whole
+                            // reason revocation is affordable here; see the note on the role
+                            // above.
+                            if (!AccountStatus.CanSignIn(account.Status))
+                            {
+                                context.Fail("Account cannot sign in.");
                                 return;
                             }
 
@@ -278,9 +294,15 @@ namespace WebChat
             services.AddTransient<IThreadService, ThreadService>();
             services.AddTransient<IGroupService, GroupService>();
             services.AddTransient<IAuditService, AuditService>();
+            services.AddTransient<IMemberAdminService, MemberAdminService>();
             services.AddTransient<IMappingService, MappingService>();
             services.AddTransient<IValidator, Validator>();
             services.AddSingleton(typeof(IConnectionMapping<string>), typeof(ConnectionMapping<string>));
+
+            // Singleton for the same reason as the mapping above: it holds live connections,
+            // which belong to the process rather than to a request. See IConnectionAborter
+            // for what happens to this on a second instance.
+            services.AddSingleton<IConnectionAborter, ConnectionAborter>();
 
             // Lets ChatHub ask who is in a thread without referencing WebChat.Services, which
             // it cannot do - that reference runs the other way and would be a cycle.

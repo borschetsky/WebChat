@@ -204,6 +204,13 @@ namespace WebChat.Services
                 // privileged role; promotion is a separate, deliberate act.
                 Role = WorkspaceRole.Member,
 
+                // Active, not pending. Pending means "invited, never activated" and belongs
+                // to the invitation flow (#72); someone who registered themselves has an
+                // account from this moment - the email confirmation they still owe is
+                // tracked by EmailConfirmed, which is a different question and already has
+                // its own answer.
+                Status = AccountStatus.Active,
+
                 // Present from creation: a null stamp would make the very first token
                 // unverifiable against the user it was issued for.
                 SecurityStamp = Guid.NewGuid().ToString()

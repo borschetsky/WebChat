@@ -7,7 +7,7 @@ import type {
   AdminInvite,
   AdminMember,
   AdminOverview,
-  AdminRoleLabel,
+  AdminRole,
   AdminStatus,
 } from '@/types/admin';
 
@@ -52,12 +52,14 @@ export const adminApi = createApi({
   tagTypes: ['Overview', 'Members', 'Invites', 'Audit', 'Errors'],
   endpoints: (build) => ({
     getOverview: build.query<AdminOverview, void>({
-      queryFn: () => run(() => admin.loadOverview()),
-      providesTags: ['Overview'],
+      queryFn: (_arg, api) => run(() => admin.loadOverview(tokenOf(api.getState))),
+      // Members too: the stat cards count the real list, so blocking somebody has to move
+      // them even though this query is not the one that fetched it.
+      providesTags: ['Overview', 'Members'],
     }),
 
     getMembers: build.query<AdminMember[], void>({
-      queryFn: () => run(() => admin.loadMembers()),
+      queryFn: (_arg, api) => run(() => admin.loadMembers(tokenOf(api.getState))),
       providesTags: ['Members'],
     }),
 
@@ -66,9 +68,8 @@ export const adminApi = createApi({
       providesTags: ['Invites'],
     }),
 
-    // The one endpoint on this api with a real backend (#70), which is why it alone needs
-    // the token. The others still resolve against fixtures and ignore authentication
-    // entirely - see services/admin-mocks.ts.
+    // Real, like members and overview's counts. Invitations, errors and policies still
+    // resolve against fixtures and ignore authentication entirely - see admin-mocks.ts.
     getAudit: build.query<AdminAudit[], { before?: string; limit?: number } | void>({
       queryFn: (arg, api) => run(() => admin.loadAudit(tokenOf(api.getState), arg ?? {})),
       providesTags: ['Audit'],
@@ -80,13 +81,15 @@ export const adminApi = createApi({
     }),
 
     setMemberStatus: build.mutation<AdminMember[], { ids: string[]; status: AdminStatus }>({
-      queryFn: ({ ids, status }) => run(() => admin.setMemberStatus(ids, status)),
+      queryFn: ({ ids, status }, api) =>
+        run(() => admin.setMemberStatus(ids, status, tokenOf(api.getState))),
       // Overview counts every status, so blocking somebody moves the stat cards too.
       invalidatesTags: ['Members', 'Overview', 'Audit'],
     }),
 
-    setMemberRole: build.mutation<AdminMember[], { id: string; role: AdminRoleLabel }>({
-      queryFn: ({ id, role }) => run(() => admin.setMemberRole(id, role)),
+    setMemberRole: build.mutation<AdminMember[], { id: string; role: AdminRole }>({
+      queryFn: ({ id, role }, api) =>
+        run(() => admin.setMemberRole(id, role, tokenOf(api.getState))),
       invalidatesTags: ['Members', 'Audit'],
     }),
 
@@ -100,7 +103,7 @@ export const adminApi = createApi({
       invalidatesTags: ['Invites'],
     }),
 
-    sendInvites: build.mutation<AdminInvite[], { emails: string[]; role: AdminRoleLabel }>({
+    sendInvites: build.mutation<AdminInvite[], { emails: string[]; role: AdminRole }>({
       queryFn: ({ emails, role }) => run(() => admin.sendInvites(emails, role)),
       invalidatesTags: ['Invites', 'Overview', 'Audit'],
     }),

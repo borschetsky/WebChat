@@ -53,6 +53,7 @@ public class WorkspaceRoleTests : IDisposable
             Password = "hashed",
             EmailConfirmed = confirmed,
             Role = role,
+            Status = AccountStatus.Active,
             CreatedOn = DateTime.UtcNow,
             SecurityStamp = Guid.NewGuid().ToString(),
         };

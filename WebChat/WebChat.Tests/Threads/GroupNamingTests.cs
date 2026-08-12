@@ -46,6 +46,7 @@ public class GroupNamingTests : IDisposable
             Username = "owner" + Guid.NewGuid().ToString("N")[..6],
             Email = Guid.NewGuid().ToString("N")[..8] + "@example.com",
             Password = "hashed",
+            Status = AccountStatus.Active,
             CreatedOn = DateTime.UtcNow,
             SecurityStamp = Guid.NewGuid().ToString(),
         };

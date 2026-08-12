@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ROLE_LABEL } from '@/types/admin';
 import {
   Box,
   Button,
@@ -12,7 +13,10 @@ import {
 } from '@mui/material';
 import { useSendInvitesMutation } from '@/app/api/adminApi';
 
-const ROLES = ['Member', 'Admin', 'Owner'];
+// Lower-case wire values, matching WorkspaceRole; ROLE_LABEL supplies the capital. Owner is
+// absent on purpose: an invitation cannot hand over the workspace, and the role endpoint
+// would refuse it anyway unless an owner sent it.
+const ROLES = ['member', 'admin'];
 
 /**
  * Invite by address, one per line.
@@ -22,7 +26,7 @@ const ROLES = ['Member', 'Admin', 'Owner'];
  */
 export default function InviteDialog({ open, onClose, onSent, fullScreen }) {
   const [text, setText] = useState('');
-  const [role, setRole] = useState('Member');
+  const [role, setRole] = useState('member');
   const [send, { isLoading }] = useSendInvitesMutation();
 
   const emails = text
@@ -82,7 +86,7 @@ export default function InviteDialog({ open, onClose, onSent, fullScreen }) {
                 color: role === r ? 'primary.main' : 'text.secondary',
               }}
             >
-              {r}
+              {ROLE_LABEL[r]}
             </Box>
           ))}
         </Stack>

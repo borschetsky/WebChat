@@ -63,6 +63,7 @@ namespace WebChat.Tests.Auth
                 Username = "maya",
                 Email = "maya@example.com",
                 Password = "x",
+                Status = AccountStatus.Active,
                 CreatedOn = DateTime.UtcNow,
             });
             this.ctx.SaveChanges();

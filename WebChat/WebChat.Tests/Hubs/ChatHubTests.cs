@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
 using WebChat.Hubs;
+using WebChat.Hubs.ConnectionMapper;
 
 namespace WebChat.Tests.Hubs;
 
@@ -21,6 +22,10 @@ public class ChatHubTests
 
     private readonly FakeDirectory directory = new();
     private readonly FakeConnections connections = new();
+
+    // The real one: it is plain in-memory bookkeeping with no dependencies, so faking it
+    // would only test the fake.
+    private readonly ConnectionAborter aborter = new();
     private readonly RecordingClients clients = new();
 
     public ChatHubTests()
@@ -32,7 +37,7 @@ public class ChatHubTests
 
     private ChatHub HubFor(string callerId)
     {
-        var hub = new ChatHub(this.connections, this.directory)
+        var hub = new ChatHub(this.connections, this.directory, this.aborter)
         {
             Clients = this.clients,
             Context = new FakeCallerContext(callerId),
@@ -124,7 +129,7 @@ public class ChatHubTests
         Assert.Equal(Alice, send.Args.Single());
 
         // A second tab is not a second arrival.
-        var secondTab = new ChatHub(this.connections, this.directory)
+        var secondTab = new ChatHub(this.connections, this.directory, this.aborter)
         {
             Clients = this.clients,
             Context = new FakeCallerContext(Alice, "conn-2"),
@@ -141,7 +146,7 @@ public class ChatHubTests
         this.connections.Add(Alice, "conn-1");
         this.connections.Add(Alice, "conn-2");
 
-        var firstTab = new ChatHub(this.connections, this.directory)
+        var firstTab = new ChatHub(this.connections, this.directory, this.aborter)
         {
             Clients = this.clients,
             Context = new FakeCallerContext(Alice, "conn-1"),
@@ -151,7 +156,7 @@ public class ChatHubTests
         // One tab of two closed: still online.
         Assert.Empty(this.clients.Sends);
 
-        var secondTab = new ChatHub(this.connections, this.directory)
+        var secondTab = new ChatHub(this.connections, this.directory, this.aborter)
         {
             Clients = this.clients,
             Context = new FakeCallerContext(Alice, "conn-2"),

@@ -15,8 +15,23 @@
  * into words. A mock that formats for display hides work the seam cannot absorb.
  */
 
-/** Workspace role as the console displays it. Capitalised for display only. */
-export type AdminRoleLabel = 'Owner' | 'Admin' | 'Member' | 'Guest';
+/**
+ * Workspace role, exactly as the server stores and sends it (`WorkspaceRole` in C#).
+ *
+ * Lower-case, and capitalised only at the point of display. The mocks used to carry
+ * `'Owner' | 'Admin' | 'Member' | 'Guest'` — capitalised for the screen, and including a
+ * `Guest` tier that does not exist anywhere in this app. Both were fiction the seam could
+ * not absorb: one would have needed translating on every request, and the other named a
+ * permission level with nothing behind it.
+ */
+export type AdminRole = 'owner' | 'admin' | 'member';
+
+/** Sentence case for display. The wire value stays lower-case. */
+export const ROLE_LABEL: Record<AdminRole, string> = {
+  owner: 'Owner',
+  admin: 'Admin',
+  member: 'Member',
+};
 
 /**
  * The four account statuses. The spec is explicit that these are genuinely distinct and
@@ -33,16 +48,33 @@ export interface AdminMember {
   id: string;
   name: string;
   email: string;
-  role: AdminRoleLabel;
+  role: AdminRole;
   status: AdminStatus;
-  /** ISO instant of last activity, or null for an account that has never signed in. */
+  avatarFileName: string | null;
+  /**
+   * ISO instant, or null. Currently derived from the newest message they sent, because the
+   * app records no general activity timestamp — so an account that reads constantly and
+   * never writes reads as idle. Null means "never wrote anything", rendered as an em dash
+   * rather than as an invented date.
+   */
   lastActiveUtc: string | null;
+  /** Live hub connections right now, not a last-seen guess. */
   online: boolean;
   /** ISO instant. */
   joinedUtc: string;
   groups: number;
-  sessions: number;
-  mfa: boolean;
+  /**
+   * Open hub connections. Named for what it measures: the mock called this `sessions`, and
+   * a JWT cannot be counted once issued, so "3 sessions" was never a number anyone could
+   * have produced.
+   */
+  connections: number;
+  /**
+   * Replaces the mock's `mfa`. This app has no second factor at all, so a "Two-factor: On"
+   * row was stating a security property that did not exist — the worst kind of fiction to
+   * leave on an admin screen.
+   */
+  emailConfirmed: boolean;
 }
 
 export interface AdminInvite {

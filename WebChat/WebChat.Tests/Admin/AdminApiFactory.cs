@@ -110,7 +110,7 @@ namespace WebChat.Tests.Admin
         /// token - including the security stamp, without which <c>OnTokenValidated</c> fails
         /// the request before authorization is ever consulted.
         /// </summary>
-        public HttpClient ClientFor(string role, out string userId)
+        public HttpClient ClientFor(string role, out string userId, string status = AccountStatus.Active)
         {
             var user = new User
             {
@@ -119,6 +119,7 @@ namespace WebChat.Tests.Admin
                 Email = $"{Guid.NewGuid():N}@example.com",
                 Password = "irrelevant",
                 Role = role,
+                Status = status,
                 EmailConfirmed = true,
                 CreatedOn = DateTime.UtcNow,
                 SecurityStamp = Convert.ToBase64String(RandomNumberGenerator.GetBytes(16)),

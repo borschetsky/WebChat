@@ -27,5 +27,16 @@ namespace WebChat.Models
         public const string OwnerTransferred = "owner_transferred";
 
         public const string GroupCreated = "group_created";
+
+        /// <summary>
+        /// The member's whole account was deactivated, so they left every group at once.
+        ///
+        /// Distinct from <see cref="MemberRemoved"/> on purpose. A removal names an actor who
+        /// had authority *in that group*; a deactivation is a workspace act, and the
+        /// administrator behind it has no standing inside the group at all - saying "Maya
+        /// removed Ben" there would assert an authority the spec deliberately withholds.
+        /// The group is told what happened to the person, not who did it.
+        /// </summary>
+        public const string MemberDeactivated = "member_deactivated";
     }
 }
