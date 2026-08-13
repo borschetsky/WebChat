@@ -168,7 +168,17 @@ export interface AdminError {
 
 /** One stage of the activation funnel. Each is a subset of the one above it. */
 export interface AdminFunnelStage {
-  key: 'registered' | 'confirmed' | 'joined' | 'wrote';
+  /**
+   * `registered` | `confirmed` | `joined` | `wrote` today — deliberately typed as `string`
+   * rather than that union.
+   *
+   * The union would be a lie in the direction that matters: it tells the compiler an unknown
+   * stage cannot arrive, so `FUNNEL_STAGE[stage.key]` narrows to always-defined and the
+   * fallback in `overviewText.ts` reads as dead code somebody would delete. A server one
+   * deploy ahead sends a fifth stage, and the client must render its raw key rather than an
+   * undefined label. Wire values are open sets; the client is the one that is behind.
+   */
+  key: string;
   value: number;
 }
 

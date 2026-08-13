@@ -6,35 +6,13 @@ import BlockIcon from '@mui/icons-material/Block';
 import { useGetAuditQuery, useGetOverviewQuery } from '@/app/api/adminApi';
 import AuditRow from '../AuditRow';
 import Panel from '../Panel';
-
-/**
- * The funnel's wording and colour, keyed by the stage the server sends.
- *
- * Keys cross the wire, labels do not - the same rule as system messages and audit entries.
- * A stage the server sends that this build has no entry for renders with its raw key rather
- * than vanishing, so a client one deploy behind shows something odd instead of a funnel
- * that quietly loses a bar.
- */
-const FUNNEL_STAGE = {
-  registered: { label: 'Registered', color: '#1976d2' },
-  confirmed: { label: 'Confirmed their address', color: '#00838f' },
-  joined: { label: 'In a conversation', color: '#2e7d32' },
-  wrote: { label: 'Sent a message', color: '#7b1fa2' },
-};
-
-/**
- * "M", "T", "W" … from an instant.
- *
- * Derived here rather than sent, for the same reason every other timestamp on this screen
- * is: the server does not know the reader's timezone, and a letter computed in UTC is wrong
- * for anyone who is not.
- */
-const weekdayLetter = (iso) => {
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime())
-    ? ''
-    : date.toLocaleDateString('en-GB', { weekday: 'narrow' });
-};
+import {
+  expiringHint,
+  funnelBars,
+  invitationFootnote,
+  joinedHint,
+  weekdayLetter,
+} from '../overviewText';
 
 const STAT_ICON = {
   group: GroupIcon,
@@ -67,13 +45,9 @@ export default function AdminOverview({ isMobile, onNavigate }) {
       value: data.total,
       icon: 'group',
       color: 'primary.main',
-      // Counted, not asserted. This read "+3 in the last 30 days" as a literal - the worst
-      // kind of fiction on a dashboard, because it is specific, plausible, and nobody
-      // cross-checks a stat card.
-      hint:
-        data.joinedRecently > 0
-          ? `+${data.joinedRecently} in the last 30 days`
-          : 'None in the last 30 days',
+      // Counted, not asserted. Every hint on this screen was a literal once; see
+      // ../overviewText.ts, which is where they live now so they can be tested.
+      hint: joinedHint(data.joinedRecently),
       filter: 'all',
     },
     {
@@ -89,10 +63,7 @@ export default function AdminOverview({ isMobile, onNavigate }) {
       value: data.pending,
       icon: 'schedule',
       color: '#f9a825',
-      hint:
-        data.expiringSoon > 0
-          ? `${data.expiringSoon} expire${data.expiringSoon === 1 ? 's' : ''} within a week`
-          : 'Nothing expiring soon',
+      hint: expiringHint(data.expiringSoon),
       filter: 'pending',
     },
     {
@@ -112,12 +83,7 @@ export default function AdminOverview({ isMobile, onNavigate }) {
   //
   // Percentages are of the widest stage rather than of the total, so the first bar is always
   // full and each one after it reads as the share that survived.
-  const funnel = data.funnel.map((stage) => ({
-    label: stage.key,
-    color: 'text.disabled',
-    ...stage,
-    ...FUNNEL_STAGE[stage.key],
-  }));
+  const funnel = funnelBars(data.funnel);
 
   const funnelMax = Math.max(...data.funnel.map((s) => s.value), 1);
 
@@ -126,16 +92,7 @@ export default function AdminOverview({ isMobile, onNavigate }) {
 
   const chartMax = Math.max(...data.chart.map((b) => b.value), 1);
 
-  // Counted, like everything else here. This sentence used to end "Two expire within seven
-  // days" as a literal, next to a number that was real - which is worse than a wholly made-up
-  // panel, because the true half lends the invented half its credibility.
-  const footnote =
-    data.pending === 0
-      ? 'Nobody has an invitation outstanding.'
-      : `${data.pending} ${data.pending === 1 ? 'person has' : 'people have'} an open invitation. ` +
-        (data.expiringSoon === 0
-          ? 'None expire in the next seven days.'
-          : `${data.expiringSoon} ${data.expiringSoon === 1 ? 'expires' : 'expire'} within seven days — extend ${data.expiringSoon === 1 ? 'it' : 'them'} from the Invitations tab before ${data.expiringSoon === 1 ? 'it lapses' : 'they lapse'}.`);
+  const footnote = invitationFootnote(data.pending, data.expiringSoon);
 
   return (
     <>
