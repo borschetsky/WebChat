@@ -7,6 +7,35 @@ import { useGetAuditQuery, useGetOverviewQuery } from '@/app/api/adminApi';
 import AuditRow from '../AuditRow';
 import Panel from '../Panel';
 
+/**
+ * The funnel's wording and colour, keyed by the stage the server sends.
+ *
+ * Keys cross the wire, labels do not - the same rule as system messages and audit entries.
+ * A stage the server sends that this build has no entry for renders with its raw key rather
+ * than vanishing, so a client one deploy behind shows something odd instead of a funnel
+ * that quietly loses a bar.
+ */
+const FUNNEL_STAGE = {
+  registered: { label: 'Registered', color: '#1976d2' },
+  confirmed: { label: 'Confirmed their address', color: '#00838f' },
+  joined: { label: 'In a conversation', color: '#2e7d32' },
+  wrote: { label: 'Sent a message', color: '#7b1fa2' },
+};
+
+/**
+ * "M", "T", "W" … from an instant.
+ *
+ * Derived here rather than sent, for the same reason every other timestamp on this screen
+ * is: the server does not know the reader's timezone, and a letter computed in UTC is wrong
+ * for anyone who is not.
+ */
+const weekdayLetter = (iso) => {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime())
+    ? ''
+    : date.toLocaleDateString('en-GB', { weekday: 'narrow' });
+};
+
 const STAT_ICON = {
   group: GroupIcon,
   task_alt: TaskAltIcon,
@@ -38,7 +67,13 @@ export default function AdminOverview({ isMobile, onNavigate }) {
       value: data.total,
       icon: 'group',
       color: 'primary.main',
-      hint: '+3 in the last 30 days',
+      // Counted, not asserted. This read "+3 in the last 30 days" as a literal - the worst
+      // kind of fiction on a dashboard, because it is specific, plausible, and nobody
+      // cross-checks a stat card.
+      hint:
+        data.joinedRecently > 0
+          ? `+${data.joinedRecently} in the last 30 days`
+          : 'None in the last 30 days',
       filter: 'all',
     },
     {
@@ -54,7 +89,10 @@ export default function AdminOverview({ isMobile, onNavigate }) {
       value: data.pending,
       icon: 'schedule',
       color: '#f9a825',
-      hint: data.pending > 0 ? '2 expire within a week' : 'Nothing outstanding',
+      hint:
+        data.expiringSoon > 0
+          ? `${data.expiringSoon} expire${data.expiringSoon === 1 ? 's' : ''} within a week`
+          : 'Nothing expiring soon',
       filter: 'pending',
     },
     {
@@ -67,13 +105,37 @@ export default function AdminOverview({ isMobile, onNavigate }) {
     },
   ];
 
-  const funnel = [
-    { label: 'Activated', value: data.active, color: '#2e7d32' },
-    { label: 'Invited, not yet activated', value: data.pending, color: '#f9a825' },
-    { label: 'Blocked or deactivated', value: data.blocked, color: '#d32f2f' },
-  ];
+  // A real funnel now, not a status breakdown. Each stage is a subset of the one above, so
+  // the bars mean "how far people get" - the question this panel is for. The old version
+  // split accounts by status, which the members table answers better and which produced
+  // three bars that could not be compared to each other at all.
+  //
+  // Percentages are of the widest stage rather than of the total, so the first bar is always
+  // full and each one after it reads as the share that survived.
+  const funnel = data.funnel.map((stage) => ({
+    label: stage.key,
+    color: 'text.disabled',
+    ...stage,
+    ...FUNNEL_STAGE[stage.key],
+  }));
+
+  const funnelMax = Math.max(...data.funnel.map((s) => s.value), 1);
+
+  /** Share of the widest funnel stage, so the first bar is always full. */
+  const share = (n) => Math.round((n / funnelMax) * 100);
 
   const chartMax = Math.max(...data.chart.map((b) => b.value), 1);
+
+  // Counted, like everything else here. This sentence used to end "Two expire within seven
+  // days" as a literal, next to a number that was real - which is worse than a wholly made-up
+  // panel, because the true half lends the invented half its credibility.
+  const footnote =
+    data.pending === 0
+      ? 'Nobody has an invitation outstanding.'
+      : `${data.pending} ${data.pending === 1 ? 'person has' : 'people have'} an open invitation. ` +
+        (data.expiringSoon === 0
+          ? 'None expire in the next seven days.'
+          : `${data.expiringSoon} ${data.expiringSoon === 1 ? 'expires' : 'expire'} within seven days — extend ${data.expiringSoon === 1 ? 'it' : 'them'} from the Invitations tab before ${data.expiringSoon === 1 ? 'it lapses' : 'they lapse'}.`);
 
   return (
     <>
@@ -185,7 +247,7 @@ export default function AdminOverview({ isMobile, onNavigate }) {
                           : '#cfe3f7',
                   }}
                 />
-                <Box sx={{ fontSize: 10, color: 'text.disabled' }}>{b.day}</Box>
+                <Box sx={{ fontSize: 10, color: 'text.disabled' }}>{weekdayLetter(b.dayUtc)}</Box>
               </Stack>
             ))}
           </Stack>
@@ -197,7 +259,7 @@ export default function AdminOverview({ isMobile, onNavigate }) {
             Where invited people stand
           </Typography>
           {funnel.map((f) => (
-            <Box key={f.label} sx={{ mb: 2 }}>
+            <Box key={f.key} sx={{ mb: 2 }}>
               <Stack
                 direction="row"
                 spacing={1}
@@ -205,7 +267,7 @@ export default function AdminOverview({ isMobile, onNavigate }) {
               >
                 <Box sx={{ flex: 1, color: 'text.secondary' }}>{f.label}</Box>
                 <Box sx={{ fontWeight: 500 }}>{f.value}</Box>
-                <Box sx={{ fontSize: 12, color: 'text.disabled' }}>{pct(f.value)}%</Box>
+                <Box sx={{ fontSize: 12, color: 'text.disabled' }}>{share(f.value)}%</Box>
               </Stack>
               <Box
                 sx={{ height: 7, borderRadius: 1, bgcolor: 'background.field', overflow: 'hidden' }}
@@ -213,7 +275,7 @@ export default function AdminOverview({ isMobile, onNavigate }) {
                 <Box
                   sx={{
                     height: '100%',
-                    width: `${pct(f.value)}%`,
+                    width: `${share(f.value)}%`,
                     borderRadius: 1,
                     bgcolor: f.color,
                   }}
@@ -232,8 +294,7 @@ export default function AdminOverview({ isMobile, onNavigate }) {
               lineHeight: 1.55,
             }}
           >
-            {data.pending} people have an open invitation. Two expire within seven days — extend
-            them from the Invitations tab before they lapse.
+            {footnote}
           </Box>
         </Panel>
       </Box>

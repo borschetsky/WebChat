@@ -133,6 +133,11 @@ const groupHeaders = (token, version) => ({
 
 const conversationUrl = (groupId) => `${_baseUrl}conversations/${encodeURIComponent(groupId)}`;
 
+const getAdminOverview = async (token) => {
+  const result = await Axios.get(`${_baseUrl}admin/overview`, { headers: authHeader(token) });
+  return await result;
+};
+
 const getAdminInvitations = async (token) => {
   const result = await Axios.get(`${_baseUrl}admin/invitations`, { headers: authHeader(token) });
   return await result;
@@ -308,6 +313,7 @@ export {
   transferGroupOwnership,
   setGroupPermissions,
   getAuditLog,
+  getAdminOverview,
   getAdminMembers,
   setAdminMemberStatus,
   setAdminMemberRole,

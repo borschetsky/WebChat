@@ -108,7 +108,11 @@ and fill it in, or the command stops naming the variable it wanted.
   blank gaps; `getmessages` and the `getthreads` preview each shipped that way once. The ids
   inside `SystemData` are resolved to names **server-side at read time** (`SystemDataJson`),
   because the client resolves names from current members and the person a removal is about
-  has just stopped being one.
+  has just stopped being one. **`Message.Type` is NULL on every row written before the column
+  existed**, and those are ordinary user messages — so "not a system message" is
+  `("Type" IS NULL OR "Type" <> 'system')` in hand-written SQL. EF's `!=` already means that;
+  a raw `<> 'system'` drops the legacy rows silently, which reads as the endpoint
+  undercounting when the query is what is wrong.
 - **Serialization is Newtonsoft.Json on purpose.** Some endpoints return
   `Dictionary<DateTime, …>` and the client parses those keys as dates; System.Text.Json
   formats non-string dictionary keys differently and would break the UI.

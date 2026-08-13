@@ -296,6 +296,7 @@ namespace WebChat
             services.AddTransient<IAuditService, AuditService>();
             services.AddTransient<IMemberAdminService, MemberAdminService>();
             services.AddTransient<IInvitationService, InvitationService>();
+            services.AddTransient<IOverviewService, OverviewService>();
             services.AddTransient<IMappingService, MappingService>();
             services.AddTransient<IValidator, Validator>();
             services.AddSingleton(typeof(IConnectionMapping<string>), typeof(ConnectionMapping<string>));

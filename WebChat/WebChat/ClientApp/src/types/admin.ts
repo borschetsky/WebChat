@@ -166,10 +166,29 @@ export interface AdminError {
   crumbs: AdminErrorCrumb[];
 }
 
+/** One stage of the activation funnel. Each is a subset of the one above it. */
+export interface AdminFunnelStage {
+  key: 'registered' | 'confirmed' | 'joined' | 'wrote';
+  value: number;
+}
+
 export interface AdminOverview {
   total: number;
   active: number;
   pending: number;
+  /** Blocked and deactivated together — both mean sign-in is refused. */
   blocked: number;
-  chart: { value: number; day: string }[];
+  /** Accounts created in the last 30 days. */
+  joinedRecently: number;
+  /** Outstanding invitations lapsing within a week. */
+  expiringSoon: number;
+  /**
+   * Fourteen days, oldest first, gap-filled — days with no messages are present with a
+   * value of zero, so the bars do not silently re-space when a quiet day drops out.
+   *
+   * `dayUtc` is an instant, not a weekday letter: the client derives "M"/"T" at render, and
+   * a server-side letter would be wrong for every reader outside UTC.
+   */
+  chart: { dayUtc: string; value: number }[];
+  funnel: AdminFunnelStage[];
 }
