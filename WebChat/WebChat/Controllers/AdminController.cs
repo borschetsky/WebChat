@@ -41,6 +41,7 @@ namespace WebChat.Controllers
         private readonly IUserService users;
         private readonly IMemberAdminService members;
         private readonly IInvitationService invitations;
+        private readonly IOverviewService overview;
         private readonly IEmailSender emailSender;
         private readonly EmailOptions emailOptions;
         private readonly IConfiguration configuration;
@@ -50,6 +51,7 @@ namespace WebChat.Controllers
             IUserService users,
             IMemberAdminService members,
             IInvitationService invitations,
+            IOverviewService overview,
             IEmailSender emailSender,
             EmailOptions emailOptions,
             IConfiguration configuration)
@@ -58,6 +60,7 @@ namespace WebChat.Controllers
             this.users = users;
             this.members = members;
             this.invitations = invitations;
+            this.overview = overview;
             this.emailSender = emailSender;
             this.emailOptions = emailOptions;
             this.configuration = configuration;
@@ -94,6 +97,9 @@ namespace WebChat.Controllers
             MemberAdminError.InvalidRole => this.BadRequest(new { error = "invalid_role" }),
             _ => this.BadRequest(new { error = "refused" }),
         };
+
+        [HttpGet("overview")]
+        public async Task<IActionResult> Overview() => this.Ok(await this.overview.GetAsync());
 
         [HttpGet("members")]
         public async Task<IActionResult> Members() => this.Ok(await this.members.ListAsync());

@@ -51,11 +51,9 @@ export const adminApi = createApi({
   baseQuery: fakeBaseQuery(),
   tagTypes: ['Overview', 'Members', 'Invites', 'Audit', 'Errors'],
   endpoints: (build) => ({
-    getOverview: build.query<AdminOverview, void>({
+    getOverview: build.query<AdminOverview | null, void>({
       queryFn: (_arg, api) => run(() => admin.loadOverview(tokenOf(api.getState))),
-      // Members too: the stat cards count the real list, so blocking somebody has to move
-      // them even though this query is not the one that fetched it.
-      providesTags: ['Overview', 'Members'],
+      providesTags: ['Overview'],
     }),
 
     getMembers: build.query<AdminMember[], void>({
@@ -104,7 +102,9 @@ export const adminApi = createApi({
     // this same operation - see services/admin-service.ts.
     resendInvite: build.mutation<AdminInvite[], string>({
       queryFn: (id, api) => run(() => admin.resendInvite(id, tokenOf(api.getState))),
-      invalidatesTags: ['Invites', 'Audit'],
+      // Overview too: resending resets the expiry, which is what its "expiring soon" count
+      // is measuring - the one card a resend is most likely to be a reaction to.
+      invalidatesTags: ['Invites', 'Overview', 'Audit'],
     }),
 
     sendInvites: build.mutation<admin.SendInvitesResult, { emails: string[]; role: AdminRole }>({

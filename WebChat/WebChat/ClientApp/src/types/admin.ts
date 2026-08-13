@@ -166,10 +166,39 @@ export interface AdminError {
   crumbs: AdminErrorCrumb[];
 }
 
+/** One stage of the activation funnel. Each is a subset of the one above it. */
+export interface AdminFunnelStage {
+  /**
+   * `registered` | `confirmed` | `joined` | `wrote` today — deliberately typed as `string`
+   * rather than that union.
+   *
+   * The union would be a lie in the direction that matters: it tells the compiler an unknown
+   * stage cannot arrive, so `FUNNEL_STAGE[stage.key]` narrows to always-defined and the
+   * fallback in `overviewText.ts` reads as dead code somebody would delete. A server one
+   * deploy ahead sends a fifth stage, and the client must render its raw key rather than an
+   * undefined label. Wire values are open sets; the client is the one that is behind.
+   */
+  key: string;
+  value: number;
+}
+
 export interface AdminOverview {
   total: number;
   active: number;
   pending: number;
+  /** Blocked and deactivated together — both mean sign-in is refused. */
   blocked: number;
-  chart: { value: number; day: string }[];
+  /** Accounts created in the last 30 days. */
+  joinedRecently: number;
+  /** Outstanding invitations lapsing within a week. */
+  expiringSoon: number;
+  /**
+   * Fourteen days, oldest first, gap-filled — days with no messages are present with a
+   * value of zero, so the bars do not silently re-space when a quiet day drops out.
+   *
+   * `dayUtc` is an instant, not a weekday letter: the client derives "M"/"T" at render, and
+   * a server-side letter would be wrong for every reader outside UTC.
+   */
+  chart: { dayUtc: string; value: number }[];
+  funnel: AdminFunnelStage[];
 }

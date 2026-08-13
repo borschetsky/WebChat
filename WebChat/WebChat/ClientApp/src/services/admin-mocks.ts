@@ -11,7 +11,7 @@
 // The data is the design handoff's own fixture set (`Chat Admin Console.dc.html`), kept
 // verbatim so the rendered screen can be compared against the design directly.
 
-import type { AdminError, AdminMember, AdminOverview } from '@/types/admin';
+import type { AdminError } from '@/types/admin';
 
 // Fixture timestamps are offsets from load, not fixed dates.
 //
@@ -160,41 +160,16 @@ const ERRORS: AdminError[] = [
   },
 ];
 
-/** MOCK BECAUSE: no message-volume aggregate exists. 14 days, matching the design. */
-const CHART = [42, 58, 51, 74, 66, 89, 23, 18, 71, 84, 79, 92, 61, 48];
-const DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S', 'M', 'T', 'W', 'T', 'F', 'S', 'S'];
-
 // Session-scoped mutable copy, so error triage visibly does something. Resets on reload -
-// never mistake it for persistence. Only errors remain: members, invitations, the audit log
-// and Overview's counts are all real now.
+// never mistake it for persistence.
 let errors = [...ERRORS];
 
 export const mockErrors = (): AdminError[] => errors;
 
-/**
- * The stat cards are counted from the **real** members list, which #71 made available; only
- * the 14-day chart is still fixture.
- *
- * Deliberately not left counting a fixture of its own. Overview and Members sit one click
- * apart, and a stat card reading "14 people" above a table listing three is worse than
- * either being obviously fake - it reads as a bug in the product rather than as unfinished
- * work. Passing the real list in was cheaper than explaining that.
- */
-export const mockOverview = (members: AdminMember[]): AdminOverview => {
-  const count = (status: AdminMember['status']) =>
-    members.filter((m) => m.status === status).length;
-
-  return {
-    total: members.length,
-    active: count('active'),
-    pending: count('pending'),
-    blocked: count('blocked') + count('deactivated'),
-    chart: CHART.map((value, i) => ({ value, day: DAYS[i] })),
-  };
-};
-
-// The invitation mocks are gone: sending, resending and revoking all reach real endpoints
-// as of #72, and each one writes a real audit entry.
+// Overview's fixtures are gone too (#73): the stat cards, the 14-day message-volume chart
+// and the activation funnel are all counted server-side now. Two invented hints went with
+// them - "+3 in the last 30 days" and "2 expire within a week" - which were the worst kind
+// of fiction on a dashboard: specific, plausible, and nobody cross-checks a stat card.
 
 export const mockSetErrorStatus = (id: string, status: AdminError['status']) => {
   errors = errors.map((e) => (e.id === id ? { ...e, status } : e));

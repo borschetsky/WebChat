@@ -11,6 +11,7 @@
 import {
   getAdminInvitations,
   getAdminMembers,
+  getAdminOverview,
   getAuditLog,
   inspectInvitation,
   redeemInvitation,
@@ -21,7 +22,7 @@ import {
   setAdminMemberStatus,
 } from './api-service';
 
-import { mockErrors, mockOverview, mockSetErrorStatus } from './admin-mocks';
+import { mockErrors, mockSetErrorStatus } from './admin-mocks';
 
 import type {
   AdminAudit,
@@ -70,15 +71,17 @@ export interface InviteDetails {
 }
 
 /**
- * Half real: the four stat cards are counted from the live members list, the 14-day chart
- * is still fixture (#73).
+ * Fully real as of #73 — stat cards, the 14-day message-volume chart and the activation
+ * funnel are all counted server-side.
  *
- * It takes the token because of that first half. A section that is partly real needs the
- * same plumbing as a fully real one - which is the argument for wiring it here rather than
- * leaving Overview counting a fixture until #73.
+ * It no longer derives its counts from the members list: the funnel and the chart need
+ * aggregates that list cannot answer, and counting in one query beats shipping every member
+ * to the browser to be tallied there.
  */
-export const loadOverview = async (token: string): Promise<AdminOverview> =>
-  mockOverview(await loadMembers(token));
+export const loadOverview = async (token: string): Promise<AdminOverview | null> => {
+  const res = await getAdminOverview(token);
+  return res && res.status !== 204 && res.data ? (res.data as AdminOverview) : null;
+};
 
 /** Real as of #71. The list is the workspace's people, presence included. */
 export const loadMembers = async (token: string): Promise<AdminMember[]> =>
