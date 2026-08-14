@@ -232,6 +232,11 @@ export const toProfile = (vm: ProfileDto): Profile => ({
   email: vm.email ?? '',
   avatarFileName: vm.avatarFileName ?? null,
   color: avatarColor(vm.id ?? ''),
+  // Load-bearing, and it was missing for five slices: the admin link and the /admin route
+  // guard both read it, so dropping it here made the console unreachable from a browser
+  // while its API answered perfectly. Read fresh from the database on every getprofile, so
+  // a promotion takes effect on reload rather than at the next sign-in.
+  role: vm.role ?? null,
 });
 
 /**

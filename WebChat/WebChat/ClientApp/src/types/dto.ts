@@ -22,6 +22,8 @@ export interface ProfileDto {
   username: string | null;
   email: string | null;
   avatarFileName: string | null;
+  /** Workspace role - 'owner' | 'admin' | 'member'. Optional: a server predating #68 omits it. */
+  role?: string | null;
 }
 
 /** UsersController search, HeyController getusers. */
