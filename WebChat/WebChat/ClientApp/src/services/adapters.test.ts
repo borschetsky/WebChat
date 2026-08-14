@@ -284,6 +284,35 @@ describe('toDirectory and toProfile', () => {
     expect(p.name).toBe('');
     expect(p.email).toBe('');
   });
+
+  /**
+   * The workspace role has to survive this seam, and for five slices it did not.
+   *
+   * `/users/getprofile` has always sent it, but neither the DTO nor the view model declared
+   * it and the adapter dropped it, so `profile.role` was `undefined` for everybody. Both
+   * readers - the admin link in `SettingsDrawer` and the `/admin` route guard in `App.jsx` -
+   * live in `.jsx`, where nothing type-checks a property that does not exist, so an owner got
+   * no link *and* was redirected away from the URL. The whole console was unreachable from a
+   * browser while its API worked perfectly.
+   */
+  it('carries the workspace role through', () => {
+    const p = toProfile({
+      id: 'me',
+      username: 'Wod',
+      email: 'wod@example.com',
+      avatarFileName: null,
+      role: 'owner',
+    });
+
+    expect(p.role).toBe('owner');
+  });
+
+  it('degrades a roleless profile to null rather than inventing a role', () => {
+    // An older server, or a body that lost the field: deny rather than assume. isAdminRole
+    // reads null as "not an admin", which is the safe direction for a permission check.
+    const p = toProfile({ id: 'me', username: null, email: null, avatarFileName: null });
+    expect(p.role).toBeNull();
+  });
 });
 
 describe('currentUserId', () => {

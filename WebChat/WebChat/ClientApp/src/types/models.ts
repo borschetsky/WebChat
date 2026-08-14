@@ -160,6 +160,11 @@ export interface Profile {
   email: string;
   avatarFileName: string | null;
   color: string;
+  /**
+   * Workspace role, as the server currently holds it - not as the token claimed at sign-in.
+   * `null` when absent, which `isAdminRole` reads as "not an admin".
+   */
+  role: string | null;
 }
 
 /** What the login flow persists to localStorage under 'user-data'. */
