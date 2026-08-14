@@ -163,11 +163,16 @@ and fill it in, or the command stops naming the variable it wanted.
   row missing from the response as inert — so wiring a new switch means finding the code path
   that will read it *first*. Defaults must equal the behaviour that predates the policy, or
   deploying one silently takes something away from every member.
-- **Porting a component from the design handoff? Translate `inputProps` to `slotProps`.**
-  The handoff predates MUI v9, which drops `inputProps` **silently** — no warning, no error,
-  the control simply loses the attributes it carried. Copying its `ComposeDialog` verbatim
-  produced a checkbox with no accessible name at all, caught only because a test queried by
-  label. Same family as the `Stack` prop-dropping bug that `theme.d.ts`'s drift test guards.
+- **Porting a component from the design handoff? On `Checkbox`, `Switch` and `Radio`,
+  translate `inputProps` to `slotProps`.** The handoff predates MUI v9, which drops
+  `inputProps` from the `SwitchBase` family **silently** — no warning, no error, the control
+  simply loses the attributes it carried, which for a bare control is its only accessible
+  name. Four sightings so far, all found by accident, because these are used from `.jsx`
+  where nothing type-checks the props — so `src/test/mui-drift.test.tsx` now *scans* `src`
+  for it rather than waiting for the next one. **`InputBase` and `TextField` never lost the
+  prop**: `SearchField` and `Composer` use it correctly, and a sweep for the bare prop name
+  would break working code. Same family as the `Stack` prop-dropping bug that the same file
+  guards.
 - **Design tokens come from the handoff and are final** (`src/theme/tokens.js`). Prefer an
   existing token over a new value.
 - **After upgrading a client dependency across a major, restart the Vite dev server with
