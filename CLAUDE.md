@@ -154,6 +154,17 @@ and fill it in, or the command stops naming the variable it wanted.
   directly.** That seam is what keeps mocked features indistinguishable from real ones;
   six features are mocked because the API cannot back them — the settings drawer lists
   them, and `mocks.ts` names the endpoint each would need.
+- **`adapters.ts` maps DTOs to view models field by field, so a field it does not name is
+  dropped — silently, and the type system will not save you.** `toProfile` omitted `role`
+  for five slices: `/users/getprofile` sent it, `ProfileDto` and `Profile` never declared it,
+  and the two readers (`SettingsDrawer.jsx`'s admin link, `App.jsx`'s `/admin` route guard)
+  are `.jsx`, where nothing type-checks a property that does not exist. The result was an
+  admin console **unreachable from a browser** while its API answered every request — an
+  owner saw no link and was redirected away from the URL. **Adding a field to a view model
+  means editing the DTO, the model and the adapter, and testing the adapter**; and when a
+  feature works over `curl` but not in the app, suspect this seam first. Same blind spot as
+  the `inputProps` drift below: the components that matter are `.jsx`, so verifying an API
+  is not verifying a feature.
 - **A workspace policy ships only with an enforcement point.** Seven of the nine switches on
   the Policies screen are drawn as inert rows labelled "Not enforced yet" — that is
   deliberate, not unfinished. A toggle nothing reads is worse than a mock: a mock is
