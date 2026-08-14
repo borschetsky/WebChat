@@ -121,7 +121,9 @@ export default function AdminMembers({ query, isMobile, onNotify }) {
                 size="small"
                 checked={selected.includes(m.id)}
                 onChange={() => toggle(m.id)}
-                inputProps={{ 'aria-label': `Select ${m.name}` }}
+                // slotProps, not inputProps - v9 drops the latter silently, and this bare
+                // checkbox has no label element to fall back on.
+                slotProps={{ input: { 'aria-label': `Select ${m.name}` } }}
               />
             )}
 
