@@ -269,8 +269,17 @@ export default function ChatApp({ user, onSignOut }) {
       const { threadId } = await startGroup({ name: name.trim(), members }).unwrap();
       await selectThread(threadId);
       notify(`Group created with ${members.length} people`);
-    } catch {
-      notify('Could not create that group.');
+    } catch (error) {
+      // A workspace can restrict group creation to admins (#75), and a member who hits that
+      // needs to be told which it is: "Could not create that group" reads as a fault and
+      // invites a retry that will fail identically. The server sends a code and a sentence
+      // precisely so this does not have to guess.
+      const refusal = error?.data;
+      notify(
+        refusal?.error === 'groups_admin_only' && refusal.message
+          ? refusal.message
+          : 'Could not create that group.',
+      );
     }
   };
 

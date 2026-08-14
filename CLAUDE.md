@@ -154,6 +154,15 @@ and fill it in, or the command stops naming the variable it wanted.
   directly.** That seam is what keeps mocked features indistinguishable from real ones;
   six features are mocked because the API cannot back them — the settings drawer lists
   them, and `mocks.ts` names the endpoint each would need.
+- **A workspace policy ships only with an enforcement point.** Seven of the nine switches on
+  the Policies screen are drawn as inert rows labelled "Not enforced yet" — that is
+  deliberate, not unfinished. A toggle nothing reads is worse than a mock: a mock is
+  obviously a mock, while a switch backed by a database tells the one person whose job is to
+  know how the workspace is configured that it is configured a way it is not. The server's
+  `WorkspacePolicy.Defaults` is the authority on which are real, and the client renders any
+  row missing from the response as inert — so wiring a new switch means finding the code path
+  that will read it *first*. Defaults must equal the behaviour that predates the policy, or
+  deploying one silently takes something away from every member.
 - **Porting a component from the design handoff? Translate `inputProps` to `slotProps`.**
   The handoff predates MUI v9, which drops `inputProps` **silently** — no warning, no error,
   the control simply loses the attributes it carried. Copying its `ComposeDialog` verbatim

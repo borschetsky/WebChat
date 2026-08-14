@@ -12,6 +12,8 @@ import {
   getAdminInvitations,
   getAdminMembers,
   getAdminOverview,
+  getAdminPolicies,
+  setAdminPolicy,
   getAuditLog,
   inspectInvitation,
   redeemInvitation,
@@ -31,6 +33,7 @@ import type {
   AdminInvite,
   AdminMember,
   AdminOverview,
+  AdminPolicies,
   AdminRole,
   AdminStatus,
 } from '@/types/admin';
@@ -105,6 +108,36 @@ export const loadAudit = async (
 };
 
 export const loadErrors = async (): Promise<AdminError[]> => mockErrors();
+
+/**
+ * Real as of #75, and deliberately smaller than the screen.
+ *
+ * An empty envelope on a missing or malformed body means "nothing is enforced", which renders
+ * every row as inert. That is the safe failure: the alternative default - assuming the screen's
+ * own list is enforced - is precisely the lie this slice removed.
+ */
+const policiesFrom = (res: { status: number; data: unknown } | undefined): AdminPolicies => {
+  const body =
+    res && res.status !== 204 ? (res.data as Partial<AdminPolicies> | undefined) : undefined;
+
+  return {
+    policies:
+      body?.policies && typeof body.policies === 'object'
+        ? (body.policies as Record<string, boolean>)
+        : {},
+    alwaysOn: Array.isArray(body?.alwaysOn) ? body.alwaysOn : [],
+  };
+};
+
+export const loadPolicies = async (token: string): Promise<AdminPolicies> =>
+  policiesFrom(await getAdminPolicies(token));
+
+/** Returns the whole set back, so the screen re-renders from what the server now holds. */
+export const setPolicy = async (
+  key: string,
+  value: boolean,
+  token: string,
+): Promise<AdminPolicies> => policiesFrom(await setAdminPolicy(key, value, token));
 
 /**
  * Bulk, because the members table supports multi-select with a bulk action bar.

@@ -7,6 +7,7 @@ import type {
   AdminInvite,
   AdminMember,
   AdminOverview,
+  AdminPolicies,
   AdminRole,
   AdminStatus,
 } from '@/types/admin';
@@ -49,7 +50,7 @@ const run = async <T>(fn: () => Promise<T>): Promise<Result<T>> => {
 export const adminApi = createApi({
   reducerPath: 'adminApi',
   baseQuery: fakeBaseQuery(),
-  tagTypes: ['Overview', 'Members', 'Invites', 'Audit', 'Errors'],
+  tagTypes: ['Overview', 'Members', 'Invites', 'Audit', 'Errors', 'Policies'],
   endpoints: (build) => ({
     getOverview: build.query<AdminOverview | null, void>({
       queryFn: (_arg, api) => run(() => admin.loadOverview(tokenOf(api.getState))),
@@ -76,6 +77,17 @@ export const adminApi = createApi({
     getErrors: build.query<AdminError[], void>({
       queryFn: () => run(() => admin.loadErrors()),
       providesTags: ['Errors'],
+    }),
+
+    getPolicies: build.query<AdminPolicies, void>({
+      queryFn: (_arg, api) => run(() => admin.loadPolicies(tokenOf(api.getState))),
+      providesTags: ['Policies'],
+    }),
+
+    setPolicy: build.mutation<AdminPolicies, { key: string; value: boolean }>({
+      queryFn: ({ key, value }, api) =>
+        run(() => admin.setPolicy(key, value, tokenOf(api.getState))),
+      invalidatesTags: ['Policies', 'Audit'],
     }),
 
     setMemberStatus: build.mutation<AdminMember[], { ids: string[]; status: AdminStatus }>({
@@ -128,6 +140,8 @@ export const {
   useGetInvitesQuery,
   useGetAuditQuery,
   useGetErrorsQuery,
+  useGetPoliciesQuery,
+  useSetPolicyMutation,
   useSetMemberStatusMutation,
   useSetMemberRoleMutation,
   useRevokeInviteMutation,

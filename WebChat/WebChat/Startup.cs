@@ -297,6 +297,12 @@ namespace WebChat
             services.AddTransient<IMemberAdminService, MemberAdminService>();
             services.AddTransient<IInvitationService, InvitationService>();
             services.AddTransient<IOverviewService, OverviewService>();
+
+            // The service is per-request because it uses the DbContext; the cache it reads
+            // through is not, because a per-request cache would be read once and thrown away.
+            services.AddTransient<IWorkspacePolicyService, WorkspacePolicyService>();
+            services.AddSingleton<WorkspacePolicyCache>();
+
             services.AddTransient<IMappingService, MappingService>();
             services.AddTransient<IValidator, Validator>();
             services.AddSingleton(typeof(IConnectionMapping<string>), typeof(ConnectionMapping<string>));

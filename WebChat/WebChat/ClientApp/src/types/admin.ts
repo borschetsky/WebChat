@@ -166,6 +166,18 @@ export interface AdminError {
   crumbs: AdminErrorCrumb[];
 }
 
+/**
+ * The workspace policies, as the server reports them.
+ *
+ * `policies` holds only the ones something actually reads, so its **keys** are the contract:
+ * a row the client knows about that is absent here is not enforced, and is rendered as such.
+ * `alwaysOn` is behaviour that is unconditional and therefore not a switch at all.
+ */
+export interface AdminPolicies {
+  policies: Record<string, boolean>;
+  alwaysOn: string[];
+}
+
 /** One stage of the activation funnel. Each is a subset of the one above it. */
 export interface AdminFunnelStage {
   /**

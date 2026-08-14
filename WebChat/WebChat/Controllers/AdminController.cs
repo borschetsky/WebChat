@@ -42,6 +42,7 @@ namespace WebChat.Controllers
         private readonly IMemberAdminService members;
         private readonly IInvitationService invitations;
         private readonly IOverviewService overview;
+        private readonly IWorkspacePolicyService policies;
         private readonly IEmailSender emailSender;
         private readonly EmailOptions emailOptions;
         private readonly IConfiguration configuration;
@@ -52,6 +53,7 @@ namespace WebChat.Controllers
             IMemberAdminService members,
             IInvitationService invitations,
             IOverviewService overview,
+            IWorkspacePolicyService policies,
             IEmailSender emailSender,
             EmailOptions emailOptions,
             IConfiguration configuration)
@@ -61,6 +63,7 @@ namespace WebChat.Controllers
             this.members = members;
             this.invitations = invitations;
             this.overview = overview;
+            this.policies = policies;
             this.emailSender = emailSender;
             this.emailOptions = emailOptions;
             this.configuration = configuration;
@@ -134,6 +137,55 @@ namespace WebChat.Controllers
                 this.User.Identity?.Name, this.ActorRole(), id, request?.Role);
 
             return result.Ok ? this.Ok(result.Members) : this.Refuse(result.Error);
+        }
+
+        /// <summary>
+        /// The workspace policies.
+        ///
+        /// **Only the ones this build enforces.** The screen draws nine switches and eight of
+        /// them have no code path that reads them; sending values for those would make the
+        /// console assert a configuration that nothing honours. So the response is the
+        /// authority on what is real, and the client renders any row it has that is missing
+        /// from here as not yet enforced rather than as a working control - which also means a
+        /// client one deploy ahead of the server degrades to inert rows instead of lying.
+        ///
+        /// <c>alwaysOn</c> is the third case: enforced unconditionally, and therefore not a
+        /// switch. See <see cref="WorkspacePolicy.AlwaysOn"/>.
+        /// </summary>
+        [HttpGet("policies")]
+        public async Task<IActionResult> Policies() => this.Ok(new
+        {
+            policies = await this.policies.GetAsync(),
+            alwaysOn = WorkspacePolicy.AlwaysOn,
+        });
+
+        [HttpPost("policies/{key}")]
+        public async Task<IActionResult> SetPolicy(string key, [FromBody] PolicyRequest request)
+        {
+            if (request?.Value == null)
+            {
+                return this.BadRequest(new { error = "value_required" });
+            }
+
+            var result = await this.policies.SetAsync(
+                this.User.Identity?.Name, key, request.Value.Value);
+
+            if (result.Ok) return this.Ok(new { policies = result.Policies, alwaysOn = WorkspacePolicy.AlwaysOn });
+
+            return this.BadRequest(new
+            {
+                error = "unknown_policy",
+                message = "That policy is not one this workspace enforces.",
+            });
+        }
+
+        public class PolicyRequest
+        {
+            /// <summary>
+            /// Nullable so that a missing body is refused rather than read as false. A
+            /// non-nullable bool would default to false and silently turn a policy off.
+            /// </summary>
+            public bool? Value { get; set; }
         }
 
         [HttpGet("invitations")]
