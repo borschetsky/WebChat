@@ -33,7 +33,10 @@ export default function AppearanceControls() {
               edge="end"
               checked={mode === 'dark'}
               onChange={(e) => setMode(e.target.checked ? 'dark' : 'light')}
-              inputProps={{ 'aria-label': 'Dark mode' }}
+              // slotProps, not inputProps: the switch sits in `secondaryAction`, so the
+              // ListItemText beside it names nothing. This is its only accessible name, and
+              // v9 drops the inputProps spelling without saying so.
+              slotProps={{ input: { 'aria-label': 'Dark mode' } }}
             />
           }
         >
@@ -53,7 +56,7 @@ export default function AppearanceControls() {
               edge="end"
               checked={density === 'compact'}
               onChange={(e) => setDensity(e.target.checked ? 'compact' : 'comfortable')}
-              inputProps={{ 'aria-label': 'Compact density' }}
+              slotProps={{ input: { 'aria-label': 'Compact density' } }}
             />
           }
         >

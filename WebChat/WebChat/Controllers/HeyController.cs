@@ -26,15 +26,17 @@ namespace WebChat.Controllers
         private readonly IThreadService thredService;
         private readonly IMappingService mappingService;
         private readonly IConnectionMapping<string> connectionMapping;
+        private readonly IWorkspacePolicyService policies;
 
         public HeyController
         (
-            IUserService userSercvice, 
-            IMessageService messageService, 
-            IHubContext<ChatHub> hubContext, 
+            IUserService userSercvice,
+            IMessageService messageService,
+            IHubContext<ChatHub> hubContext,
             IThreadService thredService,
             IMappingService mappingService,
-            IConnectionMapping<string> connectionMapping
+            IConnectionMapping<string> connectionMapping,
+            IWorkspacePolicyService policies
         )
         {
             this.userSercvice = userSercvice;
@@ -43,6 +45,7 @@ namespace WebChat.Controllers
             this.thredService = thredService;
             this.mappingService = mappingService;
             this.connectionMapping = connectionMapping;
+            this.policies = policies;
         }
 
         
@@ -178,6 +181,28 @@ namespace WebChat.Controllers
             }
 
             var curentUserId = User.Identity.Name;
+
+            // The enforcement point for `members_can_create_groups`, and the reason that
+            // switch is on the Policies screen at all. Checked here rather than in the client:
+            // hiding the button decides what to draw, and nothing stops a member posting to
+            // this endpoint directly.
+            //
+            // Owners and admins are exempt whatever the policy says. The policy is about who
+            // may create a group, and an administrator who cannot is not a configuration
+            // anybody wants - it would also leave a workspace that turned this off with no way
+            // to create one at all.
+            var privileged = this.User.IsInRole(Models.WorkspaceRole.Owner) ||
+                             this.User.IsInRole(Models.WorkspaceRole.Admin);
+
+            if (!privileged &&
+                !await this.policies.IsEnabledAsync(Models.WorkspacePolicy.MembersCanCreateGroups))
+            {
+                return this.StatusCode(403, new
+                {
+                    error = "groups_admin_only",
+                    message = "An administrator has to create groups in this workspace.",
+                });
+            }
 
             // Members are verified to exist before the thread is created. Without this a
             // typo'd or invented id would insert a participant row that fails the foreign

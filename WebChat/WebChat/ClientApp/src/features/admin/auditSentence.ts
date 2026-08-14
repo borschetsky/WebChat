@@ -1,4 +1,5 @@
 import type { AdminAudit } from '@/types/admin';
+import { POLICY_GROUPS } from './policyCatalogue';
 
 /**
  * Turns an audit entry's facts into the sentence a person reads.
@@ -31,6 +32,22 @@ const number = (entry: AdminAudit, key: string): number | null => {
 };
 
 const plural = (count: number, one: string): string => `${count} ${one}${count === 1 ? '' : 's'}`;
+
+/**
+ * A policy's wording, lower-cased to sit inside a sentence.
+ *
+ * Falls back to the raw key, which is right for two cases that both happen: a policy retired
+ * since the entry was written, and a client older than the server. Both should read as odd
+ * rather than as nothing.
+ */
+const policyLabel = (key: string): string => {
+  const row = POLICY_GROUPS.flatMap((group) => group.rows).find((r) => r.key === key);
+  if (!row) return key;
+
+  // Only the first character, so "Require two-factor authentication" lower-cases cleanly
+  // without touching an acronym later in the label.
+  return row.label.charAt(0).toLowerCase() + row.label.slice(1);
+};
 
 /**
  * The main line. Returns an empty string for a kind this build does not know, which
@@ -74,7 +91,12 @@ export const auditSentence = (entry: AdminAudit): string => {
     case 'policy': {
       const policy = field(entry, 'policy');
       if (!policy) return `${actor} changed a workspace policy`;
-      return `${actor} turned ${entry.data?.value === true ? 'on' : 'off'} ${policy}`;
+
+      // The stored fact is the policy *key*, so this reads it through the same catalogue the
+      // Policies screen renders from. Storing the label instead would freeze a year of history
+      // in whatever wording was current the day each entry was written - the rule every other
+      // kind here follows, and the reason none of them store a sentence.
+      return `${actor} turned ${entry.data?.value === true ? 'on' : 'off'} ${policyLabel(policy)}`;
     }
     case 'login': {
       const email = field(entry, 'email') ?? 'an unknown address';

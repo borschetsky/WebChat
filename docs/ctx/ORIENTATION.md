@@ -25,7 +25,7 @@ Browser ──POST /api/hey/send──▶ HeyController ─▶ MessageService �
    └────── ReciveMessage ── ChatHub ◀─┘   (push to the *other* participant)
 ```
 
-Everything the SPA needs is behind one seam — `services/chat-service.ts` — so seven
+Everything the SPA needs is behind one seam — `services/chat-service.ts` — so six
 unimplemented features can be mocked without any component knowing.
 
 ---

@@ -138,6 +138,23 @@ const getAdminOverview = async (token) => {
   return await result;
 };
 
+// Answers `{ policies, alwaysOn }`. The server is the authority on which policies are real:
+// a key absent from `policies` is one nothing enforces, and the screen renders it as such
+// rather than as a switch.
+const getAdminPolicies = async (token) => {
+  const result = await Axios.get(`${_baseUrl}admin/policies`, { headers: authHeader(token) });
+  return await result;
+};
+
+const setAdminPolicy = async (key, value, token) => {
+  const result = await Axios.post(
+    `${_baseUrl}admin/policies/${encodeURIComponent(key)}`,
+    { value },
+    { headers: authHeader(token) },
+  );
+  return await result;
+};
+
 const getAdminInvitations = async (token) => {
   const result = await Axios.get(`${_baseUrl}admin/invitations`, { headers: authHeader(token) });
   return await result;
@@ -314,6 +331,8 @@ export {
   setGroupPermissions,
   getAuditLog,
   getAdminOverview,
+  getAdminPolicies,
+  setAdminPolicy,
   getAdminMembers,
   setAdminMemberStatus,
   setAdminMemberRole,

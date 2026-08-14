@@ -58,10 +58,26 @@ describe('auditSentence', () => {
 
   it('says on or off for a policy, from the value rather than the wording', () => {
     const policy = (value: boolean) =>
-      auditSentence(entry({ kind: 'policy', data: { policy: 'Require approval', value } }));
+      auditSentence(
+        entry({ kind: 'policy', data: { policy: 'members_can_create_groups', value } }),
+      );
 
-    expect(policy(true)).toBe('Maya turned on Require approval');
-    expect(policy(false)).toBe('Maya turned off Require approval');
+    expect(policy(true)).toBe('Maya turned on members can create groups');
+    expect(policy(false)).toBe('Maya turned off members can create groups');
+  });
+
+  /**
+   * The entry stores the policy *key*, so the wording is resolved at render. That is what lets
+   * a label be corrected without migrating a year of history - and it means a key this build
+   * has no row for has to degrade to something, which is the raw key: odd to read, but honest
+   * about what changed. A retired policy and an out-of-date client both land here.
+   */
+  it('falls back to the raw key for a policy it has no label for', () => {
+    expect(
+      auditSentence(
+        entry({ kind: 'policy', data: { policy: 'members_can_teleport', value: true } }),
+      ),
+    ).toBe('Maya turned on members_can_teleport');
   });
 
   /**

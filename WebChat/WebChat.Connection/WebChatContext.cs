@@ -30,6 +30,14 @@ namespace WebChat.Connection
         /// <summary>Outstanding and historical workspace invitations - see <see cref="Invitation"/>.</summary>
         public DbSet<Invitation> Invitation { get; set; }
 
+        /// <summary>
+        /// The workspace's configuration - exactly one row, keyed by
+        /// <see cref="WorkspaceSettings.SingletonId"/>. Read through
+        /// <c>IWorkspacePolicyService</c>, which caches it; querying this directly on a
+        /// request path is what the cache exists to avoid.
+        /// </summary>
+        public DbSet<WorkspaceSettings> WorkspaceSettings { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             // Redemption looks an invitation up *by hash* - the token is never stored, so
@@ -51,6 +59,13 @@ namespace WebChat.Connection
             builder.Entity<AuditEntry>()
                 .HasIndex(e => e.OccurredAtUtc)
                 .IsDescending();
+
+            // jsonb rather than text so the column can be queried and indexed later without a
+            // type change. Nothing queries inside it today - the whole blob is read at once -
+            // but the migration cost of being wrong about that is asymmetric.
+            builder.Entity<WorkspaceSettings>()
+                .Property(s => s.PoliciesJson)
+                .HasColumnType("jsonb");
 
             builder.Entity<Message>()
                 .HasOne(m => m.Thread)
