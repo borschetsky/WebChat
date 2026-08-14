@@ -190,7 +190,14 @@ and fill it in, or the command stops naming the variable it wanted.
   the .NET SDK image has no Node.
 - **The app runs at `https://chat.vtechsolutions.site`** on DigitalOcean App Platform, with
   `.do/app.yaml` as the source of truth for its configuration. DNS is at the registrar, not
-  DigitalOcean. Two settings are load-bearing and easy to miss when adding an origin:
+  DigitalOcean. **Merging to `master` does not deploy.** The file declares a `github:` source
+  with `deploy_on_push: true`, but the live app was created from a plain `git:` clone source,
+  which App Platform never auto-deploys — so the flag describes an integration the app does
+  not have, and a merge that "should have shipped" silently sits there. Ship with
+  `doctl apps create-deployment 7337e1b0-3696-44f8-9462-df84a75c5bab`, and **never**
+  `doctl apps update --spec`: that replaces the entire spec, and the secrets read back as
+  encrypted `EV[…]` placeholders, so a round-trip writes those placeholders in as literal
+  values. Two settings are load-bearing and easy to miss when adding an origin:
   `Cors__AllowedOrigins__n` must list it, or SignalR silently fails to connect — the policy
   uses `AllowCredentials()`, so a wildcard is not permitted, and it presents as "chat is
   broken" rather than as a CORS error. And `App__PublicUrl` is what activation and reset
