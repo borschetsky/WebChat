@@ -1,0 +1,200 @@
+import React from 'react';
+import { describe, it, expect, vi, beforeAll } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import SettingsDrawer from '@/features/settings/SettingsDrawer';
+import { ThemeModeProvider } from '@/theme/ThemeModeProvider';
+
+/**
+ * The wiring, which is the part that decides whether the feature exists at all: pick -> crop
+ * -> confirm has to end with a `File` at the same `onUploadAvatar` that already existed, and
+ * cancel has to end with nothing.
+ *
+ * Two things are mocked, both because jsdom cannot do them, and neither of them is the
+ * behaviour under test:
+ *
+ * - **`react-easy-crop`**, by a stub that reports a crop area on mount. The real component
+ *   measures its container, and jsdom gives every element zero size, so `onCropComplete`
+ *   never fires and Save is permanently disabled - the confirm half of the flow would be
+ *   unreachable. That the real component mounts clean under jsdom is checked separately in
+ *   `avatar-crop.test.tsx`, against no mock at all.
+ * - **`cropToFile`**, which needs `createImageBitmap` and a real 2D canvas context. Its pure
+ *   half, the geometry, is tested for real in `features/settings/cropImage.test.ts`.
+ */
+/** Every prop the dialog handed the cropper, most recent last. */
+const cropperProps: Record<string, unknown>[] = [];
+
+function StubCropper(props: { onCropComplete?: (a: unknown, b: unknown) => void }) {
+  cropperProps.push(props as Record<string, unknown>);
+  const { onCropComplete } = props;
+  // In an effect, not in render. Calling it during render sets state in the parent while the
+  // child is rendering, which React answers by re-rendering the child, forever - the first
+  // version of this stub hung the whole suite rather than failing.
+  React.useEffect(() => {
+    onCropComplete?.(
+      { x: 0, y: 0, width: 100, height: 100 },
+      { x: 40, y: 60, width: 400, height: 400 },
+    );
+  }, [onCropComplete]);
+  return <div data-testid="stub-cropper" />;
+}
+
+vi.mock('react-easy-crop', () => ({ default: StubCropper }));
+
+const CROPPED = new File([new Uint8Array([9])], 'portrait.jpg', { type: 'image/jpeg' });
+
+vi.mock('@/features/settings/cropImage', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/settings/cropImage')>();
+  return { ...actual, cropToFile: vi.fn(async () => CROPPED) };
+});
+
+beforeAll(() => {
+  if (!URL.createObjectURL) {
+    URL.createObjectURL = vi.fn(() => 'blob:preview');
+    URL.revokeObjectURL = vi.fn();
+  }
+});
+
+const photo = (name = 'portrait.jpg') =>
+  new File([new Uint8Array([1, 2, 3])], name, { type: 'image/jpeg' });
+
+const renderDrawer = () => {
+  const onUploadAvatar = vi.fn();
+  render(
+    <ThemeModeProvider>
+      <SettingsDrawer
+        open
+        onClose={() => {}}
+        profile={{ id: 'me', name: 'Maya', email: 'm@e.com', color: '#1976d2' }}
+        members={[]}
+        onSaveProfile={() => {}}
+        onUploadAvatar={onUploadAvatar}
+        onLogout={() => {}}
+        onOpenAdmin={() => {}}
+        threadName={null}
+        fullWidth={false}
+      />
+    </ThemeModeProvider>,
+  );
+  return onUploadAvatar;
+};
+
+const pick = (file: File) =>
+  fireEvent.change(screen.getByLabelText('Change profile photo'), { target: { files: [file] } });
+
+describe('picking a profile photo', () => {
+  /**
+   * A reproduction, in the strict sense: it fails against the code as it was before this
+   * change, where picking a file called `onUploadAvatar` on the spot and there was no moment
+   * at which anyone could decline. This is the behaviour the issue asks for, stated as a
+   * test rather than as a description.
+   */
+  it('opens the cropper instead of uploading the original', async () => {
+    const onUploadAvatar = renderDrawer();
+
+    pick(photo());
+
+    expect(await screen.findByText('Crop your photo')).toBeInTheDocument();
+    expect(onUploadAvatar).not.toHaveBeenCalled();
+  });
+
+  /** The requirement in as many words: cancel must leave the existing avatar untouched. */
+  it('cancelling closes the cropper and uploads nothing', async () => {
+    const onUploadAvatar = renderDrawer();
+
+    pick(photo());
+    fireEvent.click(await screen.findByRole('button', { name: /cancel/i }));
+
+    await waitFor(() => expect(screen.queryByText('Crop your photo')).toBeNull());
+    expect(onUploadAvatar).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The other end of the seam. What reaches `ChatApp.handleUploadAvatar` must be a `File`,
+   * because that function does `FormData.append('file', it)` - a bare `Blob` would be posted
+   * with no filename, and the server reads `form.Files[0]`. That is the whole reason this
+   * lands with zero server change.
+   */
+  it('confirming hands a cropped File to the existing upload path', async () => {
+    const onUploadAvatar = renderDrawer();
+
+    pick(photo());
+    fireEvent.click(await screen.findByRole('button', { name: /save photo/i }));
+
+    await waitFor(() => expect(onUploadAvatar).toHaveBeenCalledTimes(1));
+
+    const uploaded = onUploadAvatar.mock.calls[0][0];
+    expect(uploaded).toBeInstanceOf(File);
+    expect(uploaded.name).toBe('portrait.jpg');
+    expect(uploaded.type).toBe('image/jpeg');
+  });
+
+  it('passes the cropper output through to the export, not the whole image', async () => {
+    renderDrawer();
+    const { cropToFile } = await import('@/features/settings/cropImage');
+
+    pick(photo('holiday.jpg'));
+    fireEvent.click(await screen.findByRole('button', { name: /save photo/i }));
+
+    await waitFor(() => expect(cropToFile).toHaveBeenCalled());
+
+    // The second argument is croppedAreaPixels as the cropper reported it. Passing the
+    // *percentage* rectangle instead - they arrive as two arguments of the same shape - would
+    // crop a 400x400 photo down to a 100x100 corner and look like a zoom bug.
+    const [file, area] = vi.mocked(cropToFile).mock.calls.at(-1)!;
+    expect(file.name).toBe('holiday.jpg');
+    expect(area).toEqual({ x: 40, y: 60, width: 400, height: 400 });
+  });
+
+  it('closes the cropper once the upload has been handed off', async () => {
+    renderDrawer();
+
+    pick(photo());
+    fireEvent.click(await screen.findByRole('button', { name: /save photo/i }));
+
+    await waitFor(() => expect(screen.queryByText('Crop your photo')).toBeNull());
+  });
+
+  /**
+   * What the dialog asks the library for. A guard, not a reproduction - but the only check
+   * available anywhere in this suite for the round mask, the ring, the thirds grid and the
+   * 280 px circle, because react-easy-crop draws none of those until it has measured a
+   * loaded image and jsdom never loads one. Getting `cropShape` or `showGrid` wrong would be
+   * invisible to every other test here and visible immediately in a browser.
+   */
+  it('configures the cropper the way the handoff specifies', async () => {
+    renderDrawer();
+    cropperProps.length = 0;
+
+    pick(photo());
+    await screen.findByText('Crop your photo');
+
+    const props = cropperProps.at(-1)!;
+    expect(props.cropShape).toBe('round');
+    expect(props.showGrid).toBe(true);
+    expect(props.aspect).toBe(1);
+    expect(props.restrictPosition).toBe(true);
+
+    // Not cosmetic, and not the library's default. `cropSize` pins the circle at 280px while
+    // the default `objectFit="contain"` fits the image to the 320px stage, so a non-square
+    // photo at zoom 1 does not cover the circle and the exported square is anchored at the
+    // clamped edge rather than at what was framed - a 1200x400 banner exports its left third.
+    // Invisible in every other test here, because jsdom lays nothing out, and easy to miss in
+    // a browser too unless the test image is deliberately non-square.
+    expect(props.objectFit).toBe('cover');
+    expect(props.cropSize).toEqual({ width: 280, height: 280 });
+    expect(props.minZoom).toBe(1);
+    expect(props.maxZoom).toBe(3);
+  });
+
+  it('starts every photo at 1x in the middle', async () => {
+    renderDrawer();
+    cropperProps.length = 0;
+
+    pick(photo());
+    await screen.findByText('Crop your photo');
+
+    const props = cropperProps.at(-1)!;
+    expect(props.zoom).toBe(1);
+    expect(props.crop).toEqual({ x: 0, y: 0 });
+  });
+});

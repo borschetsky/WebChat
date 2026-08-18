@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useState } from 'react';
 import {
   Alert,
   Box,
@@ -18,6 +18,15 @@ import AppearanceControls from '@/features/settings/AppearanceControls';
 import MockDisclosure from '@/features/settings/MockDisclosure';
 import SectionLabel from '@/components/SectionLabel';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+
+/**
+ * Lazy, and it has to be: react-easy-crop plus the MUI Dialog, Slider and icons it pulls in
+ * are ~15 kB gzipped, and `vite.config.ts` groups vendors with `tags: ['$initial']`, so a
+ * module reachable only from here cannot be hoisted into vendor-mui - it lands whole in
+ * whatever chunk imports it. Behind `lazy` it is fetched when someone picks a photo and never
+ * before, which keeps it out of the render-blocking payload entirely.
+ */
+const AvatarCropDialog = lazy(() => import('@/features/settings/AvatarCropDialog'));
 import { isAdminRole } from '@/features/admin/adminAccess';
 
 /**
@@ -50,6 +59,11 @@ export default function SettingsDrawer({
   // used to live here too, as a second copy of state the mutation already tracks.
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+
+  // The picked photo, held here rather than uploaded on the spot. This is the whole of #84 at
+  // this level: before, choosing a file *was* the upload and there was no moment at which
+  // anyone could decline. `null` means no crop in progress.
+  const [pickedPhoto, setPickedPhoto] = useState(null);
 
   useEffect(() => {
     // Same "reset the form when the prop changes" shape as ComposeDialog: the idiomatic fix
@@ -100,7 +114,6 @@ export default function SettingsDrawer({
             <IconButton
               component="label"
               size="small"
-              aria-label="Change profile photo"
               sx={{
                 position: 'absolute',
                 right: -4,
@@ -116,9 +129,17 @@ export default function SettingsDrawer({
                 hidden
                 type="file"
                 accept="image/*"
+                // The accessible name lives on the input, not on the IconButton wrapping it.
+                // The button is a `component="label"`, so a name there labels the label and
+                // leaves the control itself unnamed - and anything driving the real control,
+                // a screen reader or a test, addresses the input.
+                aria-label="Change profile photo"
                 onChange={(e) => {
                   const f = e.target.files?.[0];
-                  if (f) onUploadAvatar(f);
+                  if (f) setPickedPhoto(f);
+                  // Cleared so that picking the *same* file again still fires a change event.
+                  // Without it, cancelling and re-choosing the photo you just cancelled does
+                  // nothing at all, which reads as the button being broken.
                   e.target.value = '';
                 }}
               />
@@ -264,6 +285,29 @@ export default function SettingsDrawer({
           Log out
         </Button>
       </Box>
+
+      {/* Mounted only while a photo is waiting, and keyed on it: a different photo is a
+          different instance, so zoom and position reset without an effect having to clear
+          five pieces of state. Unmounting is also what revokes the object URL.
+          `fallback={null}` because the chunk arrives in milliseconds from cache and a
+          spinner flashing behind the scrim is worse than nothing. */}
+      {pickedPhoto && (
+        <Suspense fallback={null}>
+          <AvatarCropDialog
+            key={`${pickedPhoto.name}:${pickedPhoto.size}:${pickedPhoto.lastModified}`}
+            file={pickedPhoto}
+            onCancel={() => setPickedPhoto(null)}
+            onConfirm={(cropped) => {
+              // The same `onUploadAvatar` that existed before, receiving a cropped `File`
+              // rather than the original - which is what makes this a zero-server-change
+              // feature. It must stay a File: ChatApp does FormData.append('file', it) and
+              // the server reads form.Files[0], so a bare Blob would arrive nameless.
+              onUploadAvatar(cropped);
+              setPickedPhoto(null);
+            }}
+          />
+        </Suspense>
+      )}
     </Drawer>
   );
 }
