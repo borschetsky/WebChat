@@ -322,6 +322,14 @@ Ordered by how much time each has actually cost.
    the watcher never fires: the browser keeps running code that no longer exists on disk. It
    has already produced one false bug report. Restart `react-app` after editing, and do not
    trust a browser check until you have confirmed the served module matches the file.
+10. **A `useRef` object pointed at something inside a MUI `Dialog` is `null` when the owning
+    component's layout effect runs.** The dialog renders through `Modal`, which is a *portal*,
+    and its children are not in the DOM on the commit that mounts the component around it. The
+    failure is silent in the worst way: measuring code sees `null`, skips, and leaves a
+    fallback value in place — so the feature looks implemented and does nothing. Use a
+    **callback ref**, which fires when the node actually attaches. Cost: one full
+    implement-verify cycle on #92, caught only because a test asserted the measured value
+    rather than that the code ran.
 
 ---
 
