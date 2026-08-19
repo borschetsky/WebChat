@@ -1,5 +1,15 @@
-import { useCallback, useEffect, useId, useState } from 'react';
-import { Alert, Box, Button, Dialog, Slider, Stack, Typography } from '@mui/material';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import {
+  Alert,
+  Box,
+  Button,
+  Dialog,
+  Slider,
+  Stack,
+  Typography,
+  useMediaQuery,
+} from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import CheckIcon from '@mui/icons-material/Check';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
@@ -15,6 +25,32 @@ const ZOOM_STEP = 0.05;
 /** 280 px circle inside a 320 px stage, both from the handoff. */
 const STAGE_PX = 320;
 const CIRCLE_PX = 280;
+
+/** The surround the handoff's two numbers imply: 320 - 280. Kept until it cannot be afforded. */
+const STAGE_SURROUND_PX = STAGE_PX - CIRCLE_PX;
+
+/**
+ * The circle's diameter for a stage that has actually been measured.
+ *
+ * Split out and pure for the same reason `sourceRectFor` is: it is the part where being
+ * wrong is invisible rather than loud. `cropSize` was a **constant** 280 while the stage
+ * carried `maxWidth: '100%'`, so on any viewport narrower than about 424px the stage shrank
+ * and the circle did not - and `overflow: hidden` sliced the ring flat. Measured per side:
+ * 0.8px at a 390px viewport, 8.4px at 375, 16px at 360, 36px at 320.
+ *
+ * The one invariant is **circle <= stage**. The 40px surround is kept while there is room for
+ * it and given up before the circle is allowed to overflow, because a tight circle still
+ * shows the whole crop and a clipped one lies about where its edge is.
+ */
+export function cropSizeFor(stageSide: number): number {
+  // A ref measures zero on the first render, and in jsdom it measures zero forever. Falling
+  // back to the handoff's circle keeps the desktop frame exact and keeps a zero-diameter crop
+  // area - a blank dialog - off the screen.
+  if (!(stageSide > 0)) return CIRCLE_PX;
+
+  // Never grow past the design's circle, never overflow the stage, never go non-positive.
+  return Math.max(1, Math.min(CIRCLE_PX, Math.round(stageSide) - STAGE_SURROUND_PX));
+}
 
 export type AvatarCropDialogProps = {
   /**
@@ -68,6 +104,21 @@ export default function AvatarCropDialog({ file, onCancel, onConfirm }: AvatarCr
   // is never a first frame with no image and nothing has to set state from an effect.
   const [src] = useState(() => URL.createObjectURL(file));
   const titleId = useId();
+
+  /**
+   * The handoff's rule for every dialog in this app: "Mobile: single-pane switch at
+   * `theme.breakpoints.down('md')` ... full-width Drawer/Dialog." `ComposeDialog` already
+   * takes `fullScreen={isMobile}` from `ChatApp`, and `AppShell`'s `useIsMobile` is this same
+   * query - this component is read through `React.lazy`, so it asks the theme directly rather
+   * than importing the shell into its chunk.
+   */
+  const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
+
+  // The stage's real width, which is only 320 when there is room for 320.
+  const stageEl = useRef<HTMLDivElement | null>(null);
+  const [stageSide, setStageSide] = useState(0);
+  const circleSide = cropSizeFor(stageSide);
   const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(MIN_ZOOM);
   const [area, setArea] = useState<Area | null>(null);
@@ -76,6 +127,52 @@ export default function AvatarCropDialog({ file, onCancel, onConfirm }: AvatarCr
 
   // The only thing keeping the blob from being held for the life of the tab.
   useEffect(() => () => URL.revokeObjectURL(src), [src]);
+
+  const measure = useCallback(() => {
+    const el = stageEl.current;
+    if (el) setStageSide(el.getBoundingClientRect().width);
+  }, []);
+
+  /**
+   * A **callback ref**, and this is the load-bearing part rather than a style preference.
+   *
+   * The stage lives inside the `Dialog`, which renders through MUI's `Modal` - a *portal*.
+   * The portal's children are not in the DOM on the commit that mounts this component, so a
+   * `useRef` object read from a layout effect here is still `null`: measured, not assumed.
+   * The measurement would then never happen, `stageSide` would stay 0, and `cropSizeFor`
+   * would return the 280 fallback forever - the fix would have looked applied and changed
+   * nothing. A callback ref fires when the node actually attaches, whenever that is.
+   */
+  const attachStage = useCallback(
+    (el: HTMLDivElement | null) => {
+      stageEl.current = el;
+      if (el) measure();
+    },
+    [measure],
+  );
+
+  /**
+   * Re-measure whenever the stage's width can have changed.
+   *
+   * `fullScreen` is a dependency, not just a resize listener's concern - crossing the
+   * breakpoint drops the paper's 48px of margin and so changes the stage width, but React
+   * re-renders *after* the resize event has been handled, so a listener alone reads the
+   * pre-flip width and keeps it. The node does not remount across that flip, so the callback
+   * ref above does not fire again either.
+   *
+   * A `resize` listener rather than a `ResizeObserver` because jsdom implements the former and
+   * not the latter, and the stage's width is a function of the viewport's - there is no way
+   * for it to change without one. react-easy-crop falls back the same way for the same reason.
+   */
+  useLayoutEffect(() => {
+    measure();
+    window.addEventListener('resize', measure);
+    window.addEventListener('orientationchange', measure);
+    return () => {
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('orientationchange', measure);
+    };
+  }, [measure, fullScreen]);
 
   const handleCropComplete = useCallback((_percent: Area, pixels: Area) => setArea(pixels), []);
 
@@ -102,6 +199,7 @@ export default function AvatarCropDialog({ file, onCancel, onConfirm }: AvatarCr
       // announced with no name at all. Caught in a browser - the DOM says `aria-labelledby`
       // either way, and only resolving it reveals that it resolves to nothing.
       aria-labelledby={titleId}
+      fullScreen={fullScreen}
       // Click-scrim-to-close, per the handoff - but not while the export is running, or the
       // dialog disappears and a File still arrives at the upload path a moment later.
       onClose={working ? undefined : onCancel}
@@ -110,13 +208,22 @@ export default function AvatarCropDialog({ file, onCancel, onConfirm }: AvatarCr
         backdrop: { sx: { backgroundColor: 'rgba(0,0,0,.4)' } },
         paper: {
           sx: {
-            width: 384,
+            // Every one of these has to be conditional, not just the width: `sx` beats the
+            // class MUI's `fullScreen` applies, so leaving the card's own margin and radius
+            // in place would have produced a "full screen" dialog still inset by 24px with
+            // rounded corners over the status bar.
+            width: fullScreen ? '100%' : 384,
             maxWidth: '100%',
-            m: 3,
-            borderRadius: '16px',
+            m: fullScreen ? 0 : 3,
+            borderRadius: fullScreen ? 0 : '16px',
             bgcolor: 'background.paper',
-            boxShadow: (theme) => theme.custom.depth2,
+            boxShadow: (t) => (fullScreen ? 'none' : t.custom.depth2),
             overflow: 'hidden',
+            // A phone screen is far taller than this dialog; centre the block rather than
+            // stranding it against the top edge.
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: fullScreen ? 'center' : 'flex-start',
             '@keyframes avatarCropRise': {
               from: { opacity: 0, transform: 'translateY(12px)' },
               to: { opacity: 1, transform: 'none' },
@@ -138,11 +245,19 @@ export default function AvatarCropDialog({ file, onCancel, onConfirm }: AvatarCr
       <Box sx={{ px: '32px' }}>
         <Box
           data-testid="crop-stage"
+          ref={attachStage}
           sx={{
             position: 'relative',
             width: STAGE_PX,
-            height: STAGE_PX,
             maxWidth: '100%',
+            // Square by ratio, never by a fixed height. `height: STAGE_PX` is only equal to
+            // the width while `maxWidth: '100%'` lets the width reach 320 - below that the
+            // stage silently became a rectangle holding a circle sized for a square, which is
+            // half of why the ring came out flat-sided.
+            aspectRatio: '1 / 1',
+            // The stage caps at 320 while a full-screen paper can be wider, so without this
+            // it sits off to one side.
+            mx: 'auto',
             borderRadius: '12px',
             overflow: 'hidden',
             bgcolor: '#111',
@@ -163,7 +278,10 @@ export default function AvatarCropDialog({ file, onCancel, onConfirm }: AvatarCr
             // Specified by the handoff, not a default: the rule-of-thirds overlay is part
             // of the design.
             showGrid
-            cropSize={{ width: CIRCLE_PX, height: CIRCLE_PX }}
+            // Derived from the measured stage, not the constant it used to be. See
+            // `cropSizeFor`: on a 375px viewport this is 223, and pinning it at 280 is what
+            // pushed the ring 8.4px past each edge of the box clipping it.
+            cropSize={{ width: circleSide, height: circleSide }}
             // Load-bearing, and not the default. `cropSize` pins the circle at 280px, but the
             // library's default `objectFit="contain"` fits the *image* inside the 320px stage
             // - so a non-square photo at zoom 1 is narrower than the circle in one axis, and
