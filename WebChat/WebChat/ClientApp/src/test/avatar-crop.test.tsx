@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { ThemeProvider } from '@mui/material/styles';
 import Cropper from 'react-easy-crop';
 import { buildTheme } from '@/theme/tokens';
-import AvatarCropDialog from '@/features/settings/AvatarCropDialog';
+import AvatarCropDialog, { cropSizeFor } from '@/features/settings/AvatarCropDialog';
 
 /**
  * The only stub these tests add, and it is here rather than in `src/test/setup.ts`
@@ -132,5 +132,134 @@ describe('AvatarCropDialog', () => {
     // undefined rectangle.
     withTheme(<AvatarCropDialog file={photo()} onCancel={() => {}} onConfirm={() => {}} />);
     expect(screen.getByRole('button', { name: /save photo/i })).toBeDisabled();
+  });
+});
+
+/**
+ * Reported from a real iPhone, and measured in a browser at a 390px viewport before any of
+ * this was written: the crop circle's left and right edges are sliced flat, and the dialog
+ * floats as a small card instead of using the screen.
+ *
+ * The chain, every link of it measured rather than reasoned:
+ *
+ *   the dialog never consults the mobile breakpoint -> the paper stays a centred
+ *   `width: 384, m: 3` card (342.4px at a 390px viewport) -> the stage is `width: 320px,
+ *   maxWidth: 100%` against an unconditional `height: 320px`, so its width collapses to
+ *   278.4 while its height stays 320 -> `cropSize` is the *constant* 280, so the circle
+ *   never learns the stage shrank -> `overflow: hidden` slices it.
+ *
+ * Measured clipping per side, at zoom 1: 0.8px at 390 (iPhone 14), 8.4px at 375 (iPhone SE),
+ * 16px at 360, 36px at 320. The stage is non-square at every width at or below 430.
+ *
+ * **What these tests can and cannot prove.** jsdom lays nothing out, so none of them can see
+ * a clipped circle - that was proved in a browser and re-proved there after the fix. What
+ * they pin is each link that is expressible without layout: the arithmetic that sizes the
+ * circle, the breakpoint wiring, and the fact that the stage's squareness no longer depends
+ * on its width being free to reach 320px.
+ */
+describe('the crop dialog on a phone', () => {
+  /**
+   * The invariant the bug violated, as a pure function so it can be checked without layout.
+   * `sourceRectFor` earned its keep the same way.
+   */
+  describe('cropSizeFor', () => {
+    it('keeps the handoff numbers when the stage is the handoff size', () => {
+      // 320px stage, 280px circle - a 40px surround. The design case must be untouched.
+      expect(cropSizeFor(320)).toBe(280);
+    });
+
+    it('never returns a circle wider than the stage that has to contain it', () => {
+      // The bug, stated as arithmetic. Every one of these is a real measured stage width
+      // from the browser sweep.
+      for (const stage of [318.4, 302.4, 278.4, 263.2, 248, 208]) {
+        expect(cropSizeFor(stage)).toBeLessThanOrEqual(Math.round(stage));
+      }
+    });
+
+    it('shrinks the circle with the stage, keeping the 40px surround', () => {
+      expect(cropSizeFor(263.2)).toBe(223);
+      expect(cropSizeFor(208)).toBe(168);
+    });
+
+    it('caps at the handoff circle rather than growing on a wide stage', () => {
+      // Rules out `stage - 40` alone: a desktop stage is 320, but nothing stops a future
+      // layout handing this a larger one, and the design says the circle is 280.
+      expect(cropSizeFor(600)).toBe(280);
+    });
+
+    it('falls back to the handoff circle before the first measurement', () => {
+      // A ref measures zero on the first render, and in jsdom it measures zero forever. A
+      // zero-diameter crop area would be a blank dialog rather than a visible mistake.
+      expect(cropSizeFor(0)).toBe(280);
+    });
+
+    it('never returns a diameter below one, however small the stage', () => {
+      // `stage - 40` goes negative under 40px. react-easy-crop would be handed a negative
+      // cropSize and lay out garbage instead of throwing.
+      expect(cropSizeFor(30)).toBeGreaterThanOrEqual(1);
+      expect(cropSizeFor(1)).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  /** Drives MUI's `useMediaQuery` from the theme's own query, not a hardcoded pixel value. */
+  const atMobileViewport = () => {
+    const query = buildTheme('light').breakpoints.down('md').replace('@media ', '');
+    const original = window.matchMedia;
+    window.matchMedia = ((q: string) => ({
+      matches: q === query,
+      media: q,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })) as unknown as typeof window.matchMedia;
+    return () => {
+      window.matchMedia = original;
+    };
+  };
+
+  /**
+   * The handoff's rule, in as many words: "Mobile: single-pane switch at
+   * `theme.breakpoints.down('md')`, back arrow in the chat header, **full-width
+   * Drawer/Dialog**." Every other dialog in the app already obeys it - `ComposeDialog` takes
+   * `fullScreen={isMobile}` from `ChatApp`. This one was the only exception.
+   */
+  it('goes full screen below the md breakpoint', () => {
+    const restore = atMobileViewport();
+    try {
+      withTheme(<AvatarCropDialog file={photo()} onCancel={() => {}} onConfirm={() => {}} />);
+      // MUI marks the paper itself; the dialog is in a portal, so this is a document query.
+      expect(document.querySelector('.MuiDialog-paperFullScreen')).not.toBeNull();
+    } finally {
+      restore();
+    }
+  });
+
+  it('stays a centred card above it', () => {
+    // The other half of the same decision. Rules out an unconditional `fullScreen`, which
+    // would have passed the test above while throwing away the handoff's desktop frame.
+    withTheme(<AvatarCropDialog file={photo()} onCancel={() => {}} onConfirm={() => {}} />);
+    expect(document.querySelector('.MuiDialog-paperFullScreen')).toBeNull();
+  });
+
+  /**
+   * The link that actually produced the flat edges.
+   *
+   * `height: 320px` is only equal to the width while the width is free to reach 320px. Under
+   * `maxWidth: 100%` in a narrower parent it is not, and the stage silently becomes a
+   * rectangle holding a circle sized for a square. Asserting the height *number* would pass
+   * against the bug - 320 is what the broken version reports too. What has to be true is that
+   * the squareness is expressed as a ratio, so it survives the width being clamped.
+   */
+  it('keeps the stage square by ratio rather than by a fixed height', () => {
+    withTheme(<AvatarCropDialog file={photo()} onCancel={() => {}} onConfirm={() => {}} />);
+    const stage = getComputedStyle(screen.getByTestId('crop-stage'));
+
+    // Height first, so this is the assertion that speaks when the fixed height comes back:
+    // 'auto' is jsdom for "no height declared", and the broken version reported '320px'.
+    expect(stage.height).toBe('auto');
+    expect(stage.aspectRatio.replace(/\s/g, '')).toBe('1/1');
   });
 });

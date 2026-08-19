@@ -181,9 +181,50 @@ describe('picking a profile photo', () => {
     // Invisible in every other test here, because jsdom lays nothing out, and easy to miss in
     // a browser too unless the test image is deliberately non-square.
     expect(props.objectFit).toBe('cover');
+    // The *unmeasured* fallback, which is what jsdom always produces: it lays nothing out, so
+    // the stage reports a width of 0 and `cropSizeFor` returns the handoff's 280. That this
+    // still reads 280 after the mobile fix is the point - the desktop frame is unchanged.
     expect(props.cropSize).toEqual({ width: 280, height: 280 });
     expect(props.minZoom).toBe(1);
     expect(props.maxZoom).toBe(3);
+  });
+
+  /**
+   * The reproduction, driven through the real call path rather than the dialog alone.
+   *
+   * A 263px stage is what a 375px iPhone SE actually produces, measured in a browser. Against
+   * the code as it was, the cropper is handed a flat 280 regardless - 8.4px wider than the box
+   * clipping it on each side - which is the flat-sided ring in the report.
+   *
+   * jsdom cannot show the clipping; what it can show is the cropper being *told* a size its
+   * container cannot hold, which is the link that causes it.
+   */
+  it('asks for a circle the stage can actually contain when the viewport is narrow', async () => {
+    const stageWidth = 263.2;
+    const rect = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: HTMLElement) {
+        const w = this.dataset?.testid === 'crop-stage' ? stageWidth : 0;
+        return { width: w, height: w, top: 0, left: 0, right: w, bottom: w, x: 0, y: 0 } as DOMRect;
+      });
+
+    try {
+      renderDrawer();
+      cropperProps.length = 0;
+
+      pick(photo());
+      await screen.findByText('Crop your photo');
+
+      const { width, height } = cropperProps.at(-1)!.cropSize as { width: number; height: number };
+
+      expect(width).toBeLessThanOrEqual(Math.round(stageWidth));
+      expect(width).toBe(223);
+      // Still square. Shrinking one axis would export a stretched avatar, which is the same
+      // failure `sourceRectFor` clamps by moving rather than shortening.
+      expect(height).toBe(width);
+    } finally {
+      rect.mockRestore();
+    }
   });
 
   it('starts every photo at 1x in the middle', async () => {

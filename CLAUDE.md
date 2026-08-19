@@ -202,6 +202,15 @@ and fill it in, or the command stops naming the variable it wanted.
     report — a browser check against a stale module is worse than no check, because it looks
     like evidence. Restart `react-app` after editing, and confirm the served module matches the
     file before trusting what you saw.
+- **Checking a responsive change needs a same-origin iframe, because the browser tool cannot
+  narrow the viewport.** `resize_window` reports success, moves the OS window, and leaves the
+  tab reporting its old `innerWidth` — so a "mobile check" silently runs at desktop width and
+  passes. Load the app into an iframe sized to the device instead: an iframe gets its own
+  viewport and evaluates media queries against it, so `useIsMobile()` and every `sx` breakpoint
+  behave for real. Inject it into the live page — `document.write` gives the outer document an
+  opaque origin and locks you out of `contentDocument`. This is not hypothetical tidiness: the
+  avatar cropper shipped to production with its circle sliced flat on every phone, because the
+  one gap #84 declared unverified was the one that could not be checked the obvious way.
 - **Vite 8 needs Node ≥ 20.19**, so the client Dockerfile cannot drop below `node:22`.
 - **Publishing must build the SPA, and the csproj is what does it.** The `BuildSpa` and
   `IncludeSpaOutput` targets run `vite build` and map `dist` into the published output at
