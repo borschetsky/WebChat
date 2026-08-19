@@ -186,11 +186,22 @@ and fill it in, or the command stops naming the variable it wanted.
   guards.
 - **Design tokens come from the handoff and are final** (`src/theme/tokens.js`). Prefer an
   existing token over a new value.
-- **After upgrading a client dependency across a major, restart the Vite dev server with
-  `--force`.** Vite pre-bundles dependencies into `node_modules/.vite/deps` and a running
-  dev server keeps serving the old bundle, producing errors like *"does not provide an
-  export named 'Navigate'"* even though the installed package is correct and the production
-  build is fine.
+- **The Vite dev server lies about your code more than once, and each way looks like a bug in
+  the source.** Three distinct failures, all of which have cost real time here:
+  - *Upgrading a dependency across a major:* restart with `--force`. Vite pre-bundles deps into
+    `node_modules/.vite/deps` and a running server keeps serving the old bundle — *"does not
+    provide an export named 'Navigate'"* while the installed package is correct.
+  - *Adding a dependency, in compose:* `docker compose up -d --build` is **not enough**. The
+    `react-app` service puts an anonymous volume at `/app/node_modules` so the source bind
+    mount does not mask the image's deps, and Docker reuses anonymous volumes across a
+    rebuild — so the stale one wins and Vite reports "Failed to resolve import" for a package
+    `package.json` plainly lists. Use `--renew-anon-volumes`.
+  - *Editing a source file, in compose:* **`vite.config.ts` sets no `server.watch.usePolling`,
+    and inotify events do not cross a Windows bind mount**, so the watcher never fires and the
+    browser runs code that no longer exists on disk. This produced a confident, wrong bug
+    report — a browser check against a stale module is worse than no check, because it looks
+    like evidence. Restart `react-app` after editing, and confirm the served module matches the
+    file before trusting what you saw.
 - **Vite 8 needs Node ≥ 20.19**, so the client Dockerfile cannot drop below `node:22`.
 - **Publishing must build the SPA, and the csproj is what does it.** The `BuildSpa` and
   `IncludeSpaOutput` targets run `vite build` and map `dist` into the published output at

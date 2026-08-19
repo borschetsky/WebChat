@@ -32,7 +32,7 @@ unimplemented features can be mocked without any component knowing.
 
 ## 2. Repo map
 
-The solution lives one level down at `WebChat/WebChat.sln`. **Three project folders do not
+The solution lives one level down at `WebChat/WebChat.sln`. **Two project folders do not
 match their assembly names** — this trips up every search:
 
 | Folder | Project / assembly | Role |
@@ -43,6 +43,7 @@ match their assembly names** — this trips up every search:
 | `WebChat/WebChat.Connection` | `WebChat.Connection` | EF Core `DbContext`, migrations |
 | `WebChat/WebChat.Services` | `WebChat.Services` | Business logic, JWT issuing, mapping |
 | `WebChat/WebChat.AvatarWriter` | `WebChat.AvatarWriter` | Avatar validation, processing, storage |
+| `WebChat/WebChat.Tests` | `WebChat.Tests` | xUnit suite. `dotnet test WebChat/WebChat.Tests` |
 
 The React client is at `WebChat/WebChat/ClientApp`. Context notes are in `docs/ctx`.
 
@@ -52,7 +53,12 @@ The React client is at `WebChat/WebChat/ClientApp`. Context notes are in `docs/c
 
 ### Routes
 
-Every controller is `[Route("api/[controller]")]`. Controller-level `[Authorize]` unless noted.
+Most controllers are `[Route("api/[controller]")]`; `AdminController`, `ConversationsController`,
+`InvitationsController` and `SeedController` use literal routes (`api/admin`,
+`api/conversations/{groupId}`, `api/invitations`, `api`). Controller-level `[Authorize]` unless
+noted. **Register lives on `AuthController`, so it is `api/auth/register`** — `api/users/…`
+carries the authenticated profile endpoints only, and an unmatched `/api/*` path in Development
+falls through to the SPA dev-server proxy and hangs for ~140s before a 500 rather than 404ing.
 
 | Controller | Auth | Endpoints |
 |---|---|---|
@@ -304,9 +310,18 @@ Ordered by how much time each has actually cost.
    which tolerates them.
 6. **ImageSharp is pinned to 3.1.x on purpose.** 4.0 fails the build outright without a paid
    Six Labors licence key. Do not "just upgrade" it.
-7. **Vite is pinned to 6.x if the host runs Node 18** (Vite 8 needs Node ≥ 20.19). The
-   development machine is on Node 24, so this only affects other environments.
-8. **Docker has never worked here** — WSL has no distros installed. Images have never built.
+7. **Vite 8 needs Node ≥ 20.19.** `package.json` has `vite ^8.2.0`, so the client Dockerfile
+   cannot drop below `node:22` and a Node 18 host cannot build the client at all.
+8. **Adding a client dependency needs `docker compose up -d --build --renew-anon-volumes`.**
+   The `react-app` service bind-mounts the source and puts an *anonymous* volume at
+   `/app/node_modules` so the mount does not mask the image's dependencies — but Docker reuses
+   anonymous volumes across `--build`, so a plain rebuild keeps the stale one and Vite reports
+   "Failed to resolve import" against a package `package.json` plainly lists.
+9. **The dev server serves stale modules after a host edit.** `vite.config.ts` sets no
+   `server.watch.usePolling`, and inotify events do not cross a Windows Docker bind mount, so
+   the watcher never fires: the browser keeps running code that no longer exists on disk. It
+   has already produced one false bug report. Restart `react-app` after editing, and do not
+   trust a browser check until you have confirmed the served module matches the file.
 
 ---
 
@@ -341,10 +356,10 @@ refuses TypeScript 7, which the client runs, so ESLint cannot parse two thirds o
 oxlint brings its own parser and hosts `eslint-plugin-react-hooks` through its `jsPlugins`
 bridge, which is where the React Compiler rules come from.
 
-> **There is no .NET test project.** All six projects are production code. Backend changes in
-> this repo have been verified by curl, SQL queries and throwaway console tools — none of
-> that is committed or repeatable. Treat any backend claim in a note as only as strong as the
-> verification section of that note.
+> **Backend tests live in `WebChat.Tests`** (xUnit) — run `dotnet test WebChat/WebChat.Tests`.
+> CI's `api` job builds at `-warnaserror` and runs the suite on every PR, so a backend change
+> without a test is a choice rather than a limitation. The test project cannot reference the
+> host project, which is why a few host-adjacent pieces live in `WebChat.Services` instead.
 
 ---
 
@@ -369,8 +384,11 @@ check it before "fixing" something that looks accidental.
 
 ## 8. Standing constraints
 
-- **Secrets are already committed** in `appsettings.json` and `docker-compose.yml`. Do not
-  add more; use `appsettings.Secrets.json` or environment variables.
+- **No secret is committed.** `appsettings.json` and `docker-compose.yml` hold only non-secret
+  settings — compose sources every credential from `.env` via `${VAR:?}`. Supply them through
+  `appsettings.Secrets.json` (Visual Studio), `WebChat/.env` (compose) or platform environment
+  variables; all three land on the same keys via ASP.NET Core's `__` separator. Keys committed
+  *earlier in git history* remain compromised until rotated.
 - **The user is the sole author on commits** — no AI co-author trailer
   (`.claude/skills/commit-authorship/SKILL.md`).
 - Branches follow `<type>/<kebab-description>`; commits follow Conventional Commits
