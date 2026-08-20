@@ -189,6 +189,24 @@ describe('PresenceAvatar', () => {
     expect(getByText('MR')).toBeInTheDocument();
   });
 
+  /**
+   * The read path a removed photo takes (#89): every projection now sends `null` where it used
+   * to send a file name, so "null draws initials and requests nothing" is the whole of the
+   * client-side story - the removal needed no new component and no new field.
+   *
+   * Distinct from the case above, which passes no prop at all. This one passes the value the
+   * adapter actually produces, and asserts the negative that matters: **no `<img>`**, so
+   * nothing is requested for a photo the user has removed.
+   */
+  it('draws initials and requests nothing when the avatar is explicitly null', () => {
+    const { getByText, container } = withTheme(
+      <PresenceAvatar name="Maya Rodriguez" avatarFileName={null} showPresence={false} />,
+    );
+
+    expect(getByText('MR')).toBeInTheDocument();
+    expect(container.querySelector('img')).toBeNull();
+  });
+
   it('renders the uploaded avatar when one exists', () => {
     const { container } = withTheme(
       <PresenceAvatar name="Maya" avatarFileName="a.png" showPresence={false} />,

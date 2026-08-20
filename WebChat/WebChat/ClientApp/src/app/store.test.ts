@@ -9,8 +9,10 @@ import {
   settingsOpened,
   settingsClosed,
   notified,
+  notifiedWithUndo,
   notificationDismissed,
   selectActiveThreadId,
+  selectSnackUndo,
   selectFilter,
   selectSearchOpen,
   selectSearchQuery,
@@ -80,6 +82,35 @@ describe('uiSlice', () => {
     expect(selectSnack(store.getState())).toBe('saved');
     store.dispatch(notificationDismissed());
     expect(selectSnack(store.getState())).toBe('');
+  });
+
+  /**
+   * The snackbar's Undo (#89), carried as a **key** rather than a callback: the store is
+   * serializable and a function in it would break time-travel, persistence and RTK's own dev
+   * checks. `ChatApp` owns the mapping from key to handler.
+   *
+   * The assertion that matters is the last one. A plain notification must *clear* the key, or
+   * the next unrelated message inherits an Undo button that undoes something the user has
+   * forgotten about - which is worse than no Undo at all.
+   */
+  it('carries an undo key with a notification, and drops it on the next one', () => {
+    const store = makeStore();
+
+    store.dispatch(notifiedWithUndo({ message: 'Profile photo removed', undo: 'avatarRemoved' }));
+    expect(selectSnack(store.getState())).toBe('Profile photo removed');
+    expect(selectSnackUndo(store.getState())).toBe('avatarRemoved');
+
+    store.dispatch(notified('Profile updated'));
+    expect(selectSnackUndo(store.getState())).toBe('');
+  });
+
+  it('drops the undo key when the snackbar is dismissed', () => {
+    const store = makeStore();
+    store.dispatch(notifiedWithUndo({ message: 'Profile photo removed', undo: 'avatarRemoved' }));
+
+    store.dispatch(notificationDismissed());
+
+    expect(selectSnackUndo(store.getState())).toBe('');
   });
 });
 

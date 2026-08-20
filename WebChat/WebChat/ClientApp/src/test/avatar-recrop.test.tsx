@@ -95,6 +95,7 @@ type ProfileShape = {
 const renderDrawer = (profile: ProfileShape = {}, original: File | null = stored()) => {
   const onUploadAvatar = vi.fn();
   const onLoadOriginal = vi.fn(async () => original);
+  const onRemoveAvatar = vi.fn();
 
   render(
     <ThemeModeProvider>
@@ -115,6 +116,7 @@ const renderDrawer = (profile: ProfileShape = {}, original: File | null = stored
         onSaveProfile={() => {}}
         onUploadAvatar={onUploadAvatar}
         onLoadOriginal={onLoadOriginal}
+        onRemoveAvatar={onRemoveAvatar}
         onLogout={() => {}}
         onOpenAdmin={() => {}}
         threadName={null}
@@ -123,7 +125,7 @@ const renderDrawer = (profile: ProfileShape = {}, original: File | null = stored
     </ThemeModeProvider>,
   );
 
-  return { onUploadAvatar, onLoadOriginal };
+  return { onUploadAvatar, onLoadOriginal, onRemoveAvatar };
 };
 
 const openMenu = () =>
@@ -141,36 +143,55 @@ describe('the avatar menu', () => {
   });
 
   /**
-   * The handoff's third item. There is still no endpoint that can clear an avatar, and #88
-   * did not add one - so a Remove row here would be a control with nothing behind it, which
-   * is the failure this repo has had twice. Pinned exactly as `avatar-crop.test.tsx` pins the
-   * dialog's. Filed as #89.
+   * The handoff's third item, which #88 could not ship because no endpoint could clear an
+   * avatar. #89 added one, so this test - which used to pin the row's *absence* - now pins its
+   * presence, its position (last) and that it is separated from the two constructive actions
+   * by a divider, per the handoff.
    */
-  it('draws no Remove photo item, because no API can clear an avatar', async () => {
+  it('offers Remove photo last, separated from the rest', async () => {
     renderDrawer();
     openMenu();
 
-    await screen.findByRole('menuitem', { name: /upload a new photo/i });
-    expect(screen.queryByRole('menuitem', { name: /remove/i })).toBeNull();
+    const items = await screen.findAllByRole('menuitem');
+    expect(items.map((i) => i.textContent)).toEqual([
+      'Upload a new photo',
+      'Adjust crop',
+      'Remove photo',
+    ]);
+
+    // The divider is the handoff's separation, and it belongs to the menu rather than to the
+    // item - asserting on the item's own border would pass against a menu with no separator.
+    expect(screen.getByRole('menu').querySelector('hr')).not.toBeNull();
   });
 
   /**
-   * Decision 4, at the only place a user can see it. Nothing backfills an original, so every
-   * account that uploaded before #88 has none - and the control has to be **absent** rather
-   * than present and failing. A one-item menu in front of the file picker would also be pure
-   * friction, so the button goes straight to the picker instead.
+   * **This is the case #88 deliberately hid the menu for, and #89 changes.** Nothing backfills
+   * an original, so every account that uploaded before #88 has none and Adjust crop cannot
+   * work for them. With Remove in the world there are now two things they *can* do, so the
+   * menu is drawn and only Adjust is missing from it - where hiding the menu entirely would
+   * make Remove unreachable for exactly the accounts that have had a photo the longest.
    */
-  it('is not drawn at all for a photo with no stored original', () => {
+  it('is drawn for a photo with no stored original, minus Adjust crop', async () => {
     renderDrawer({ hasOriginalPhoto: false });
+    openMenu();
 
-    expect(screen.queryByRole('button', { name: /profile photo options/i })).toBeNull();
-    expect(screen.getByRole('button', { name: /add a profile photo/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('menuitem', { name: /upload a new photo/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /remove photo/i })).toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: /adjust crop/i })).toBeNull();
   });
 
+  /**
+   * With no photo there is still nothing to choose between - Upload is the only thing that can
+   * happen - so the button goes straight to the file picker rather than showing a one-item
+   * menu in front of it.
+   */
   it('is not drawn for someone with no photo at all', () => {
     renderDrawer({ avatarFileName: null, hasOriginalPhoto: false, avatarCrop: null });
 
     expect(screen.queryByRole('button', { name: /profile photo options/i })).toBeNull();
+    expect(screen.getByRole('button', { name: /add a profile photo/i })).toBeInTheDocument();
   });
 
   /**
@@ -178,10 +199,12 @@ describe('the avatar menu', () => {
    * false, and this is the other end of that: absent must behave exactly like "there is none",
    * never like "probably yes".
    */
-  it('treats a profile that says nothing about an original as having none', () => {
+  it('treats a profile that says nothing about an original as having none', async () => {
     renderDrawer({ hasOriginalPhoto: undefined, avatarCrop: null });
+    openMenu();
 
-    expect(screen.queryByRole('button', { name: /profile photo options/i })).toBeNull();
+    await screen.findByRole('menuitem', { name: /upload a new photo/i });
+    expect(screen.queryByRole('menuitem', { name: /adjust crop/i })).toBeNull();
   });
 });
 
@@ -254,6 +277,40 @@ describe('adjusting an existing crop', () => {
     expect(props.initialCroppedAreaPixels).toBeUndefined();
     // The replacement, which is how the dialog learns the photo's real dimensions.
     expect(typeof props.onMediaLoaded).toBe('function');
+  });
+
+  /**
+   * The handoff puts Remove in two places, and this is the second one: the crop dialog's own
+   * footer. Wired from the drawer, not from inside the dialog, because only the call site knows
+   * whether there is an existing photo to remove - and it closes the dialog, since the thing it
+   * was about to re-crop is going away.
+   */
+  it('offers Remove in the crop dialog too, and closes it', async () => {
+    const { onRemoveAvatar } = renderDrawer();
+
+    openMenu();
+    fireEvent.click(await screen.findByRole('menuitem', { name: /adjust crop/i }));
+    await screen.findByText('Adjust your crop');
+
+    fireEvent.click(screen.getByRole('button', { name: /remove photo/i }));
+
+    expect(onRemoveAvatar).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(screen.queryByText('Adjust your crop')).toBeNull());
+  });
+
+  /**
+   * Cropping a *first* photo has nothing to remove yet, so the dialog is handed no callback and
+   * draws no button. Same rule as the menu one level up: a control is drawn where it can work.
+   */
+  it('draws no Remove in the dialog for a first photo', async () => {
+    renderDrawer({ avatarFileName: null, hasOriginalPhoto: false, avatarCrop: null });
+
+    fireEvent.change(screen.getByLabelText('Change profile photo'), {
+      target: { files: [stored()] },
+    });
+
+    await screen.findByText('Crop your photo');
+    expect(screen.queryByRole('button', { name: /remove/i })).toBeNull();
   });
 
   /**

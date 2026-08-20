@@ -67,6 +67,32 @@ const recropAvatar = async (formData, token) => {
   return await result;
 };
 
+// Remove the caller's own profile photo (#89).
+//
+// Takes no id and no file name - the server resolves the keys from the caller's row - and
+// deletes nothing: it sets a retention marker, so the Undo below can restore the photo *and*
+// the crop exactly. Answers 200 even when there was nothing to remove, because it is a request
+// for a state rather than an operation on an object.
+const removeAvatar = async (token) => {
+  const result = await Axios.post(`${_baseUrl}avatars/remove`, null, {
+    headers: authHeader(token),
+  });
+  return await result;
+};
+
+// Undo. **Deliberately sends nothing but the token.**
+//
+// A restore that accepted a file name would let any client point its avatar at any object in
+// the bucket, including another user's `originals/` key - which is the exact thing the
+// owner-checked original endpoint exists to prevent. The server already knows what to put back,
+// so there is nothing here to get wrong.
+const restoreAvatar = async (token) => {
+  const result = await Axios.post(`${_baseUrl}avatars/restore`, null, {
+    headers: authHeader(token),
+  });
+  return await result;
+};
+
 // The caller's own un-cropped photo, as bytes.
 //
 // Takes no id: the server resolves the key from the caller's row, which is what makes an
@@ -341,6 +367,8 @@ export {
   sendMessageToApi,
   uploadAvatar,
   recropAvatar,
+  removeAvatar,
+  restoreAvatar,
   getAvatarOriginal,
   searchForUsers,
   login,

@@ -19,6 +19,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import CropIcon from '@mui/icons-material/Crop';
+import DeleteIcon from '@mui/icons-material/Delete';
 import PresenceAvatar from '@/components/PresenceAvatar';
 import AppearanceControls from '@/features/settings/AppearanceControls';
 import MockDisclosure from '@/features/settings/MockDisclosure';
@@ -57,6 +58,7 @@ export default function SettingsDrawer({
   saveError = null,
   onUploadAvatar,
   onLoadOriginal,
+  onRemoveAvatar,
   onLogout,
   onOpenAdmin,
   fullWidth,
@@ -88,22 +90,49 @@ export default function SettingsDrawer({
   const fileInput = useRef(null);
 
   /**
-   * Whether there is anything to choose between.
+   * Whether there is a photo at all, which since #89 is what decides whether there is a menu.
    *
-   * The handoff opens a menu when a photo is present. Two of its three items ship here:
-   * "Upload a new photo" and "Adjust crop". **Remove photo is #89** - there is still no
-   * endpoint that can clear an avatar - and "Adjust crop" only works for someone whose photo
-   * was uploaded after #88, because nothing backfills an original.
+   * The handoff opens a menu when a photo is present, with three items: Upload a new photo,
+   * Adjust crop, and Remove photo. #88 shipped two of them and drew the menu only when
+   * **Adjust** could work, because Remove had no endpoint and a one-item menu in front of the
+   * file picker is friction bought with nothing.
    *
-   * So the menu is drawn only when Adjust is genuinely available. A one-item menu between the
-   * user and the file picker would be friction bought with nothing, and it is exactly the
-   * state every existing account is in.
+   * Now there are two things anyone with a photo can do, so the menu is drawn for all of them
+   * and Adjust is the item that comes and goes. That direction matters: gating the whole menu
+   * on `hasOriginalPhoto` would make Remove unreachable for exactly the accounts that uploaded
+   * before #88 - a control that exists, works over the API, and cannot be found from a browser,
+   * which is #82 all over again.
    */
-  const canAdjustCrop = Boolean(profile?.avatarFileName) && Boolean(profile?.hasOriginalPhoto);
+  const hasPhoto = Boolean(profile?.avatarFileName);
+
+  /** Adjust needs the stored original, and nothing backfills one. See #88, decision 4. */
+  const canAdjustCrop = hasPhoto && Boolean(profile?.hasOriginalPhoto);
 
   const openPicker = () => {
     setPhotoMenuAnchor(null);
     fileInput.current?.click();
+  };
+
+  /**
+   * Remove, from either of the two places the handoff draws it.
+   *
+   * No confirmation - that is the handoff's explicit call, and the snackbar's Undo is what
+   * pays for it. Closing the cropper is not incidental: if this was pressed from the dialog,
+   * the photo it is showing has just stopped being the user's avatar.
+   *
+   * **And the drawer closes too, which is not cosmetic.** This drawer is a modal, so MUI marks
+   * everything outside it `aria-hidden` and traps focus inside it - and the app's single
+   * `Snackbar` renders in the app tree, not a portal. Leaving the drawer open therefore leaves
+   * the Undo button visible to a mouse and invisible to a screen reader and unreachable by
+   * keyboard, which is precisely the "button that is there but does not work" this feature was
+   * not allowed to ship. Measured, not assumed: with the drawer open, the snackbar's container
+   * carries `aria-hidden="true"` and `getByRole` cannot find the button that `getByText` can.
+   */
+  const removePhoto = () => {
+    setPhotoMenuAnchor(null);
+    setPickedPhoto(null);
+    onClose?.();
+    onRemoveAvatar?.();
   };
 
   const adjustCrop = async () => {
@@ -173,10 +202,10 @@ export default function SettingsDrawer({
               // accessibility tree and a shared name would make each ambiguous. The input is
               // still "Change profile photo" - it is the control that changes it - so this one
               // says what *it* does, which depends on whether there is a menu behind it.
-              aria-label={canAdjustCrop ? 'Profile photo options' : 'Add a profile photo'}
-              aria-haspopup={canAdjustCrop ? 'menu' : undefined}
+              aria-label={hasPhoto ? 'Profile photo options' : 'Add a profile photo'}
+              aria-haspopup={hasPhoto ? 'menu' : undefined}
               disabled={loadingOriginal}
-              onClick={(e) => (canAdjustCrop ? setPhotoMenuAnchor(e.currentTarget) : openPicker())}
+              onClick={(e) => (hasPhoto ? setPhotoMenuAnchor(e.currentTarget) : openPicker())}
               sx={{
                 position: 'absolute',
                 right: -4,
@@ -212,9 +241,9 @@ export default function SettingsDrawer({
           </Box>
         </Stack>
 
-        {/* The handoff's avatar menu. Its third item, Remove photo, is #89: there is still no
-            endpoint that can clear an avatar, and a control with nothing behind it is the
-            failure this repo has already had twice. A test pins its absence. */}
+        {/* The handoff's avatar menu, complete since #89: upload, adjust, remove - the last
+            one red, last and separated, exactly as drawn. Adjust is the item that can be
+            missing, because nothing backfills an original for a pre-#88 account. */}
         <Menu
           anchorEl={photoMenuAnchor}
           open={Boolean(photoMenuAnchor)}
@@ -228,11 +257,23 @@ export default function SettingsDrawer({
             </ListItemIcon>
             <ListItemText>Upload a new photo</ListItemText>
           </MenuItem>
-          <MenuItem onClick={adjustCrop}>
-            <ListItemIcon>
-              <CropIcon fontSize="small" />
+          {canAdjustCrop && (
+            <MenuItem onClick={adjustCrop}>
+              <ListItemIcon>
+                <CropIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Adjust crop</ListItemText>
+            </MenuItem>
+          )}
+          <Divider />
+          {/* Red because it is destructive, and last and separated so it cannot be hit by
+              muscle memory aimed at the item above it. `color: inherit` on the icon so it
+              takes the row's error colour rather than staying grey next to red text. */}
+          <MenuItem onClick={removePhoto} sx={{ color: 'error.main' }}>
+            <ListItemIcon sx={{ color: 'inherit' }}>
+              <DeleteIcon fontSize="small" />
             </ListItemIcon>
-            <ListItemText>Adjust crop</ListItemText>
+            <ListItemText>Remove photo</ListItemText>
           </MenuItem>
         </Menu>
 
@@ -387,6 +428,10 @@ export default function SettingsDrawer({
             file={pickedPhoto.file}
             source={pickedPhoto.source}
             initialCrop={pickedPhoto.crop}
+            // Only when there is an existing photo to remove. Someone cropping their first
+            // one has nothing to take away, and a Remove button there would be a control
+            // whose only possible outcome is "nothing happened".
+            onRemove={hasPhoto ? removePhoto : undefined}
             onCancel={() => setPickedPhoto(null)}
             onConfirm={(result) => {
               // The cropped square, the rectangle that produced it, and - for a freshly picked

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { Snackbar } from '@mui/material';
+import { Button, Snackbar } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import AppShell, { useIsMobile } from '@/app/AppShell';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
@@ -29,7 +29,13 @@ import SettingsDrawer from '@/features/settings/SettingsDrawer';
 import ComposeDialog from '@/features/threads/ComposeDialog';
 import GroupInfoDrawer from '@/features/threads/GroupInfoDrawer';
 import { useThemeMode } from '@/theme/ThemeModeProvider';
-import { uploadAvatar, recropAvatar, getAvatarOriginal } from '@/services';
+import {
+  uploadAvatar,
+  recropAvatar,
+  removeAvatar,
+  restoreAvatar,
+  getAvatarOriginal,
+} from '@/services';
 import { markThreadRead, markAllThreadsRead, readReceiptFor } from '@/services/chat-service';
 import { invokeHub } from '@/features/realtime/signalrMiddleware';
 import {
@@ -56,6 +62,7 @@ import {
   composeClosed,
   paneChanged,
   notified,
+  notifiedWithUndo,
   notificationDismissed,
   threadClosed,
   selectActiveThreadId,
@@ -68,6 +75,7 @@ import {
   selectComposeOpen,
   selectPane,
   selectSnack,
+  selectSnackUndo,
 } from '@/features/ui/uiSlice';
 
 const TYPING_IDLE_MS = 3000;
@@ -101,6 +109,7 @@ export default function ChatApp({ user, onSignOut }) {
   const composeOpen = useAppSelector(selectComposeOpen);
   const pane = useAppSelector(selectPane);
   const snack = useAppSelector(selectSnack);
+  const snackUndo = useAppSelector(selectSnackUndo);
 
   // --- realtime overlay -----------------------------------------------------
   const live = useAppSelector(selectLivePatches);
@@ -324,6 +333,57 @@ export default function ChatApp({ user, onSignOut }) {
   };
 
   /**
+   * Removes the profile photo (#89).
+   *
+   * **No confirmation dialog, by design** - the handoff is explicit, and the snackbar's Undo is
+   * what buys that. The server deletes nothing: it sets a retention marker, so Undo restores
+   * the photo *and* the crop exactly rather than approximately.
+   *
+   * The Undo is offered only when the server says there was something to put back. Removing a
+   * photo that was already gone is a success, but offering to undo it would be a button that
+   * cannot do anything.
+   */
+  const handleRemoveAvatar = async () => {
+    try {
+      const response = await removeAvatar(user.token);
+
+      if (response?.data?.restorable === false) {
+        notify('Profile photo removed');
+        return;
+      }
+
+      dispatch(notifiedWithUndo({ message: 'Profile photo removed', undo: 'avatarRemoved' }));
+    } catch {
+      notify('Could not remove your photo.');
+    }
+  };
+
+  /**
+   * Undo. Sends nothing but the token - the server knows which keys to restore, and accepting
+   * a file name here would let a client point its avatar at any object in the bucket.
+   *
+   * A refusal is reported rather than swallowed. The server answers 409 when there is genuinely
+   * nothing to bring back, which is what a very late Undo gets, and a button that appears to do
+   * nothing is exactly the outcome #89 rules out.
+   */
+  const handleUndoRemoveAvatar = async () => {
+    try {
+      await restoreAvatar(user.token);
+      notify('Photo restored');
+    } catch {
+      notify('That photo could not be restored.');
+    }
+  };
+
+  /**
+   * Which handler the snackbar's Undo runs, keyed by what `uiSlice` recorded.
+   *
+   * A lookup rather than a callback in the store: state has to stay serializable. One entry
+   * today, and the shape is what stops the second one being a special case.
+   */
+  const undoActions = { avatarRemoved: handleUndoRemoveAvatar };
+
+  /**
    * Fetches the stored original back so it can be re-cropped, as a `File` the cropper can
    * decode. Returns null on failure, having said so - the drawer then simply does not open,
    * rather than opening on a photo that is not there.
@@ -474,6 +534,7 @@ export default function ChatApp({ user, onSignOut }) {
         onSaveProfile={handleSaveProfile}
         onUploadAvatar={handleUploadAvatar}
         onLoadOriginal={handleLoadOriginal}
+        onRemoveAvatar={handleRemoveAvatar}
         onLogout={onSignOut}
         onOpenAdmin={() => navigate('/admin')}
         fullWidth={isMobile}
@@ -503,12 +564,34 @@ export default function ChatApp({ user, onSignOut }) {
         fullScreen={isMobile}
       />
 
+      {/* One snackbar for the whole app, now able to carry an action. The Undo dismisses the
+          snackbar itself: leaving it up would offer to undo something that has just been
+          undone, and pressing it twice is only harmless because the server treats the second
+          press as a request for a state that already holds.
+
+          Twice as long when there is something to undo. Four seconds is enough to read a
+          confirmation; it is not enough to notice a mistake, decide, and reach the button -
+          and this is the only control standing where a confirm dialog would have. */}
       <Snackbar
         open={!!snack}
         message={snack}
-        autoHideDuration={4000}
+        autoHideDuration={snackUndo ? 8000 : 4000}
         onClose={() => dispatch(notificationDismissed())}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        action={
+          snackUndo && undoActions[snackUndo] ? (
+            <Button
+              color="primary"
+              size="small"
+              onClick={() => {
+                dispatch(notificationDismissed());
+                undoActions[snackUndo]();
+              }}
+            >
+              Undo
+            </Button>
+          ) : null
+        }
       />
     </>
   );

@@ -26,7 +26,21 @@ interface UiState {
   /** Which pane is visible below the md breakpoint. */
   pane: MobilePane;
   snack: string;
+  /** Which reversible action the current snackbar is about, or '' for none. See {@link SnackUndo}. */
+  snackUndo: SnackUndo | '';
 }
+
+/**
+ * The reversible actions a snackbar can offer to undo.
+ *
+ * A **key**, not a callback, because the store has to stay serializable - a function in state
+ * breaks RTK's own dev-mode checks, persistence and time travel. `ChatApp` maps the key to a
+ * handler, which is also the layer that has the token and the service to call.
+ *
+ * Deliberately a union of one. #89 needs exactly this one; making it a string would let a typo
+ * produce a snackbar with a button that silently does nothing.
+ */
+export type SnackUndo = 'avatarRemoved';
 
 const initialState: UiState = {
   activeThreadId: null,
@@ -39,6 +53,7 @@ const initialState: UiState = {
   infoOpen: false,
   pane: 'list',
   snack: '',
+  snackUndo: '',
 };
 
 const uiSlice = createSlice({
@@ -104,9 +119,21 @@ const uiSlice = createSlice({
     },
     notified(state, action: PayloadAction<string>) {
       state.snack = action.payload;
+      // Cleared, and this is the load-bearing line rather than housekeeping: without it the
+      // next ordinary message inherits the previous one's Undo button, offering to reverse
+      // something the user has stopped thinking about.
+      state.snackUndo = '';
+    },
+    /**
+     * A notification that can be taken back - the handoff's "snackbar with working Undo".
+     */
+    notifiedWithUndo(state, action: PayloadAction<{ message: string; undo: SnackUndo }>) {
+      state.snack = action.payload.message;
+      state.snackUndo = action.payload.undo;
     },
     notificationDismissed(state) {
       state.snack = '';
+      state.snackUndo = '';
     },
   },
   selectors: {
@@ -120,6 +147,7 @@ const uiSlice = createSlice({
     selectInfoOpen: (state) => state.infoOpen,
     selectPane: (state) => state.pane,
     selectSnack: (state) => state.snack,
+    selectSnackUndo: (state) => state.snackUndo,
   },
 });
 
@@ -138,6 +166,7 @@ export const {
   infoClosed,
   paneChanged,
   notified,
+  notifiedWithUndo,
   notificationDismissed,
 } = uiSlice.actions;
 
@@ -152,6 +181,7 @@ export const {
   selectInfoOpen,
   selectPane,
   selectSnack,
+  selectSnackUndo,
 } = uiSlice.selectors;
 
 export default uiSlice.reducer;

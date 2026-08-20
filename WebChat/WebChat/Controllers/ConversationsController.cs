@@ -74,7 +74,9 @@ namespace WebChat.Controllers
                 // in the info drawer draws a face and a presence dot per row, and without
                 // these it would have to cross-reference getthreads - which excludes the
                 // caller and carries no roles, so neither list is a superset of the other.
-                avatarFileName = p.User?.AvatarFileName,
+                // Not p.User?.AvatarFileName: a removed photo (#89) keeps its key in the row
+                // so Undo can restore it exactly, so the rule decides, not the column.
+                avatarFileName = AvatarVisibility.For(p.User),
 
                 // Presence is not a column - it is whether the hub currently holds a
                 // connection for them, the same source getthreads and the directory use.

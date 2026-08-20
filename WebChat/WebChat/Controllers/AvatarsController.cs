@@ -188,6 +188,89 @@ namespace WebChat.Controllers
         }
 
         /// <summary>
+        /// Removes the caller's own profile photo (#89) - and **deletes nothing**.
+        ///
+        /// The handoff specifies Remove with no confirm dialog and a snackbar carrying a
+        /// working Undo that restores the photo *and* its crop. That rules out a hard delete
+        /// at the moment of the click: this server cannot re-derive a crop, because cropping
+        /// has been client-side by design since #84, so an Undo that had thrown the derived
+        /// square away could only ask the user to upload the photo again. What happens instead
+        /// is one nullable column - <c>User.AvatarRemovedAt</c> - and every read path treating
+        /// the user as having no avatar while it is set.
+        ///
+        /// **Self-service only.** The key is the caller's own, resolved from their row; there
+        /// is no id parameter and no admin variant. Clearing somebody else's photo is not in
+        /// this issue.
+        ///
+        /// Answers 200 for every outcome except a token naming a user that is gone, because it
+        /// is a request for a state rather than an operation on an object: removing twice, or
+        /// removing when there was never a photo, has already produced what the caller asked
+        /// for. <c>restorable</c> says whether there is now something for Undo to bring back,
+        /// so the client can offer the button only when it will work.
+        ///
+        /// The retained objects are cleaned up by the rules #88 already wrote - the next
+        /// upload surrenders the previous crop and the previous original whether or not a
+        /// removal is pending - so the only orphan this can leave is "removed and never
+        /// uploaded again". There is deliberately no sweep here; that is #20's.
+        /// </summary>
+        [HttpPost("remove")]
+        public async Task<IActionResult> RemoveImage()
+        {
+            var outcome = userService.RemoveAvatar(User.Identity.Name);
+            if (outcome == AvatarRemoveOutcome.NoSuchUser)
+            {
+                return Unauthorized(new { message = "This session refers to a user that no longer exists. Please sign in again." });
+            }
+
+            // Announced the same way an upload is, with a null file name. The client's handler
+            // patches every thread naming this user and invalidates their own profile, so a
+            // removal reaches other people's screens the same way a new photo does.
+            await Broadcast(null);
+
+            return Ok(new
+            {
+                avatarFileName = (string)null,
+                restorable = outcome == AvatarRemoveOutcome.Removed,
+            });
+        }
+
+        /// <summary>
+        /// Undo: clears the pending removal, which brings the photo and its crop back exactly.
+        ///
+        /// **It takes no file name, and that is the point of the whole design.** The keys never
+        /// left the server, so there is nothing for a caller to substitute - a client-supplied
+        /// name would let anyone point their avatar at any object in the bucket, including
+        /// another user's original, which is precisely what <see cref="GetOriginal"/> exists to
+        /// prevent.
+        ///
+        /// The awkward case is an Undo that arrives late - a second tab, a double press, a
+        /// snackbar that outlived the state it described - and none of them may produce a 500
+        /// or a button that does nothing. Pressing it when the photo is already back is a 200,
+        /// because the state asked for holds. The one refusal is 409, when there is no pending
+        /// removal *and* no photo: answering 200 there would claim a restoration the user is
+        /// then not going to see.
+        /// </summary>
+        [HttpPost("restore")]
+        public async Task<IActionResult> RestoreImage()
+        {
+            var restore = userService.RestoreAvatar(User.Identity.Name);
+
+            if (restore.Outcome == AvatarRestoreOutcome.NoSuchUser)
+            {
+                return Unauthorized(new { message = "This session refers to a user that no longer exists. Please sign in again." });
+            }
+
+            if (restore.Outcome == AvatarRestoreOutcome.NothingToRestore)
+            {
+                return Conflict(new { message = "There is no removed photo to restore." });
+            }
+
+            await Broadcast(restore.AvatarFileName);
+
+            return Ok(new { avatarFileName = restore.AvatarFileName });
+        }
+
+        /// <summary>
         /// The caller's own un-cropped original, as bytes.
         ///
         /// Takes no parameter, and that is the access control: the key is resolved from the
@@ -353,6 +436,19 @@ namespace WebChat.Controllers
                 NumberStyles.Float,
                 CultureInfo.InvariantCulture,
                 out value);
+
+        /// <summary>
+        /// Tells every connected client that this user's avatar is now <paramref name="fileName"/>
+        /// - including null, which is what a removal is.
+        ///
+        /// One place, because the null case is the one that has to be spelt exactly right: the
+        /// client reads <c>body</c> as "a string, or the value of an ObjectResult", and a null
+        /// there is what makes it patch the thread list back to initials.
+        /// </summary>
+        private Task Broadcast(string fileName) =>
+            hubContext.Clients.All.SendAsync(
+                "ReciveAvatar",
+                new { body = fileName, uploaderId = User.Identity.Name });
 
         /// <summary>
         /// Deletes objects that have just stopped being referenced (issue #20).

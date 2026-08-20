@@ -67,6 +67,34 @@ namespace WebChat.Models
         public double? AvatarCropHeight { get; set; }
 
         /// <summary>
+        /// When the user removed their profile photo (#89), in UTC, or null while they have
+        /// one. **The single source of truth for "this user has no avatar" on every read
+        /// path** - see <see cref="AvatarVisibility"/>.
+        ///
+        /// A retention marker, not a delete. <see cref="AvatarFileName"/>,
+        /// <see cref="AvatarOriginalFileName"/> and the four crop columns are deliberately
+        /// left untouched when this is set, because the handoff specifies Remove with no
+        /// confirmation and a working **Undo** that restores the photo *and* its crop - and
+        /// the server cannot re-derive a crop, since cropping has been client-side by design
+        /// since #84. Clearing the marker restores both exactly rather than approximately.
+        ///
+        /// It is also why the client never sends a filename to restore: the keys stay here,
+        /// server-side, so there is nothing for a caller to substitute. A client-supplied key
+        /// would let anyone point their avatar at any object in the bucket, including someone
+        /// else's original.
+        ///
+        /// The retained R2 objects are disposed of by the delete rules #88 already wrote: the
+        /// next upload surrenders the previous crop and the previous original whether or not a
+        /// removal is pending. So the only orphan this can leave is "removed and never
+        /// uploaded again", which is what #20's recommended one-off sweep covers.
+        ///
+        /// UTC, and Npgsql throws on a Local or Unspecified Kind - the column is
+        /// `timestamp with time zone`.
+        /// </summary>
+        [DataType(DataType.DateTime)]
+        public DateTime? AvatarRemovedAt { get; set; }
+
+        /// <summary>
         /// Workspace role: see <see cref="WorkspaceRole"/>. Defaults to member, and
         /// registration sets it explicitly rather than relying on that default - the #63
         /// group-role migration backfilled existing rows and thereby disguised a write path
