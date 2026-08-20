@@ -1,7 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
   MAX_EXPORT_PX,
+  ORIGINAL_MAX_PX,
   croppedFileName,
+  downscaleSizeFor,
   isServerAcceptableJpeg,
   sourceRectFor,
 } from '@/features/settings/cropImage';
@@ -103,6 +105,57 @@ describe('sourceRectFor', () => {
     expect(() => sourceRectFor(area(0, 0, 10), { width: 0, height: 100 })).toThrow(
       /no dimensions/i,
     );
+  });
+});
+
+/**
+ * The geometry of the stored original (#88).
+ *
+ * Same reasoning as `sourceRectFor`: this is the part of the downscale that can be checked
+ * without a canvas, and it is the part where being wrong is quiet. An upscale would inflate a
+ * small photo into a blurry one and spend bytes on pixels that were never there; a wrong
+ * aspect ratio would store an original that re-crops to a stretched face, which nobody sees
+ * until they adjust a crop weeks later.
+ */
+describe('downscaleSizeFor', () => {
+  it('leaves a photo already inside the cap alone', () => {
+    // Rules out scaling unconditionally, which would resample every small photo for nothing.
+    expect(downscaleSizeFor(800, 600, 1024)).toEqual({ width: 800, height: 600 });
+  });
+
+  it('never upscales, even a very small photo', () => {
+    expect(downscaleSizeFor(64, 48, 1024)).toEqual({ width: 64, height: 48 });
+  });
+
+  it('fits the longest edge to the cap and keeps the ratio', () => {
+    expect(downscaleSizeFor(4000, 3000, 1024)).toEqual({ width: 1024, height: 768 });
+    // Portrait: the *height* is the constrained edge. Rules out always scaling by width, which
+    // would leave a tall photo well over the cap.
+    expect(downscaleSizeFor(3000, 4000, 1024)).toEqual({ width: 768, height: 1024 });
+  });
+
+  it('rounds to whole pixels rather than handing a fraction to a canvas', () => {
+    expect(downscaleSizeFor(1000, 333, 500)).toEqual({ width: 500, height: 167 });
+  });
+
+  it('never returns a zero edge for an extreme panorama', () => {
+    // 8000x3 scales the short edge below half a pixel. A zero-height canvas encodes nothing.
+    expect(downscaleSizeFor(8000, 3, 1024).height).toBeGreaterThanOrEqual(1);
+  });
+
+  it('refuses an image with no dimensions instead of producing a zero-sized canvas', () => {
+    expect(() => downscaleSizeFor(0, 100)).toThrow('Cannot resize an image with no dimensions.');
+    expect(() => downscaleSizeFor(100, 0)).toThrow('Cannot resize an image with no dimensions.');
+  });
+
+  it('defaults to the original cap, so 1024 is not baked into the maths', () => {
+    expect(downscaleSizeFor(4000, 2000)).toEqual({
+      width: ORIGINAL_MAX_PX,
+      height: ORIGINAL_MAX_PX / 2,
+    });
+    // Twice the crop export, deliberately: the point of the original is that someone can zoom
+    // into it and still get a usable square out.
+    expect(ORIGINAL_MAX_PX).toBeGreaterThan(MAX_EXPORT_PX);
   });
 });
 

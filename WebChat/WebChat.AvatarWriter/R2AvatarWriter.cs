@@ -42,7 +42,12 @@ namespace WebChat.AvatarWriter
                 return AvatarUploadResult.Failed(image.Error);
             }
 
-            var fileName = $"{Guid.NewGuid()}.{image.Extension}";
+            // A fresh key per upload, which is the invariant CachingAvatarUrlProvider's whole
+            // 30-minute memoisation rests on: the bytes behind a name never change, so
+            // replacing an avatar is a guaranteed cache miss rather than a stale hit. A
+            // re-crop writes a new key for exactly this reason - see
+            // docs/ctx/2026-08-09-stable-avatar-urls.md.
+            var fileName = AvatarStorage.NewAvatarKey(image.Extension);
 
             try
             {
@@ -63,6 +68,30 @@ namespace WebChat.AvatarWriter
             }
 
             return AvatarUploadResult.Stored(fileName);
+        }
+
+        /// <summary>
+        /// Issue #20: the object the user was pointing at until a moment ago. Swallows every
+        /// failure - the new avatar is already committed, and a cleanup that throws would turn
+        /// a successful upload into an error the user cannot act on. Refuses an original key,
+        /// so this cannot be turned into a way to delete one.
+        /// </summary>
+        public async Task<bool> DeleteImage(string fileName)
+        {
+            if (string.IsNullOrWhiteSpace(fileName) || AvatarStorage.IsOriginalKey(fileName))
+            {
+                return false;
+            }
+
+            try
+            {
+                await client.DeleteObjectAsync(options.Bucket, fileName);
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
 
         public string GetReadUrl(string fileName) =>

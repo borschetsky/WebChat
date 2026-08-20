@@ -6,6 +6,17 @@ namespace WebChat.AvatarWriter.Interface
     public interface IAvatarWriter
     {
         Task<AvatarUploadResult> UploadImage(IFormFile file);
+
+        /// <summary>
+        /// Removes a stored avatar, best-effort. Returns whether the object is gone, and
+        /// never throws: the only caller runs *after* the replacement has been committed, so
+        /// a failed cleanup must not fail an upload that already succeeded (issue #20).
+        ///
+        /// There is no reverse index from an object back to the user pointing at it, so a
+        /// stray delete is unrecoverable. Only ever pass a key that has just stopped being
+        /// referenced.
+        /// </summary>
+        Task<bool> DeleteImage(string fileName);
     }
 
     /// <summary>

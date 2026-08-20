@@ -165,6 +165,27 @@ export interface Profile {
    * `null` when absent, which `isAdminRole` reads as "not an admin".
    */
   role: string | null;
+  /**
+   * Whether the server holds the un-cropped photo this avatar was cut from.
+   *
+   * This is what decides whether "Adjust crop" is drawn at all. It is false for every account
+   * that has not uploaded since #88, and the control has to be **absent** rather than present
+   * and failing - the same rule that kept Remove out of #84.
+   */
+  hasOriginalPhoto: boolean;
+  /**
+   * The crop that produced the current avatar, in percentages, or null. Feeds
+   * `initialCroppedAreaPercentages` so re-opening the cropper starts where it was left.
+   */
+  avatarCrop: AvatarCrop | null;
+}
+
+/** A crop rectangle in percentages of the source image, matching react-easy-crop's `Area`. */
+export interface AvatarCrop {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 /** What the login flow persists to localStorage under 'user-data'. */

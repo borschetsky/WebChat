@@ -401,6 +401,11 @@ namespace WebChat
                                       AvatarWriter.AvatarWriter>();
                 services.AddSingleton<AvatarWriter.Interface.IAvatarUrlProvider,
                                       AvatarWriter.LocalAvatarUrlProvider>();
+                // Originals go beside wwwroot, never inside it: a directory under wwwroot is
+                // served by the static-file middleware, which would publish every un-cropped
+                // photo with nothing in front of it.
+                services.AddTransient<AvatarWriter.Interface.IAvatarOriginalStore,
+                                      AvatarWriter.LocalAvatarOriginalStore>();
                 return;
             }
 
@@ -418,6 +423,12 @@ namespace WebChat
             services.AddTransient<AvatarWriter.R2AvatarWriter>();
             services.AddTransient<AvatarWriter.Interface.IAvatarWriter>(
                 sp => sp.GetRequiredService<AvatarWriter.R2AvatarWriter>());
+            // Same bucket as the avatars, under the "originals/" prefix. The prefix is what
+            // carries the access decision - AvatarStorage.IsPubliclyServable refuses it and
+            // nothing signs a read URL for it - so a second bucket would add credentials
+            // without adding a boundary.
+            services.AddTransient<AvatarWriter.Interface.IAvatarOriginalStore,
+                                  AvatarWriter.R2AvatarOriginalStore>();
             // Singleton, and wrapping the R2 writer rather than replacing it: the cache is the
             // whole point, so it has to outlive a request. Signing per request produced a
             // different URL every time - SigV4 signs over the timestamp - so no browser could

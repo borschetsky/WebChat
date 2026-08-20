@@ -10,6 +10,17 @@ namespace WebChat.AvatarWriter.Interface
         /// back as <see cref="AvatarImage.Error"/> so callers can surface the reason.
         /// </summary>
         Task<AvatarImage> Process(IFormFile file);
+
+        /// <summary>
+        /// The same pipeline against a different size cap, for the stored original - which has
+        /// to keep enough pixels that re-cropping into it is worth doing, where the avatar
+        /// itself only ever renders at 34-40 px.
+        ///
+        /// An overload rather than a second processor: every other rule (the magic-byte gate,
+        /// the megapixel guard, AutoOrient, stripping EXIF, the PNG/JPEG choice) must apply
+        /// identically to both objects, and two implementations would drift.
+        /// </summary>
+        Task<AvatarImage> Process(IFormFile file, int maxDimension);
     }
 
     /// <summary>The result of processing: either normalised bytes, or a reason they were rejected.</summary>

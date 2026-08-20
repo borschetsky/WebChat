@@ -66,7 +66,7 @@ falls through to the SPA dev-server proxy and hangs for ~140s before a 500 rathe
 | `HeyController` | authorize | `POST send`, `GET getusers`, `GET getthreads`, `POST createthread` |
 | `ThreadController` | authorize | `GET getmessages/{id}`, `GET search` |
 | `UsersController` | authorize | `GET search`, `GET getprofile`, `POST update` |
-| `AvatarsController` | authorize | `POST upload`, **`GET /images/{fileName}`** (`[AllowAnonymous]`) |
+| `AvatarsController` | authorize | `POST upload`, `POST recrop`, `GET original` (owner only), **`GET /images/{fileName}`** (`[AllowAnonymous]`, and it now **refuses** any key under `originals/`) |
 | `SeedController` | **anonymous** | `GET /api/seed` |
 
 Two things to notice:

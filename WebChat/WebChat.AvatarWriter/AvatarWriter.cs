@@ -31,8 +31,8 @@ namespace WebChat.AvatarWriter
 
             try
             {
-                var fileName = $"{Guid.NewGuid()}.{image.Extension}";
-                var directory = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images");
+                var fileName = AvatarStorage.NewAvatarKey(image.Extension);
+                var directory = ImageDirectory;
 
                 // wwwroot/images is not in source control, so outside Docker (where compose
                 // mounts a volume over it) it does not exist and FileMode.Create throws
@@ -49,5 +49,35 @@ namespace WebChat.AvatarWriter
                 return AvatarUploadResult.Failed(e.Message);
             }
         }
+
+        /// <summary>
+        /// Issue #20, on the local-disk path. Best-effort and silent for the same reason the
+        /// R2 one is: the replacement is already committed by the time this runs.
+        ///
+        /// <see cref="AvatarStorage.IsPubliclyServable"/> is the guard rather than a bare
+        /// null check - it refuses path separators, so a filename read back out of the
+        /// database cannot address anything outside wwwroot/images, and it refuses an
+        /// original key, which this writer never wrote and must never remove.
+        /// </summary>
+        public Task<bool> DeleteImage(string fileName)
+        {
+            if (!AvatarStorage.IsPubliclyServable(fileName))
+            {
+                return Task.FromResult(false);
+            }
+
+            try
+            {
+                File.Delete(Path.Combine(ImageDirectory, fileName));
+                return Task.FromResult(true);
+            }
+            catch (Exception)
+            {
+                return Task.FromResult(false);
+            }
+        }
+
+        private static string ImageDirectory =>
+            Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images");
     }
 }

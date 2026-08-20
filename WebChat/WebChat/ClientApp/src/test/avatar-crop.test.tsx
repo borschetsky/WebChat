@@ -1,9 +1,14 @@
 import { describe, it, expect, vi, beforeAll } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ThemeProvider } from '@mui/material/styles';
-import Cropper from 'react-easy-crop';
+import Cropper, { getInitialCropFromCroppedAreaPercentages } from 'react-easy-crop';
 import { buildTheme } from '@/theme/tokens';
-import AvatarCropDialog, { cropSizeFor } from '@/features/settings/AvatarCropDialog';
+import AvatarCropDialog, {
+  coverMediaSizeFor,
+  cropSizeFor,
+  restoreCropFor,
+} from '@/features/settings/AvatarCropDialog';
+import type { Area, MediaSize, Point } from 'react-easy-crop';
 
 /**
  * The only stub these tests add, and it is here rather than in `src/test/setup.ts`
@@ -68,14 +73,28 @@ describe('AvatarCropDialog', () => {
   });
 
   /**
-   * The handoff draws a Remove action; there is no endpoint that can clear an avatar
-   * (`AvatarsController` has only `upload`; `UpdateProfile` writes Email and Username and
-   * nothing else), so it is deliberately absent. This pins that as a decision rather than an
-   * oversight - if the button appears before the endpoint does, this is what says so.
+   * The handoff draws a Remove action; there is still no endpoint that can clear an avatar -
+   * #88 added `recrop` and `original` to `AvatarsController` and neither of them removes
+   * anything, and `UpdateProfile` still writes Email and Username and nothing else. So it
+   * stays deliberately absent. This pins that as a decision rather than an oversight - if the
+   * button appears before the endpoint does, this is what says so. Filed as #89.
    */
   it('draws no Remove action, because no API can clear an avatar', () => {
     withTheme(<AvatarCropDialog file={photo()} onCancel={() => {}} onConfirm={() => {}} />);
     expect(screen.queryByRole('button', { name: /remove/i })).toBeNull();
+  });
+
+  /**
+   * Re-opening a stored photo says so. The two cases are genuinely different actions - one is
+   * finishing an upload, the other is changing an avatar that is already live - and this
+   * string is the dialog's accessible name, so it is what a screen reader announces.
+   */
+  it('announces itself as an adjustment when the photo came from the server', () => {
+    withTheme(
+      <AvatarCropDialog file={photo()} source="stored" onCancel={() => {}} onConfirm={() => {}} />,
+    );
+
+    expect(screen.getByRole('dialog', { name: 'Adjust your crop' })).toBeInTheDocument();
   });
 
   /**
@@ -261,5 +280,245 @@ describe('the crop dialog on a phone', () => {
     // 'auto' is jsdom for "no height declared", and the broken version reported '320px'.
     expect(stage.height).toBe('auto');
     expect(stage.aspectRatio.replace(/\s/g, '')).toBe('1/1');
+  });
+});
+
+/**
+ * Re-opening a saved crop and saving it again, untouched, must store the same rectangle.
+ *
+ * **Reported after a browser round-trip, and reproduced here.** Every Adjust-and-save zoomed
+ * the avatar in by the photo's own aspect ratio - a face crept tighter each time the dialog
+ * was opened:
+ *
+ *     900x1200 source, original stored 768x1024
+ *       after upload:       x  8.333  y 18.750  w 83.333  h 62.500
+ *       after untouched #1: x 18.750  y 26.563  w 62.500  h 46.875
+ *       after untouched #2: x 26.563  y 32.422  w 46.875  h 35.156
+ *
+ * Each width is the previous one divided by 1.3333 = 1200/900.
+ *
+ * **The mechanism, read out of `react-easy-crop@6.2.3` rather than inferred.**
+ * `onMediaLoad` (index.module.mjs:308) calls `computeSizes()` and then `setInitialCrop()`.
+ * `computeSizes` picks the rendered media size from `this.state.mediaObjectFit`, which is
+ * initialised to `undefined` (:276) and only ever assigned in `componentDidUpdate` (:670) -
+ * so on the load that applies `initialCroppedAreaPercentages` the switch falls through to its
+ * `contain` branch. A beat later the fit resolves to `horizontal-cover`, the media is
+ * re-measured wider, and the initial crop is **not** re-applied. The zoom was computed
+ * against a `contain` width and is then used against a `cover` one.
+ *
+ * **The fixture is non-square on purpose. Do not "simplify" it to a square.** `contain` and
+ * `cover` agree for a square photo, so a square source cannot exhibit this at any zoom - both
+ * 1000x1000 (not downscaled) and 1400x1400 (downscaled) round-trip perfectly against the
+ * broken code. This is #84's fixture trap in mirror image: there a square fixture hid an
+ * `objectFit` bug, here it would hide that bug's sibling.
+ *
+ * `objectFit="cover"` is not the fault and must stay. It is what makes a non-square photo
+ * cover the circle so the export matches what was framed; without it a 1200x400 banner
+ * exports its left third (#84).
+ */
+describe('re-opening a saved crop', () => {
+  /**
+   * What react-easy-crop reports back to `onCropComplete`, transcribed from
+   * `computeCroppedArea` (index.module.mjs:117-122) with `restrictPosition` true.
+   *
+   * The forward half of the round trip has to be the library's, or the test only proves this
+   * file's algebra is self-consistent. The backward half needs no transcription: production
+   * calls the library's own exported `getInitialCropFromCroppedAreaPercentages`.
+   */
+  const percentagesReportedFor = (
+    crop: Point,
+    zoom: number,
+    mediaSize: MediaSize,
+    cropSide: number,
+  ): Area => {
+    const limit = (v: number) => Math.min(100, Math.max(0, v));
+    return {
+      x: limit((((mediaSize.width - cropSide / zoom) / 2 - crop.x / zoom) / mediaSize.width) * 100),
+      y: limit(
+        (((mediaSize.height - cropSide / zoom) / 2 - crop.y / zoom) / mediaSize.height) * 100,
+      ),
+      width: limit(((cropSide / mediaSize.width) * 100) / zoom),
+      height: limit(((cropSide / mediaSize.height) * 100) / zoom),
+    };
+  };
+
+  /**
+   * The `contain` branch of `computeSizes` - the size the library measures while
+   * `mediaObjectFit` is still undefined. Here only to state the bug; production never wants
+   * this number.
+   */
+  const containMediaSizeFor = (
+    natural: { naturalWidth: number; naturalHeight: number },
+    side: number,
+  ): MediaSize => {
+    const mediaAspect = natural.naturalWidth / natural.naturalHeight;
+    const rendered =
+      1 > mediaAspect
+        ? { width: side * mediaAspect, height: side }
+        : { width: side, height: side / mediaAspect };
+    return { ...rendered, ...natural };
+  };
+
+  /**
+   * The library's own restore, against a media size the test chooses. Used only to show what
+   * the *wrong* media size does; production calls the same function through `restoreCropFor`.
+   */
+  const restoreAgainst = (percentages: Area, mediaSize: MediaSize, cropSide: number) =>
+    getInitialCropFromCroppedAreaPercentages(
+      percentages,
+      mediaSize,
+      0,
+      { width: cropSide, height: cropSide },
+      1,
+      3,
+    );
+
+  /** The reported fixture: a 3:4 photo, stored at 768x1024, on the 320px desktop stage. */
+  const PORTRAIT = { naturalWidth: 768, naturalHeight: 1024 };
+  const LANDSCAPE = { naturalWidth: 1024, naturalHeight: 768 };
+  const SQUARE = { naturalWidth: 1024, naturalHeight: 1024 };
+  const SAVED: Area = { x: 8.333333333333332, y: 18.75, width: 83.33333333333333, height: 62.5 };
+
+  /** Restore a rectangle, then read back what the cropper would report with no interaction. */
+  const roundTrip = (
+    saved: Area,
+    natural: { naturalWidth: number; naturalHeight: number },
+    stageSide: number,
+  ): Area => {
+    const restored = restoreCropFor(saved, natural, stageSide)!;
+    expect(restored).not.toBeNull();
+
+    // The media size the library ends up rendering at, which is the cover one - that is what
+    // the user is looking at and what the next onCropComplete is measured against.
+    const shown = coverMediaSizeFor(natural, { width: stageSide, height: stageSide })!;
+
+    return percentagesReportedFor(restored.crop, restored.zoom, shown, cropSizeFor(stageSide));
+  };
+
+  /**
+   * Four floats to four decimals, so a whole rectangle is one assertion and a failure prints
+   * all of it. The drift being guarded against is 33%, not a rounding.
+   */
+  const rounded = (a: Area) => ({
+    x: Number(a.x.toFixed(4)),
+    y: Number(a.y.toFixed(4)),
+    width: Number(a.width.toFixed(4)),
+    height: Number(a.height.toFixed(4)),
+  });
+
+  describe('coverMediaSizeFor', () => {
+    it('pins a tall photo to the container width and lets it overflow downwards', () => {
+      // 3:4 in a square box: `cover` has to fill the width, so the height runs past the box.
+      const size = coverMediaSizeFor(PORTRAIT, { width: 320, height: 320 })!;
+
+      expect(size.width).toBe(320);
+      expect(size.height).toBeCloseTo(426.6667, 4);
+      expect(size.naturalWidth).toBe(768);
+      expect(size.naturalHeight).toBe(1024);
+    });
+
+    it('pins a wide photo to the container height and lets it overflow sideways', () => {
+      const size = coverMediaSizeFor(LANDSCAPE, { width: 320, height: 320 })!;
+
+      expect(size.width).toBeCloseTo(426.6667, 4);
+      expect(size.height).toBe(320);
+    });
+
+    /**
+     * The control that explains why the fixture above must not be square: for a square photo
+     * `cover` and `contain` are the same number, so the bug is arithmetically invisible.
+     */
+    it('agrees with contain for a square photo, which is why a square fixture proves nothing', () => {
+      expect(coverMediaSizeFor(SQUARE, { width: 320, height: 320 })).toEqual(
+        containMediaSizeFor(SQUARE, 320),
+      );
+      expect(coverMediaSizeFor(PORTRAIT, { width: 320, height: 320 })).not.toEqual(
+        containMediaSizeFor(PORTRAIT, 320),
+      );
+    });
+
+    it('refuses a size it cannot compute rather than restoring to NaN', () => {
+      expect(
+        coverMediaSizeFor({ naturalWidth: 0, naturalHeight: 100 }, { width: 320, height: 320 }),
+      ).toBeNull();
+      expect(coverMediaSizeFor(PORTRAIT, { width: 0, height: 0 })).toBeNull();
+    });
+  });
+
+  /** The invariant, stated once per fixture. This is the test that was red. */
+  it('gives back the rectangle it was given, for a tall photo', () => {
+    expect(rounded(roundTrip(SAVED, PORTRAIT, 320))).toEqual(rounded(SAVED));
+  });
+
+  it('gives back the rectangle it was given, for a wide photo', () => {
+    const saved: Area = { x: 18.75, y: 8.333333333333332, width: 62.5, height: 83.33333333333333 };
+    expect(rounded(roundTrip(saved, LANDSCAPE, 320))).toEqual(rounded(saved));
+  });
+
+  it('gives back the rectangle it was given, for a square photo', () => {
+    // Passed before the fix as well. Kept as the control that makes the two above meaningful.
+    const saved: Area = { x: 6.25, y: 6.25, width: 87.5, height: 87.5 };
+    expect(rounded(roundTrip(saved, SQUARE, 320))).toEqual(rounded(saved));
+  });
+
+  it('is stable across repeated adjustments, not merely close', () => {
+    // The report was cumulative: each open-and-save shrank the crop again. One round trip
+    // being right is not the claim - the fixed point is.
+    let area = SAVED;
+    for (let i = 0; i < 5; i += 1) area = roundTrip(area, PORTRAIT, 320);
+    expect(rounded(area)).toEqual(rounded(SAVED));
+  });
+
+  /**
+   * The bug itself, pinned with the exact numbers from the browser report so that a future
+   * "just let the library restore it" cannot come back unnoticed.
+   */
+  it('drifts by exactly the photo aspect ratio when restored against the contain size', () => {
+    const contain = containMediaSizeFor(PORTRAIT, 320);
+    const restored = restoreAgainst(SAVED, contain, 280);
+    const shown = coverMediaSizeFor(PORTRAIT, { width: 320, height: 320 })!;
+
+    const reported = percentagesReportedFor(restored.crop, restored.zoom, shown, 280);
+
+    // 1024/768 = 1.3333, the factor in the report.
+    expect(rounded(reported)).toEqual({ x: 18.75, y: 26.5625, width: 62.5, height: 46.875 });
+    expect(SAVED.width / reported.width).toBeCloseTo(1024 / 768, 6);
+  });
+
+  /**
+   * #92 made `cropSize` dynamic - the circle shrinks with the stage below about a 424px
+   * viewport - so a restore that assumed the handoff's constant 280 would be wrong on a phone
+   * and right on a desktop, which is the worst way for it to be wrong.
+   */
+  it('uses the measured circle, not the handoff 280, on a narrow stage', () => {
+    const stage = 263.2; // an iPhone SE, measured in a browser during #92
+    expect(cropSizeFor(stage)).toBe(223);
+
+    expect(rounded(roundTrip(SAVED, PORTRAIT, stage))).toEqual(rounded(SAVED));
+
+    // And the version that hardcodes 280: the library would still lay out a 223px circle, so
+    // the zoom is wrong by 280/223 and the crop comes back visibly tighter.
+    const shown = coverMediaSizeFor(PORTRAIT, { width: stage, height: stage })!;
+    const wrong = restoreAgainst(SAVED, shown, 280);
+    const reported = percentagesReportedFor(wrong.crop, wrong.zoom, shown, 223);
+    expect(reported.width).not.toBeCloseTo(SAVED.width, 2);
+  });
+
+  it('refuses to restore before the stage has been measured', () => {
+    // jsdom measures zero forever, and a real browser measures zero on the first frame.
+    // Restoring against a zero stage would divide by nothing.
+    expect(restoreCropFor(SAVED, PORTRAIT, 0)).toBeNull();
+  });
+
+  it('clamps rather than inventing a zoom the slider cannot reach', () => {
+    // A very tight saved rectangle needs more than 3x. The library clamps to maxZoom and so
+    // does this; the crop then cannot be reproduced exactly, which is a limit of the zoom
+    // range rather than a drift, and it must not come back as NaN or a negative.
+    const tiny: Area = { x: 40, y: 40, width: 5, height: 5 };
+    const restored = restoreCropFor(tiny, PORTRAIT, 320)!;
+
+    expect(restored.zoom).toBe(3);
+    expect(Number.isFinite(restored.crop.x)).toBe(true);
+    expect(Number.isFinite(restored.crop.y)).toBe(true);
   });
 });

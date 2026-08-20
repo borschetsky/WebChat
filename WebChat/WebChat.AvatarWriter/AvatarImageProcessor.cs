@@ -29,7 +29,9 @@ namespace WebChat.AvatarWriter
             this.options = options;
         }
 
-        public async Task<AvatarImage> Process(IFormFile file)
+        public Task<AvatarImage> Process(IFormFile file) => Process(file, options.MaxDimension);
+
+        public async Task<AvatarImage> Process(IFormFile file, int maxDimension)
         {
             if (file == null || file.Length == 0)
             {
@@ -81,14 +83,14 @@ namespace WebChat.AvatarWriter
                     // photos taken in portrait come out rotated.
                     x.AutoOrient();
 
-                    if (image.Width > options.MaxDimension || image.Height > options.MaxDimension)
+                    if (image.Width > maxDimension || image.Height > maxDimension)
                     {
                         // Max preserves the aspect ratio and fits inside the box. Guarded so a
                         // small avatar is never upscaled into a blurry one.
                         x.Resize(new ResizeOptions
                         {
                             Mode = ResizeMode.Max,
-                            Size = new Size(options.MaxDimension, options.MaxDimension),
+                            Size = new Size(maxDimension, maxDimension),
                         });
                     }
                 });

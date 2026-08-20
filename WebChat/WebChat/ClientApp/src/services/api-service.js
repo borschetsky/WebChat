@@ -54,6 +54,33 @@ const uploadAvatar = async (fromData, token) => {
   });
   return await result;
 };
+
+// A separate endpoint from `upload`, not a flag on it, because the two differ in what the
+// server *deletes*: replacing a photo drops the previous crop and the previous original,
+// while re-cropping drops the crop and keeps the original. Inferring that from "no original
+// part was attached" would mean a request that merely forgot the attachment silently kept an
+// original belonging to a photo the user has replaced.
+const recropAvatar = async (formData, token) => {
+  const result = await Axios.post(`${_baseUrl}avatars/recrop`, formData, {
+    headers: authHeader(token),
+  });
+  return await result;
+};
+
+// The caller's own un-cropped photo, as bytes.
+//
+// Takes no id: the server resolves the key from the caller's row, which is what makes an
+// original readable only by the person it belongs to. A blob rather than a URL because the
+// cropper needs a `File` to decode - and because a presigned URL would be a capability that
+// outlives the check that produced it, which is the whole reason originals are not on the
+// anonymous /images path.
+const getAvatarOriginal = async (token) => {
+  const result = await Axios.get(`${_baseUrl}avatars/original`, {
+    headers: authHeader(token),
+    responseType: 'blob',
+  });
+  return await result;
+};
 const getProfile = async (token) => {
   const result = await Axios.get(`${_baseUrl}users/getprofile`, {
     headers: authHeader(token),
@@ -313,6 +340,8 @@ export {
   createGroup,
   sendMessageToApi,
   uploadAvatar,
+  recropAvatar,
+  getAvatarOriginal,
   searchForUsers,
   login,
   register,

@@ -24,6 +24,25 @@ export interface ProfileDto {
   avatarFileName: string | null;
   /** Workspace role - 'owner' | 'admin' | 'member'. Optional: a server predating #68 omits it. */
   role?: string | null;
+  /**
+   * Whether an un-cropped original is stored, and therefore whether "Adjust crop" can work.
+   * Optional: a server predating #88 omits it, and absent must read as false.
+   *
+   * The original's key is deliberately not here. The read endpoint resolves it from the
+   * caller's own row, so the client never needs it and a private object's name stays out of
+   * every cache and store that a profile payload passes through.
+   */
+  hasOriginalPhoto?: boolean;
+  /** The crop that produced the current avatar, in percentages of the original, or null. */
+  avatarCrop?: AvatarCropDto | null;
+}
+
+/** react-easy-crop's `croppedArea`: percentages, not source pixels. */
+export interface AvatarCropDto {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 /** UsersController search, HeyController getusers. */

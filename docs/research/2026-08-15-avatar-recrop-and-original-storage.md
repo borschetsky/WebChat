@@ -2,7 +2,13 @@
 
 - **Date:** 2026-08-15 (R2 pricing, free-tier limits and lifecycle behaviour verified on this
   date; they rot — re-check before quoting)
-- **Status:** answered
+- **Status:** answered, **recommendation superseded 2026-08-20** — the 2026-08-16 design
+  handoff mandates storing the original plus crop parameters server-side, and the owner
+  confirmed that overrides this note. Built that way in #88; see
+  [`docs/ctx/2026-08-20-avatar-recrop.md`](../ctx/2026-08-20-avatar-recrop.md). **The analysis
+  below still stands and is why the reversal was cheap** — the storage maths, the delete-rule
+  divergence from #20, the anonymous-endpoint exposure, and "persist percentages, not pixels"
+  all held up and all shaped the implementation. Only the recommendation was overruled.
 - **Question:** should WebChat store an un-cropped original so an avatar can be re-cropped,
   and if so what is the least-bad design — issue [#88](https://github.com/borschetsky/WebChat/issues/88)
 - **Recommendation:** **Do not store originals server-side.** Keep the `File` the user already

@@ -93,6 +93,14 @@ namespace WebChat.Services.Helpers
                 Email = model.Email,
                 AvatarFileName = model.AvatarFileName,
                 Role = model.Role,
+                // The key itself never leaves the server; the client only needs to know
+                // whether "Adjust crop" is possible. See ProfileViewModel.HasOriginalPhoto.
+                HasOriginalPhoto = !string.IsNullOrWhiteSpace(model.AvatarOriginalFileName),
+                AvatarCrop = AvatarCropViewModel.From(
+                    model.AvatarCropX,
+                    model.AvatarCropY,
+                    model.AvatarCropWidth,
+                    model.AvatarCropHeight),
             };
         }
     }
