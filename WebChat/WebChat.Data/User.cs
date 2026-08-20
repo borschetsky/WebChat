@@ -26,6 +26,47 @@ namespace WebChat.Models
         public string AvatarFileName { get; set; }
 
         /// <summary>
+        /// Object key of the un-cropped photo <see cref="AvatarFileName"/> was cut out of, or
+        /// null when there is none (#88).
+        ///
+        /// Always carries <c>AvatarStorage.OriginalPrefix</c>, which is what keeps it off the
+        /// anonymous <c>/images/{name}</c> read path: an original holds precisely the pixels
+        /// the user chose to crop away, so it is served only to its owner, only through an
+        /// authenticated endpoint.
+        ///
+        /// **Null on every row written before this column existed**, and it is not backfilled
+        /// from <see cref="AvatarFileName"/>. Treating the stored crop as its own original
+        /// would let someone "adjust" inside pixels that are already gone - the result would
+        /// be a soft, third-generation re-encode of a square, and it could never do the thing
+        /// the feature exists for. The client hides "Adjust crop" while this is null.
+        /// </summary>
+        public string AvatarOriginalFileName { get; set; }
+
+        /// <summary>
+        /// The crop rectangle that produced the current avatar, as **percentages** of the
+        /// original (react-easy-crop's <c>croppedArea</c>, not <c>croppedAreaPixels</c>).
+        ///
+        /// Percentages rather than source pixels because a stored pixel rectangle is only
+        /// meaningful against the exact image dimensions it was measured in: re-encode the
+        /// original at a different size and every saved rectangle is wrong by a scale factor.
+        /// The handoff and the research note reach that independently, and react-easy-crop
+        /// restores from percentages with <c>initialCroppedAreaPercentages</c>.
+        ///
+        /// All four are null together. A missing crop is not an error - the cropper simply
+        /// opens on the whole original.
+        /// </summary>
+        public double? AvatarCropX { get; set; }
+
+        /// <inheritdoc cref="AvatarCropX"/>
+        public double? AvatarCropY { get; set; }
+
+        /// <inheritdoc cref="AvatarCropX"/>
+        public double? AvatarCropWidth { get; set; }
+
+        /// <inheritdoc cref="AvatarCropX"/>
+        public double? AvatarCropHeight { get; set; }
+
+        /// <summary>
         /// Workspace role: see <see cref="WorkspaceRole"/>. Defaults to member, and
         /// registration sets it explicitly rather than relying on that default - the #63
         /// group-role migration backfilled existing rows and thereby disguised a write path

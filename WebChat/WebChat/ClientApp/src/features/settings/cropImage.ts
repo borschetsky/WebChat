@@ -43,6 +43,22 @@ export const MAX_EXPORT_PX = 512;
  */
 export const JPEG_QUALITY = 0.92;
 
+/**
+ * Longest edge of the **original** kept alongside the crop, so it can be re-cropped later
+ * (#88).
+ *
+ * Downscaled here rather than posted untouched, and that is not tidiness. Before #84 the raw
+ * photo went to the server and `Avatars:MaxUploadBytes` (5 MB) was a limit real phone photos
+ * hit; #84 accidentally retired that problem by only ever posting a ~30 kB crop. Attaching the
+ * raw file again would bring it straight back, and now with two files in one body. A canvas
+ * export at 1024 is ~90 kB, so the whole request stays small and bounded.
+ *
+ * The server re-encodes to `Avatars:OriginalMaxDimension` regardless - client bytes are never
+ * trusted - so this is a wire budget, not the authority. Matching the two numbers just means
+ * the server has nothing to shrink.
+ */
+export const ORIGINAL_MAX_PX = 1024;
+
 /** The square of source pixels to read, and the square of output pixels to write. */
 export type SourceRect = {
   /** Left edge in source pixels. */
@@ -188,17 +204,99 @@ export async function cropToFile(file: File, area: Area): Promise<File> {
     // dropping it is what collapses the library's 67-line docs helper to this.
     ctx.drawImage(bitmap, rect.sx, rect.sy, rect.side, rect.side, 0, 0, rect.size, rect.size);
 
-    const jpeg = await toBlob(canvas, 'image/jpeg', JPEG_QUALITY);
-    const head = new Uint8Array(await jpeg.slice(0, 4).arrayBuffer());
-    if (isServerAcceptableJpeg(head)) {
-      return new File([jpeg], croppedFileName(file.name, 'jpg'), { type: 'image/jpeg' });
-    }
+    return encodeCanvas(canvas, file.name);
+  } finally {
+    bitmap.close();
+  }
+}
 
-    // This browser's JPEG encoder emits a header the server refuses. Rather than upload
-    // something that will come back "Invalid image file", encode a PNG, whose signature is
-    // fixed. See the JPEG_QUALITY docblock for why this is not simply the default.
-    const png = await toBlob(canvas, 'image/png');
-    return new File([png], croppedFileName(file.name, 'png'), { type: 'image/png' });
+/**
+ * Encode a canvas as JPEG, falling back to PNG when this browser's JPEG header is one the
+ * server refuses.
+ *
+ * Extracted when `downscaleToFile` arrived rather than duplicated, because the rule it
+ * encodes is the *server's* magic-byte gate: two copies would be two chances for one of them
+ * to widen to a general "is this a JPEG" check and start posting files the server rejects as
+ * "Invalid image file", on one browser, on nobody's development machine.
+ */
+async function encodeCanvas(canvas: HTMLCanvasElement, sourceName: string): Promise<File> {
+  const jpeg = await toBlob(canvas, 'image/jpeg', JPEG_QUALITY);
+  const head = new Uint8Array(await jpeg.slice(0, 4).arrayBuffer());
+  if (isServerAcceptableJpeg(head)) {
+    return new File([jpeg], croppedFileName(sourceName, 'jpg'), { type: 'image/jpeg' });
+  }
+
+  // This browser's JPEG encoder emits a header the server refuses. Rather than upload
+  // something that will come back "Invalid image file", encode a PNG, whose signature is
+  // fixed. See the JPEG_QUALITY docblock for why this is not simply the default.
+  const png = await toBlob(canvas, 'image/png');
+  return new File([png], croppedFileName(sourceName, 'png'), { type: 'image/png' });
+}
+
+/**
+ * The size to draw a photo at so its longest edge is at most `max`, preserving aspect ratio
+ * and **never upscaling**.
+ *
+ * Pure, and split out for the same reason `sourceRectFor` is: it is the part where being
+ * wrong is quiet. Upscaling would inflate a small photo into a blurry one and cost bytes for
+ * pixels that were never there, and getting the aspect ratio wrong would store an original
+ * that re-crops to a stretched face.
+ */
+export function downscaleSizeFor(
+  width: number,
+  height: number,
+  max: number = ORIGINAL_MAX_PX,
+): { width: number; height: number } {
+  if (!(width > 0) || !(height > 0)) {
+    throw new Error('Cannot resize an image with no dimensions.');
+  }
+
+  const longest = Math.max(width, height);
+  if (longest <= max) {
+    return { width: Math.round(width), height: Math.round(height) };
+  }
+
+  const scale = max / longest;
+  return {
+    width: Math.max(1, Math.round(width * scale)),
+    height: Math.max(1, Math.round(height * scale)),
+  };
+}
+
+/**
+ * The whole photo, re-encoded small enough to post alongside the crop - the "original" of
+ * #88.
+ *
+ * Deliberately produced from the same decode path as `cropToFile`: `createImageBitmap`
+ * defaults `imageOrientation` to `from-image`, so an EXIF-rotated phone photo is stored
+ * upright and the crop percentages saved against the preview still mean the same thing when
+ * the original is re-opened. A `new Image()` here would be a second decode path and a second
+ * chance for the two to disagree about which way up the photo is - and the disagreement would
+ * only show on re-crop, long after the upload that caused it.
+ */
+export async function downscaleToFile(file: File, max: number = ORIGINAL_MAX_PX): Promise<File> {
+  if (typeof createImageBitmap !== 'function') {
+    throw new Error('This browser cannot decode the image for cropping.');
+  }
+
+  const bitmap = await createImageBitmap(file);
+  try {
+    const size = downscaleSizeFor(bitmap.width, bitmap.height, max);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = size.width;
+    canvas.height = size.height;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('The browser could not open a canvas to crop with.');
+
+    // Same white matte as the crop, and for the same reason: the export is JPEG, JPEG has no
+    // alpha, and an unfilled canvas encodes every transparent pixel as pure black.
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, size.width, size.height);
+    ctx.drawImage(bitmap, 0, 0, size.width, size.height);
+
+    return encodeCanvas(canvas, file.name);
   } finally {
     bitmap.close();
   }

@@ -38,13 +38,27 @@ function StubCropper(props: { onCropComplete?: (a: unknown, b: unknown) => void 
   return <div data-testid="stub-cropper" />;
 }
 
-vi.mock('react-easy-crop', () => ({ default: StubCropper }));
+// Only the default export is stubbed. `AvatarCropDialog` imports the library's own
+// `getInitialCropFromCroppedAreaPercentages` for its restore maths, and replacing that would
+// mean testing this file's arithmetic rather than the library's.
+vi.mock('react-easy-crop', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-easy-crop')>();
+  return { ...actual, default: StubCropper };
+});
 
 const CROPPED = new File([new Uint8Array([9])], 'portrait.jpg', { type: 'image/jpeg' });
+const DOWNSCALED = new File([new Uint8Array([8])], 'portrait.jpg', { type: 'image/jpeg' });
 
+// `downscaleToFile` is mocked for the same reason `cropToFile` is - both need
+// `createImageBitmap` and a real 2D context, neither of which jsdom has. Their pure halves are
+// tested for real in `features/settings/cropImage.test.ts`.
 vi.mock('@/features/settings/cropImage', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/features/settings/cropImage')>();
-  return { ...actual, cropToFile: vi.fn(async () => CROPPED) };
+  return {
+    ...actual,
+    cropToFile: vi.fn(async () => CROPPED),
+    downscaleToFile: vi.fn(async () => DOWNSCALED),
+  };
 });
 
 beforeAll(() => {
@@ -57,6 +71,11 @@ beforeAll(() => {
 const photo = (name = 'portrait.jpg') =>
   new File([new Uint8Array([1, 2, 3])], name, { type: 'image/jpeg' });
 
+/**
+ * A profile with no photo at all, which is the state these tests are about: the camera button
+ * opens the picker directly, with no menu in the way. The menu, and the re-crop flow behind
+ * it, are in `avatar-recrop.test.tsx`.
+ */
 const renderDrawer = () => {
   const onUploadAvatar = vi.fn();
   render(
@@ -68,6 +87,7 @@ const renderDrawer = () => {
         members={[]}
         onSaveProfile={() => {}}
         onUploadAvatar={onUploadAvatar}
+        onLoadOriginal={async () => null}
         onLogout={() => {}}
         onOpenAdmin={() => {}}
         threadName={null}
@@ -122,10 +142,35 @@ describe('picking a profile photo', () => {
 
     await waitFor(() => expect(onUploadAvatar).toHaveBeenCalledTimes(1));
 
-    const uploaded = onUploadAvatar.mock.calls[0][0];
+    const uploaded = onUploadAvatar.mock.calls[0][0].file;
     expect(uploaded).toBeInstanceOf(File);
     expect(uploaded.name).toBe('portrait.jpg');
     expect(uploaded.type).toBe('image/jpeg');
+  });
+
+  /**
+   * #88's half of the same handoff: a freshly picked photo has never reached the server, so
+   * the whole image goes up beside the square along with the rectangle that produced it.
+   *
+   * Without the original, "Adjust crop" can only ever mean "pick the file again" - which is
+   * the state the feature exists to end. Without the rectangle it would open on the whole
+   * photo every time, quietly losing the framing the user chose.
+   */
+  it('sends the whole photo and the crop rectangle alongside the square', async () => {
+    const onUploadAvatar = renderDrawer();
+
+    pick(photo());
+    fireEvent.click(await screen.findByRole('button', { name: /save photo/i }));
+
+    await waitFor(() => expect(onUploadAvatar).toHaveBeenCalledTimes(1));
+
+    const { original, crop } = onUploadAvatar.mock.calls[0][0];
+    expect(original).toBeInstanceOf(File);
+    // The *percentage* rectangle, which is what the stub reported as the first argument to
+    // onCropComplete. Sending croppedAreaPixels here - they arrive as two arguments of the
+    // same shape - would store a rectangle that means nothing once the server re-encodes the
+    // original at its own size cap.
+    expect(crop).toEqual({ x: 0, y: 0, width: 100, height: 100 });
   });
 
   it('passes the cropper output through to the export, not the whole image', async () => {

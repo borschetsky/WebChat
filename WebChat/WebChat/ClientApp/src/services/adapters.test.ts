@@ -313,6 +313,51 @@ describe('toDirectory and toProfile', () => {
     const p = toProfile({ id: 'me', username: null, email: null, avatarFileName: null });
     expect(p.role).toBeNull();
   });
+
+  /**
+   * The same seam again, for #88's two fields - and the same failure waiting on the other
+   * side of it. `SettingsDrawer` is `.jsx`: drop `hasOriginalPhoto` here and "Adjust crop"
+   * simply never appears, with the API answering every request correctly and nothing to say
+   * why. That is exactly what happened to the admin console above.
+   */
+  it('carries the stored-original flag and the saved crop through', () => {
+    const p = toProfile({
+      id: 'me',
+      username: 'Wod',
+      email: 'wod@example.com',
+      avatarFileName: 'a.jpg',
+      hasOriginalPhoto: true,
+      avatarCrop: { x: 12.5, y: 25, width: 50, height: 50 },
+    });
+
+    expect(p.hasOriginalPhoto).toBe(true);
+    expect(p.avatarCrop).toEqual({ x: 12.5, y: 25, width: 50, height: 50 });
+  });
+
+  it('reads a profile that says nothing about an original as having none', () => {
+    // A server predating #88 omits both fields. Absent must mean "no", never "probably" -
+    // offering Adjust crop to someone with no stored original is a control that cannot work.
+    const p = toProfile({ id: 'me', username: null, email: null, avatarFileName: 'a.jpg' });
+
+    expect(p.hasOriginalPhoto).toBe(false);
+    expect(p.avatarCrop).toBeNull();
+  });
+
+  it('refuses a half-built rectangle rather than passing NaN to the cropper', () => {
+    // Three numbers and a missing one is not a rectangle. Passed through, the cropper would
+    // position itself from NaN and land somewhere nobody chose - which reads as the saved
+    // crop being wrong rather than as missing data.
+    const p = toProfile({
+      id: 'me',
+      username: null,
+      email: null,
+      avatarFileName: 'a.jpg',
+      hasOriginalPhoto: true,
+      avatarCrop: { x: 1, y: 2, width: 3 } as never,
+    });
+
+    expect(p.avatarCrop).toBeNull();
+  });
 });
 
 describe('currentUserId', () => {

@@ -59,12 +59,67 @@ namespace WebChat.Services
             return searchResult;
         }
 
-        public void AddAvatar(string avatarId, string userId)
+        public AvatarUpdate SetAvatar(string userId, string avatarFileName, string originalFileName, AvatarCropViewModel crop)
         {
             var user = ctx.User.FirstOrDefault(u => u.Id == userId);
-            user.AvatarFileName = avatarId;
+            if (user == null)
+            {
+                // Used to dereference null here. A token whose user is gone is routine enough
+                // that GetUserProfile already handles it; an upload should answer 401, not
+                // throw a NullReferenceException out of the service.
+                return AvatarUpdate.NoSuchUser();
+            }
+
+            var previousAvatar = user.AvatarFileName;
+            var previousOriginal = user.AvatarOriginalFileName;
+
+            user.AvatarFileName = avatarFileName;
+            user.AvatarOriginalFileName = originalFileName;
+            ApplyCrop(user, crop);
+
             ctx.User.Update(user);
             ctx.SaveChanges();
+
+            // Both surrendered: this is a different photo, so the old original is no longer the
+            // source of anything the user can see.
+            return AvatarUpdate.Written(previousAvatar, previousOriginal);
+        }
+
+        public AvatarUpdate SetAvatarCrop(string userId, string avatarFileName, AvatarCropViewModel crop)
+        {
+            var user = ctx.User.FirstOrDefault(u => u.Id == userId);
+            if (user == null)
+            {
+                return AvatarUpdate.NoSuchUser();
+            }
+
+            var previousAvatar = user.AvatarFileName;
+
+            user.AvatarFileName = avatarFileName;
+            ApplyCrop(user, crop);
+
+            ctx.User.Update(user);
+            ctx.SaveChanges();
+
+            // AvatarOriginalFileName is deliberately untouched, and the second argument is
+            // deliberately null: the original is what makes the next adjustment possible.
+            return AvatarUpdate.Written(previousAvatar, null);
+        }
+
+        public string GetAvatarOriginalFileName(string userId) =>
+            ctx.User.Where(u => u.Id == userId).Select(u => u.AvatarOriginalFileName).FirstOrDefault();
+
+        /// <summary>
+        /// All four columns move together, including to null - a crop left over from the
+        /// previous photo would restore the cropper to a rectangle taken from an image that is
+        /// no longer there.
+        /// </summary>
+        private static void ApplyCrop(User user, AvatarCropViewModel crop)
+        {
+            user.AvatarCropX = crop?.X;
+            user.AvatarCropY = crop?.Y;
+            user.AvatarCropWidth = crop?.Width;
+            user.AvatarCropHeight = crop?.Height;
         }
 
         public void AddUser(User newUser)

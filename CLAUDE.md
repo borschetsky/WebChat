@@ -202,6 +202,16 @@ and fill it in, or the command stops naming the variable it wanted.
     report — a browser check against a stale module is worse than no check, because it looks
     like evidence. Restart `react-app` after editing, and confirm the served module matches the
     file before trusting what you saw.
+- **An avatar is now two objects with two different delete rules, and `/images/{name}` must
+  never serve one of them.** The cropped avatar keeps its anonymous GUID path; the *original*
+  lives under `originals/` and is reachable only through `GET api/avatars/original`, which
+  checks the caller owns it — because the original holds the pixels the user deliberately
+  cropped out. `GetImage` presigns whatever key it is handed, so the prefix guard in it is the
+  whole of that protection. **Uploading a new photo deletes both the old crop and the old
+  original; re-cropping deletes the old crop and *keeps* the original.** Every derived crop
+  must still write a fresh `{Guid}.{ext}` — a stable per-user key would serve the old face
+  from the memoised presigned URL and the browser cache at once, invisibly to the one person
+  who just re-cropped.
 - **Checking a responsive change needs a same-origin iframe, because the browser tool cannot
   narrow the viewport.** `resize_window` reports success, moves the OS window, and leaves the
   tab reporting its old `innerWidth` — so a "mobile check" silently runs at desktop width and

@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useEffect, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Box,
@@ -6,6 +6,10 @@ import {
   Divider,
   Drawer,
   IconButton,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
   Stack,
   TextField,
   Typography,
@@ -13,6 +17,8 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
+import CropIcon from '@mui/icons-material/Crop';
 import PresenceAvatar from '@/components/PresenceAvatar';
 import AppearanceControls from '@/features/settings/AppearanceControls';
 import MockDisclosure from '@/features/settings/MockDisclosure';
@@ -50,6 +56,7 @@ export default function SettingsDrawer({
   saving = false,
   saveError = null,
   onUploadAvatar,
+  onLoadOriginal,
   onLogout,
   onOpenAdmin,
   fullWidth,
@@ -60,10 +67,59 @@ export default function SettingsDrawer({
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
 
-  // The picked photo, held here rather than uploaded on the spot. This is the whole of #84 at
-  // this level: before, choosing a file *was* the upload and there was no moment at which
-  // anyone could decline. `null` means no crop in progress.
+  // The photo being cropped, held here rather than uploaded on the spot. This is the whole of
+  // #84 at this level: before, choosing a file *was* the upload and there was no moment at
+  // which anyone could decline. `null` means no crop in progress.
+  //
+  // Since #88 it can also be the photo fetched back from the server, so it carries where it
+  // came from and which rectangle to open on. The three move together, which is why they are
+  // one piece of state rather than three: a stale `source` next to a fresh file would re-upload
+  // an original that is already stored, or fail to upload one that is not.
   const [pickedPhoto, setPickedPhoto] = useState(null);
+
+  // Which of the avatar menu's actions is in flight, so the menu can say so rather than
+  // appearing to do nothing while an image is fetched.
+  const [loadingOriginal, setLoadingOriginal] = useState(false);
+  const [photoMenuAnchor, setPhotoMenuAnchor] = useState(null);
+
+  // The file input is no longer inside a `component="label"` button, because that button now
+  // has a second job - opening the menu - and a label fires the picker on every click. So the
+  // picker is opened programmatically instead.
+  const fileInput = useRef(null);
+
+  /**
+   * Whether there is anything to choose between.
+   *
+   * The handoff opens a menu when a photo is present. Two of its three items ship here:
+   * "Upload a new photo" and "Adjust crop". **Remove photo is #89** - there is still no
+   * endpoint that can clear an avatar - and "Adjust crop" only works for someone whose photo
+   * was uploaded after #88, because nothing backfills an original.
+   *
+   * So the menu is drawn only when Adjust is genuinely available. A one-item menu between the
+   * user and the file picker would be friction bought with nothing, and it is exactly the
+   * state every existing account is in.
+   */
+  const canAdjustCrop = Boolean(profile?.avatarFileName) && Boolean(profile?.hasOriginalPhoto);
+
+  const openPicker = () => {
+    setPhotoMenuAnchor(null);
+    fileInput.current?.click();
+  };
+
+  const adjustCrop = async () => {
+    setPhotoMenuAnchor(null);
+    setLoadingOriginal(true);
+    try {
+      const original = await onLoadOriginal?.();
+      // Null means the fetch failed and has already been reported. Opening the cropper on
+      // nothing would be worse than not opening it.
+      if (original) {
+        setPickedPhoto({ file: original, source: 'stored', crop: profile?.avatarCrop ?? null });
+      }
+    } finally {
+      setLoadingOriginal(false);
+    }
+  };
 
   useEffect(() => {
     // Same "reset the form when the prop changes" shape as ComposeDialog: the idiomatic fix
@@ -112,8 +168,15 @@ export default function SettingsDrawer({
               showPresence={false}
             />
             <IconButton
-              component="label"
               size="small"
+              // Two different names for two different controls, because both are in the
+              // accessibility tree and a shared name would make each ambiguous. The input is
+              // still "Change profile photo" - it is the control that changes it - so this one
+              // says what *it* does, which depends on whether there is a menu behind it.
+              aria-label={canAdjustCrop ? 'Profile photo options' : 'Add a profile photo'}
+              aria-haspopup={canAdjustCrop ? 'menu' : undefined}
+              disabled={loadingOriginal}
+              onClick={(e) => (canAdjustCrop ? setPhotoMenuAnchor(e.currentTarget) : openPicker())}
               sx={{
                 position: 'absolute',
                 right: -4,
@@ -125,27 +188,53 @@ export default function SettingsDrawer({
               }}
             >
               <PhotoCameraIcon fontSize="inherit" />
-              <input
-                hidden
-                type="file"
-                accept="image/*"
-                // The accessible name lives on the input, not on the IconButton wrapping it.
-                // The button is a `component="label"`, so a name there labels the label and
-                // leaves the control itself unnamed - and anything driving the real control,
-                // a screen reader or a test, addresses the input.
-                aria-label="Change profile photo"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) setPickedPhoto(f);
-                  // Cleared so that picking the *same* file again still fires a change event.
-                  // Without it, cancelling and re-choosing the photo you just cancelled does
-                  // nothing at all, which reads as the button being broken.
-                  e.target.value = '';
-                }}
-              />
             </IconButton>
+            <input
+              ref={fileInput}
+              hidden
+              type="file"
+              accept="image/*"
+              // The accessible name stays on the input rather than moving to the button above.
+              // It is the control that actually changes the photo, and anything driving the
+              // real control - a screen reader, a test - addresses the input.
+              aria-label="Change profile photo"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                // A freshly picked photo has no stored original and no saved rectangle: the
+                // cropper opens on the whole thing, and the original goes up with the crop.
+                if (f) setPickedPhoto({ file: f, source: 'picked', crop: null });
+                // Cleared so that picking the *same* file again still fires a change event.
+                // Without it, cancelling and re-choosing the photo you just cancelled does
+                // nothing at all, which reads as the button being broken.
+                e.target.value = '';
+              }}
+            />
           </Box>
         </Stack>
+
+        {/* The handoff's avatar menu. Its third item, Remove photo, is #89: there is still no
+            endpoint that can clear an avatar, and a control with nothing behind it is the
+            failure this repo has already had twice. A test pins its absence. */}
+        <Menu
+          anchorEl={photoMenuAnchor}
+          open={Boolean(photoMenuAnchor)}
+          onClose={() => setPhotoMenuAnchor(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+          <MenuItem onClick={openPicker}>
+            <ListItemIcon>
+              <AddPhotoAlternateIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Upload a new photo</ListItemText>
+          </MenuItem>
+          <MenuItem onClick={adjustCrop}>
+            <ListItemIcon>
+              <CropIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Adjust crop</ListItemText>
+          </MenuItem>
+        </Menu>
 
         <Stack spacing={1.75}>
           <TextField
@@ -294,15 +383,17 @@ export default function SettingsDrawer({
       {pickedPhoto && (
         <Suspense fallback={null}>
           <AvatarCropDialog
-            key={`${pickedPhoto.name}:${pickedPhoto.size}:${pickedPhoto.lastModified}`}
-            file={pickedPhoto}
+            key={`${pickedPhoto.source}:${pickedPhoto.file.name}:${pickedPhoto.file.size}:${pickedPhoto.file.lastModified}`}
+            file={pickedPhoto.file}
+            source={pickedPhoto.source}
+            initialCrop={pickedPhoto.crop}
             onCancel={() => setPickedPhoto(null)}
-            onConfirm={(cropped) => {
-              // The same `onUploadAvatar` that existed before, receiving a cropped `File`
-              // rather than the original - which is what makes this a zero-server-change
-              // feature. It must stay a File: ChatApp does FormData.append('file', it) and
-              // the server reads form.Files[0], so a bare Blob would arrive nameless.
-              onUploadAvatar(cropped);
+            onConfirm={(result) => {
+              // The cropped square, the rectangle that produced it, and - for a freshly picked
+              // photo only - the whole image to keep. `file` must stay a File: ChatApp does
+              // FormData.append('file', it) and the server reads the part by name, so a bare
+              // Blob would arrive nameless.
+              onUploadAvatar(result);
               setPickedPhoto(null);
             }}
           />

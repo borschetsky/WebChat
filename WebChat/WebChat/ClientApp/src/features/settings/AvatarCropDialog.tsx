@@ -13,9 +13,9 @@ import { useTheme } from '@mui/material/styles';
 import CheckIcon from '@mui/icons-material/Check';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
-import Cropper from 'react-easy-crop';
-import type { Area, Point } from 'react-easy-crop';
-import { cropToFile } from '@/features/settings/cropImage';
+import Cropper, { getInitialCropFromCroppedAreaPercentages } from 'react-easy-crop';
+import type { Area, MediaSize, Point } from 'react-easy-crop';
+import { cropToFile, downscaleToFile } from '@/features/settings/cropImage';
 
 /** From the handoff: min 1, max 3, step 0.05. */
 const MIN_ZOOM = 1;
@@ -52,18 +52,151 @@ export function cropSizeFor(stageSide: number): number {
   return Math.max(1, Math.min(CIRCLE_PX, Math.round(stageSide) - STAGE_SURROUND_PX));
 }
 
+/**
+ * The size react-easy-crop will actually render the photo at, given `objectFit="cover"`.
+ *
+ * **This is the whole of the re-crop drift bug.** Restoring a saved rectangle needs the
+ * displayed media size, and `cover` and `contain` disagree about it for any photo that is not
+ * square - by exactly the ratio of the longer edge to the shorter one.
+ *
+ * Transcribed from the library rather than guessed, and from two places that agree:
+ * `getObjectFit()` resolves `cover` to `horizontal-cover` when the media is *narrower* than
+ * the container and `vertical-cover` otherwise, and `computeSizes()` then sizes it as
+ * `width: container.width` (horizontal) or `height: container.height` (vertical). Its CSS
+ * says the same thing a third time - `.reactEasyCrop_Cover_Horizontal { width: 100%; height:
+ * auto }` - which matters because `computeSizes` takes the element's own offset size instead
+ * whenever the photo is *not* scaled down. Both branches land on these numbers, so a small
+ * photo restores the same way a large one does.
+ *
+ * Returns null for anything that cannot be a rendered size, so the caller opens the cropper on
+ * the whole photo rather than restoring to NaN.
+ */
+export function coverMediaSizeFor(
+  natural: { naturalWidth: number; naturalHeight: number },
+  container: { width: number; height: number },
+): MediaSize | null {
+  const { naturalWidth, naturalHeight } = natural;
+
+  if (
+    !(naturalWidth > 0) ||
+    !(naturalHeight > 0) ||
+    !(container.width > 0) ||
+    !(container.height > 0)
+  ) {
+    return null;
+  }
+
+  const mediaAspect = naturalWidth / naturalHeight;
+  const containerAspect = container.width / container.height;
+
+  const rendered =
+    mediaAspect < containerAspect
+      ? // horizontal-cover: pinned to the container's width, overflowing vertically.
+        { width: container.width, height: container.width / mediaAspect }
+      : // vertical-cover: pinned to the container's height, overflowing horizontally.
+        { width: container.height * mediaAspect, height: container.height };
+
+  return { ...rendered, naturalWidth, naturalHeight };
+}
+
+/**
+ * The `crop` and `zoom` that put a saved rectangle back where it was.
+ *
+ * Done here rather than by handing the library `initialCroppedAreaPercentages`, and that is
+ * the fix rather than a preference. The library applies that prop from `onMediaLoad`, which
+ * runs `computeSizes()` **before** anything has resolved `cover` into `horizontal-cover` or
+ * `vertical-cover`: `state.mediaObjectFit` is still `undefined` at that moment, so the switch
+ * falls through to its `contain` branch and the media is measured as if it were letterboxed.
+ * `componentDidUpdate` fixes the fit a beat later and re-measures - but never re-applies the
+ * initial crop. So the zoom is computed against a `contain` width and then used against a
+ * `cover` one, and every restore-and-save shrinks the crop by the photo's aspect ratio. A
+ * square photo cannot show it, because `contain` and `cover` agree there.
+ *
+ * The arithmetic itself is the library's own public `getInitialCropFromCroppedAreaPercentages`
+ * - only the media size handed to it is ours. `cropSize` comes from `cropSizeFor`, not from
+ * the handoff's 280: the circle shrinks with the stage on a narrow viewport (#92), and a zoom
+ * computed against 280 on a 375px phone would be wrong by 280/223.
+ */
+export function restoreCropFor(
+  percentages: Area,
+  natural: { naturalWidth: number; naturalHeight: number },
+  stageSide: number,
+): { crop: Point; zoom: number } | null {
+  if (!(stageSide > 0)) return null;
+
+  // Square by `aspect-ratio: 1/1` - see the stage's `sx` below, and #92.
+  const container = { width: stageSide, height: stageSide };
+  const mediaSize = coverMediaSizeFor(natural, container);
+  if (!mediaSize) return null;
+
+  const side = cropSizeFor(stageSide);
+
+  return getInitialCropFromCroppedAreaPercentages(
+    percentages,
+    mediaSize,
+    0,
+    { width: side, height: side },
+    MIN_ZOOM,
+    MAX_ZOOM,
+  );
+}
+
+/**
+ * Where the photo in the dialog came from, which decides what has to be uploaded with the
+ * crop.
+ *
+ * `'picked'` - just chosen from the device, so the original has never reached the server and
+ * has to go up alongside the square. `'stored'` - fetched back from the server's own copy, so
+ * it is already there and re-posting it would store a second, identical object and orphan the
+ * first.
+ *
+ * An explicit prop rather than "is there an initial crop": the two are independent. A stored
+ * photo can have no saved rectangle (the upload that stored it sent none), and inferring one
+ * from the other would silently re-upload an original every time someone adjusted a crop that
+ * had never been recorded.
+ */
+export type CropSource = 'picked' | 'stored';
+
+/** What a confirmed crop hands back: the square, the rectangle, and the original if it is new. */
+export type CropResult = {
+  /** The cropped square, ready for the existing upload path. */
+  file: File;
+  /**
+   * The crop rectangle in **percentages** of the source, which is what gets persisted.
+   *
+   * Percentages, not `croppedAreaPixels`: pixels are measured against the exact image
+   * dimensions they were taken in, and the server re-encodes the stored original at its own
+   * size cap, so a pixel rectangle would come back scaled wrong. react-easy-crop hands back
+   * both from one callback, and restores from percentages.
+   */
+  crop: Area;
+  /** The whole photo, downscaled, when it is not already on the server. Null for a re-crop. */
+  original: File | null;
+};
+
 export type AvatarCropDialogProps = {
   /**
-   * The picked photo. Required, and the component is mounted only while there is one: the
+   * The photo. Required, and the component is mounted only while there is one: the
    * call site keys on the file, so a different photo is a different component instance
    * rather than an effect resetting five pieces of state - which is the fix this repo keeps
    * deferring elsewhere, taken here because nothing forces the deferral.
    */
   file: File;
+  /** See {@link CropSource}. Defaults to a freshly picked photo. */
+  source?: CropSource;
+  /**
+   * The rectangle to open on, in percentages, or null for the whole photo.
+   *
+   * Applied by this component through {@link restoreCropFor} once the photo's natural size and
+   * the stage's measured width are both known - **not** by handing the library
+   * `initialCroppedAreaPercentages`, which measures the photo before it has decided what
+   * `objectFit="cover"` means and shrinks the crop on every save. See `restoreCropFor`.
+   */
+  initialCrop?: Area | null;
   /** Cancel. Nothing has been uploaded, so the current avatar is untouched. */
   onCancel: () => void;
-  /** Confirm. Receives the cropped square as a `File`, ready for the existing upload path. */
-  onConfirm: (cropped: File) => void;
+  /** Confirm. See {@link CropResult}. */
+  onConfirm: (result: CropResult) => void;
 };
 
 /**
@@ -88,17 +221,25 @@ export type AvatarCropDialogProps = {
  * button would have been a control with no endpoint behind it, which is the failure this
  * repo has just had twice. Reported rather than invented.
  *
- * The crop is applied client-side and the result is uploaded, rather than the original being
- * stored with crop metadata applied later. That is not a preference: `CachingAvatarUrlProvider`
- * memoises a presigned URL for 30 minutes and the redirect is served `max-age=300`, both safe
- * *only* because every upload writes a fresh `{Guid}.{ext}`. Re-deriving into a stable
- * per-user key would keep serving the old picture - most visibly to the person who just
- * re-cropped it. See docs/ctx/2026-08-09-stable-avatar-urls.md.
+ * **The crop is still applied client-side and the square uploaded** - what #88 added is that
+ * the whole photo and the rectangle go up alongside it, so the crop can be adjusted later
+ * without re-picking the file. What has *not* changed, and must not, is that every save writes
+ * a fresh `{Guid}.{ext}` server-side: `CachingAvatarUrlProvider` memoises a presigned URL for
+ * 30 minutes and the redirect is served `max-age=300`, both safe only because a filename's
+ * bytes never change. Re-deriving into a stable per-user key would keep serving the old
+ * picture - most visibly to the person who just re-cropped it, because their own browser holds
+ * the stale copy. See docs/ctx/2026-08-09-stable-avatar-urls.md.
  *
  * Loaded through `React.lazy` from the settings drawer, so `react-easy-crop` lands in its own
  * chunk rather than in ChatApp's. Nothing outside this dialog imports the library.
  */
-export default function AvatarCropDialog({ file, onCancel, onConfirm }: AvatarCropDialogProps) {
+export default function AvatarCropDialog({
+  file,
+  source = 'picked',
+  initialCrop = null,
+  onCancel,
+  onConfirm,
+}: AvatarCropDialogProps) {
   // An object URL rather than a data URL: a phone photo is megabytes, and base64 would copy
   // all of it through a string. Built in a lazy initialiser rather than an effect, so there
   // is never a first frame with no image and nothing has to set state from an effect.
@@ -122,6 +263,10 @@ export default function AvatarCropDialog({ file, onCancel, onConfirm }: AvatarCr
   const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(MIN_ZOOM);
   const [area, setArea] = useState<Area | null>(null);
+  // The same rectangle in percentages. Both are needed and neither substitutes for the other:
+  // the export reads source pixels, and only percentages survive the original being re-encoded
+  // at a different size, which is what makes a saved crop restorable.
+  const [percent, setPercent] = useState<Area | null>(null);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState('');
 
@@ -174,14 +319,65 @@ export default function AvatarCropDialog({ file, onCancel, onConfirm }: AvatarCr
     };
   }, [measure, fullScreen]);
 
-  const handleCropComplete = useCallback((_percent: Area, pixels: Area) => setArea(pixels), []);
+  const handleCropComplete = useCallback((percentages: Area, pixels: Area) => {
+    setArea(pixels);
+    setPercent(percentages);
+  }, []);
+
+  /**
+   * The photo's own dimensions, learned when it decodes. Only the natural size is kept: the
+   * `width`/`height` the library reports alongside it are measured before it has resolved
+   * `cover`, which is exactly the number that must not be trusted here.
+   */
+  const [natural, setNatural] = useState<{ naturalWidth: number; naturalHeight: number } | null>(
+    null,
+  );
+
+  const handleMediaLoaded = useCallback((size: MediaSize) => {
+    setNatural({ naturalWidth: size.naturalWidth, naturalHeight: size.naturalHeight });
+  }, []);
+
+  /**
+   * Put a saved crop back, once, as soon as both facts it needs are in.
+   *
+   * Two facts, arriving in either order: the photo's natural size (an async decode) and the
+   * stage's measured width (a callback ref, which is `0` until the portal attaches). Waiting
+   * for both in an effect is why this is not done in the load handler - on a slow layout the
+   * handler would run against a stage width of zero and `restoreCropFor` would decline, and
+   * the crop would silently never be restored.
+   *
+   * Once only, guarded by a ref rather than by comparing state: after this fires the user owns
+   * the crop, and a later re-measure (a rotate, or the mobile breakpoint flipping) must not
+   * throw their adjustment away. react-easy-crop keeps the crop sensible across a resize by
+   * itself.
+   */
+  const restored = useRef(false);
+
+  useEffect(() => {
+    if (restored.current || !initialCrop || !natural || !(stageSide > 0)) return;
+
+    const next = restoreCropFor(initialCrop, natural, stageSide);
+    if (!next) return;
+
+    restored.current = true;
+    // oxlint-disable-next-line rh/set-state-in-effect
+    setCrop(next.crop);
+    // oxlint-disable-next-line rh/set-state-in-effect
+    setZoom(next.zoom);
+  }, [initialCrop, natural, stageSide]);
 
   const save = async () => {
-    if (!area) return;
+    if (!area || !percent) return;
     setWorking(true);
     setError('');
     try {
-      onConfirm(await cropToFile(file, area));
+      // Sequential rather than Promise.all, deliberately: both decode the same photo, and on a
+      // phone a 12-megapixel decode twice at once is where the tab runs out of memory. This
+      // runs behind a disabled button either way.
+      const cropped = await cropToFile(file, area);
+      const original = source === 'picked' ? await downscaleToFile(file) : null;
+
+      onConfirm({ file: cropped, crop: percent, original });
     } catch {
       setError('That image could not be cropped. Try a different photo.');
       setWorking(false);
@@ -234,8 +430,12 @@ export default function AvatarCropDialog({ file, onCancel, onConfirm }: AvatarCr
       }}
     >
       <Box sx={{ p: '20px 24px 12px' }}>
+        {/* The heading names what is about to happen, and the two cases are genuinely
+            different: one is finishing an upload, the other is changing a photo that is
+            already the user's avatar. It is also the dialog's accessible name - see the
+            `aria-labelledby` below, which pointed at nothing until #84's browser pass. */}
         <Typography id={titleId} component="h2" sx={{ fontSize: 19, fontWeight: 500 }}>
-          Crop your photo
+          {source === 'stored' ? 'Adjust your crop' : 'Crop your photo'}
         </Typography>
         <Typography sx={{ fontSize: 13, color: 'text.secondary', mt: '3px' }}>
           Drag to reposition, pinch or slide to zoom.
@@ -290,6 +490,14 @@ export default function AvatarCropDialog({ file, onCancel, onConfirm }: AvatarCr
             // circle displayed a centred subject. `cover` guarantees the image always covers
             // the crop area, which is the only state in which what you see is what you get.
             objectFit="cover"
+            // **Neither `initialCroppedAreaPercentages` nor `initialCroppedAreaPixels` is
+            // passed, and that is deliberate.** The library applies them from `onMediaLoad`,
+            // which measures the photo before anything has resolved `cover` into
+            // `horizontal-cover` or `vertical-cover` - so a non-square photo is measured
+            // letterboxed and every restore-and-save shrinks the crop by its aspect ratio. The
+            // restore is done above instead, from `onMediaLoaded`, against the size the media
+            // is actually rendered at. See `restoreCropFor`.
+            onMediaLoaded={handleMediaLoaded}
             restrictPosition
             minZoom={MIN_ZOOM}
             maxZoom={MAX_ZOOM}

@@ -22,6 +22,21 @@ namespace WebChat.AvatarWriter
         public int MaxDimension { get; set; } = 256;
 
         /// <summary>
+        /// Longest edge of the stored **original** - the un-cropped photo kept so a crop can be
+        /// adjusted later (#88).
+        ///
+        /// Deliberately far larger than <see cref="MaxDimension"/>, because the two are stored
+        /// for opposite reasons: the avatar only ever renders at 34-40 px, while the point of
+        /// the original is that someone can zoom *into* it and still get a usable 256 px square
+        /// out the other side. Measured in
+        /// docs/research/2026-08-15-avatar-recrop-and-original-storage.md: ~29.8 kB per user at
+        /// 512, ~93.5 kB at 1024. At 1024 the R2 free tier still holds tens of thousands of
+        /// users, and the marginal money is a fraction of a cent per thousand - so the size cap
+        /// is chosen for how much crop headroom it leaves, not for storage cost.
+        /// </summary>
+        public int OriginalMaxDimension { get; set; } = 1024;
+
+        /// <summary>
         /// Guards against decompression bombs: a few hundred KB of PNG can declare a canvas
         /// of hundreds of megapixels, and decoding it is what exhausts memory - not the file
         /// size, which <see cref="MaxUploadBytes"/> already covers. Dimensions are read from

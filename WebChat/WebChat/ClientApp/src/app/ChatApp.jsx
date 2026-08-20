@@ -29,7 +29,7 @@ import SettingsDrawer from '@/features/settings/SettingsDrawer';
 import ComposeDialog from '@/features/threads/ComposeDialog';
 import GroupInfoDrawer from '@/features/threads/GroupInfoDrawer';
 import { useThemeMode } from '@/theme/ThemeModeProvider';
-import { uploadAvatar } from '@/services';
+import { uploadAvatar, recropAvatar, getAvatarOriginal } from '@/services';
 import { markThreadRead, markAllThreadsRead, readReceiptFor } from '@/services/chat-service';
 import { invokeHub } from '@/features/realtime/signalrMiddleware';
 import {
@@ -290,15 +290,57 @@ export default function ChatApp({ user, onSignOut }) {
     if (!result.error) notify('Profile updated');
   };
 
-  const handleUploadAvatar = async (file) => {
+  /**
+   * Posts a confirmed crop.
+   *
+   * Two endpoints, chosen by whether an original came with it, because the server deletes
+   * different things: a new photo drops the previous crop *and* the previous original, while a
+   * re-crop drops the crop and keeps the original - which is the only reason a crop can be
+   * adjusted twice.
+   *
+   * The crop rectangle goes as four fields rather than a JSON part: it is four numbers, and
+   * the number formatting is the only thing that can go wrong. `String(number)` always writes
+   * a dot, and the server parses with InvariantCulture, so the pair agree on every machine.
+   */
+  const handleUploadAvatar = async ({ file, crop, original }) => {
     const form = new FormData();
     form.append('file', file);
+    if (original) form.append('original', original);
+    if (crop) {
+      form.append('cropX', String(crop.x));
+      form.append('cropY', String(crop.y));
+      form.append('cropWidth', String(crop.width));
+      form.append('cropHeight', String(crop.height));
+    }
+
     try {
-      await uploadAvatar(form, user.token);
-      // The hub broadcasts ReciveAvatar, which invalidates the profile for everyone.
-      notify('Avatar updated');
+      await (original ? uploadAvatar(form, user.token) : recropAvatar(form, user.token));
+      // The hub broadcasts ReciveAvatar, which invalidates the profile for everyone - which is
+      // also what refreshes hasOriginalPhoto and avatarCrop for this user.
+      notify(original ? 'Avatar updated' : 'Crop updated');
     } catch {
       notify('Avatar upload failed.');
+    }
+  };
+
+  /**
+   * Fetches the stored original back so it can be re-cropped, as a `File` the cropper can
+   * decode. Returns null on failure, having said so - the drawer then simply does not open,
+   * rather than opening on a photo that is not there.
+   */
+  const handleLoadOriginal = async () => {
+    try {
+      const response = await getAvatarOriginal(user.token);
+      const blob = response?.data;
+      if (!blob) throw new Error('no body');
+
+      // A File, not a Blob: `cropToFile` reads `file.name` to build the uploaded filename, and
+      // a bare Blob has none. The extension is cosmetic - the server derives the stored one
+      // from the magic bytes - but a nameless part posts as "blob".
+      return new File([blob], 'photo.jpg', { type: blob.type || 'image/jpeg' });
+    } catch {
+      notify('Could not load your photo to adjust.');
+      return null;
     }
   };
 
@@ -431,6 +473,7 @@ export default function ChatApp({ user, onSignOut }) {
         threadName={active?.name}
         onSaveProfile={handleSaveProfile}
         onUploadAvatar={handleUploadAvatar}
+        onLoadOriginal={handleLoadOriginal}
         onLogout={onSignOut}
         onOpenAdmin={() => navigate('/admin')}
         fullWidth={isMobile}

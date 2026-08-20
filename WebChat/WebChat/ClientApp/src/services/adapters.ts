@@ -11,6 +11,7 @@ import { autoGroupName } from '@/features/threads/groupName';
 import { systemMessageText } from '@/features/messages/systemMessage';
 import { getDateInfoForThread, getDateInfoForMessage } from '@/lib/date-time-format';
 import type {
+  AvatarCropDto,
   GroupDto,
   MessageDto,
   MessagesByDayDto,
@@ -18,7 +19,15 @@ import type {
   ThreadDto,
   UserDto,
 } from '@/types/dto';
-import type { DirectoryEntry, Group, GroupMember, Message, Profile, Thread } from '@/types/models';
+import type {
+  AvatarCrop,
+  DirectoryEntry,
+  Group,
+  GroupMember,
+  Message,
+  Profile,
+  Thread,
+} from '@/types/models';
 import {
   mockThreadUnread,
   mockMessageReactions,
@@ -237,7 +246,32 @@ export const toProfile = (vm: ProfileDto): Profile => ({
   // while its API answered perfectly. Read fresh from the database on every getprofile, so
   // a promotion takes effect on reload rather than at the next sign-in.
   role: vm.role ?? null,
+  // Same seam, same trap. `SettingsDrawer` is `.jsx`, so nothing type-checks a property that
+  // does not exist there - a field dropped here is a menu item that never appears while the
+  // API answers every request correctly, which is exactly how the admin console went missing
+  // for five slices (#82).
+  hasOriginalPhoto: vm.hasOriginalPhoto === true,
+  avatarCrop: toAvatarCrop(vm.avatarCrop),
 });
+
+/**
+ * A crop rectangle, or null.
+ *
+ * Field by field rather than passing the object through, because "the server sent an object"
+ * and "the server sent a usable rectangle" are different claims. A partial one - three numbers
+ * and an undefined - would reach react-easy-crop as `NaN` and put the cropper somewhere
+ * nobody chose, which reads as the saved crop being wrong rather than as missing data.
+ */
+const toAvatarCrop = (dto: AvatarCropDto | null | undefined): AvatarCrop | null => {
+  if (!dto) return null;
+
+  const { x, y, width, height } = dto;
+  if (![x, y, width, height].every((n) => typeof n === 'number' && Number.isFinite(n))) {
+    return null;
+  }
+
+  return { x, y, width, height };
+};
 
 /**
  * A message arriving over SignalR ("ReciveMessage") uses the same MessageViewModel shape
