@@ -202,6 +202,14 @@ and fill it in, or the command stops naming the variable it wanted.
     report — a browser check against a stale module is worse than no check, because it looks
     like evidence. Restart `react-app` after editing, and confirm the served module matches the
     file before trusting what you saw.
+- **"Removed" is a third avatar state, not an absence.** `AvatarRemovedAt` is a retention
+  marker: while it is set every read path must report no avatar, but the keys and the crop
+  columns are **kept**, which is the only reason Undo can restore the photo *and* its framing
+  exactly — the server cannot re-derive a crop, because cropping is client-side by design.
+  **Undo never accepts a filename from the client**; `restore` takes no parameters at all,
+  because a client-supplied key would let anyone point their avatar at any object in the
+  bucket. Any new query that reads `AvatarFileName` must gate on the marker — `AvatarVisibility`
+  states the rule, and EF projections spell it inline because it has to translate to SQL.
 - **An avatar is now two objects with two different delete rules, and `/images/{name}` must
   never serve one of them.** The cropped avatar keeps its anonymous GUID path; the *original*
   lives under `originals/` and is reachable only through `GET api/avatars/original`, which

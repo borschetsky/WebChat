@@ -181,7 +181,11 @@ namespace WebChat.Services
                                  Username = u.Username,
                                  // Free: this query already joins User for the username, so
                                  // the avatar is one more column rather than one more query.
-                                 AvatarFileName = u.AvatarFileName,
+                                 // The AvatarVisibility rule inline, because it has to
+                                 // translate to SQL: a removed photo (#89) keeps its key in
+                                 // the row, so reading the column alone would leave the
+                                 // removed face on every message the user ever sent.
+                                 AvatarFileName = u.AvatarRemovedAt == null ? u.AvatarFileName : null,
                                  Text = m.Text,
                                  ThreadId = m.ThreadId,
 

@@ -44,7 +44,11 @@ namespace WebChat.Services
                     u.Email,
                     u.Role,
                     u.Status,
-                    u.AvatarFileName,
+                    // The AvatarVisibility rule inline, because it has to translate to SQL: a
+                    // removed photo (#89) keeps its key in the row, and the member list is a
+                    // read like any other. Removing someone else's photo is *not* in #89 -
+                    // this only stops the console showing one its owner has removed.
+                    AvatarFileName = u.AvatarRemovedAt == null ? u.AvatarFileName : null,
                     u.EmailConfirmed,
                     u.CreatedOn,
 

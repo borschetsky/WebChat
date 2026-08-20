@@ -88,6 +88,10 @@ const renderDrawer = () => {
         onSaveProfile={() => {}}
         onUploadAvatar={onUploadAvatar}
         onLoadOriginal={async () => null}
+        // Never called here - this fixture has no photo, so neither the menu nor the dialog's
+        // Remove button is drawn. Present because the drawer requires it: a caller that can
+        // show a photo must be able to remove it (#89).
+        onRemoveAvatar={() => {}}
         onLogout={() => {}}
         onOpenAdmin={() => {}}
         threadName={null}

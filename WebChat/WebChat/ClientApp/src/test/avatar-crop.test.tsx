@@ -73,14 +73,38 @@ describe('AvatarCropDialog', () => {
   });
 
   /**
-   * The handoff draws a Remove action; there is still no endpoint that can clear an avatar -
-   * #88 added `recrop` and `original` to `AvatarsController` and neither of them removes
-   * anything, and `UpdateProfile` still writes Email and Username and nothing else. So it
-   * stays deliberately absent. This pins that as a decision rather than an oversight - if the
-   * button appears before the endpoint does, this is what says so. Filed as #89.
+   * The handoff's Remove action, which #84 and #88 both left out because no endpoint could
+   * clear an avatar. #89 added one, so this test - which used to pin the button's *absence* -
+   * now pins its presence and its behaviour. It sits ahead of the spacer, per the handoff, and
+   * it is `error` coloured because it is the one destructive control in the dialog.
    */
-  it('draws no Remove action, because no API can clear an avatar', () => {
+  it('draws a Remove action when there is a photo to remove', () => {
+    const onRemove = vi.fn();
+    withTheme(
+      <AvatarCropDialog
+        file={photo()}
+        source="stored"
+        onRemove={onRemove}
+        onCancel={() => {}}
+        onConfirm={() => {}}
+      />,
+    );
+
+    const button = screen.getByRole('button', { name: /remove photo/i });
+    fireEvent.click(button);
+
+    expect(onRemove).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * The other half, and the reason the button is driven by a callback rather than by `source`:
+   * someone cropping their *first* photo has nothing to remove, and a Remove button there would
+   * either do nothing or remove a photo they never had. The call site decides; the dialog only
+   * draws what it was handed.
+   */
+  it('draws no Remove action when there is nothing to remove', () => {
     withTheme(<AvatarCropDialog file={photo()} onCancel={() => {}} onConfirm={() => {}} />);
+
     expect(screen.queryByRole('button', { name: /remove/i })).toBeNull();
   });
 

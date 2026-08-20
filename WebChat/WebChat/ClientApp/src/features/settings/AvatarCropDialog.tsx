@@ -11,6 +11,10 @@ import {
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import CheckIcon from '@mui/icons-material/Check';
+// `DeleteOutline` does not exist in this package - the exports are `Delete`,
+// `DeleteOutlined` and `DeleteOutlineOutlined`. Exactly the class of import that typechecks,
+// passes the dev server and breaks `vite build`; see CLAUDE.md on `MailOutline`.
+import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import Cropper, { getInitialCropFromCroppedAreaPercentages } from 'react-easy-crop';
@@ -193,6 +197,19 @@ export type AvatarCropDialogProps = {
    * `objectFit="cover"` means and shrinks the crop on every save. See `restoreCropFor`.
    */
   initialCrop?: Area | null;
+  /**
+   * Remove the photo the user currently has (#89), or undefined when there is none.
+   *
+   * **Undefined is what hides the button**, rather than the dialog deciding from `source`.
+   * Only the call site knows whether an avatar exists: someone cropping their first photo has
+   * `source === 'picked'` and nothing to remove, and so does someone replacing a photo they
+   * already have. A button whose only possible outcome is "nothing happened" is worse than an
+   * absent one.
+   *
+   * The dialog does not close itself afterwards - the call site owns that, because it is also
+   * what unmounts this component and revokes the object URL.
+   */
+  onRemove?: () => void;
   /** Cancel. Nothing has been uploaded, so the current avatar is untouched. */
   onCancel: () => void;
   /** Confirm. See {@link CropResult}. */
@@ -215,11 +232,11 @@ export type AvatarCropDialogProps = {
  * transparent to 139 px and .55 black from 140 px, which is this box-shadow at a 280 px
  * circle), and the grid lines from .5 to .35.
  *
- * The handoff also draws a **Remove** action. It is deliberately absent: nothing in the API
- * can clear an avatar. `AvatarsController` has only `upload`, `IUserService` has only
- * `AddAvatar`, and `UpdateProfile` writes `Email` and `Username` and nothing else - so the
- * button would have been a control with no endpoint behind it, which is the failure this
- * repo has just had twice. Reported rather than invented.
+ * The handoff also draws a **Remove** action, absent through #84 and #88 because nothing in the
+ * API could clear an avatar. #89 added `POST /api/avatars/remove`, so it is drawn - but only
+ * when the call site hands over an `onRemove`, since a first upload has nothing to remove yet.
+ * Removal is a retention marker rather than a delete, which is what makes the snackbar's Undo
+ * able to restore the photo *and* this dialog's crop exactly.
  *
  * **The crop is still applied client-side and the square uploaded** - what #88 added is that
  * the whole photo and the rectangle go up alongside it, so the crop can be adjusted later
@@ -237,6 +254,7 @@ export default function AvatarCropDialog({
   file,
   source = 'picked',
   initialCrop = null,
+  onRemove,
   onCancel,
   onConfirm,
 }: AvatarCropDialogProps) {
@@ -544,9 +562,22 @@ export default function AvatarCropDialog({
         </Alert>
       )}
 
-      {/* The handoff's Remove button would sit here, ahead of the spacer. See the docblock:
-          there is no endpoint that can clear an avatar, so it is not drawn. */}
       <Stack direction="row" spacing={1} sx={{ p: '14px 20px 18px' }}>
+        {/* The handoff's Remove, ahead of the spacer so it sits apart from Cancel and Save
+            rather than next to the button people press without reading. Drawn only when the
+            call site supplied a handler - see `onRemove`. Not disabled while an export is
+            running: removing is precisely the thing that makes that export pointless, and it
+            is reversible, so there is nothing to protect the user from. */}
+        {onRemove && (
+          <Button
+            color="error"
+            onClick={onRemove}
+            startIcon={<DeleteOutlinedIcon sx={{ fontSize: 18 }} />}
+            sx={{ height: 38, minHeight: 38, borderRadius: '8px', px: '16px' }}
+          >
+            Remove photo
+          </Button>
+        )}
         <Box sx={{ flex: 1 }} />
         <Button
           onClick={onCancel}

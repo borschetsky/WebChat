@@ -39,7 +39,9 @@ namespace WebChat.Services
             // appearing at random. One lookup by primary key.
             viewModel.AvatarFileName = ctx.User
                 .Where(u => u.Id == messageToAdd.SenderId)
-                .Select(u => u.AvatarFileName)
+                // The AvatarVisibility rule inline, because it has to translate to SQL: a
+                // removed photo (#89) keeps its key in the row so Undo can restore it.
+                .Select(u => u.AvatarRemovedAt == null ? u.AvatarFileName : null)
                 .FirstOrDefault();
 
             return viewModel;

@@ -77,6 +77,13 @@ namespace WebChat.Services
             user.AvatarOriginalFileName = originalFileName;
             ApplyCrop(user, crop);
 
+            // A new photo ends any pending removal (#89), and it also disposes of what the
+            // removal was retaining: `previousAvatar` and `previousOriginal` are read from the
+            // row above regardless of the marker, so the caller deletes them exactly as it
+            // would for any replacement. That is what bounds the orphans a removal can leave
+            // to "removed and never uploaded again".
+            user.AvatarRemovedAt = null;
+
             ctx.User.Update(user);
             ctx.SaveChanges();
 
@@ -106,8 +113,87 @@ namespace WebChat.Services
             return AvatarUpdate.Written(previousAvatar, null);
         }
 
+        // Null while a removal is pending, even though the key is still in the row. Everything
+        // this feeds - the recrop guard and GET /avatars/original - is about a photo the user
+        // currently has, and they currently have none; allowing a re-crop here would make
+        // "Adjust crop" a second, undocumented way to undo a removal.
         public string GetAvatarOriginalFileName(string userId) =>
-            ctx.User.Where(u => u.Id == userId).Select(u => u.AvatarOriginalFileName).FirstOrDefault();
+            ctx.User
+                .Where(u => u.Id == userId && u.AvatarRemovedAt == null)
+                .Select(u => u.AvatarOriginalFileName)
+                .FirstOrDefault();
+
+        /// <summary>
+        /// Sets the retention marker. Nothing else moves - see
+        /// <see cref="IUserService.RemoveAvatar"/> for why the keys and the crop stay.
+        /// </summary>
+        public AvatarRemoveOutcome RemoveAvatar(string userId)
+        {
+            var user = ctx.User.FirstOrDefault(u => u.Id == userId);
+            if (user == null)
+            {
+                return AvatarRemoveOutcome.NoSuchUser;
+            }
+
+            // Already pending: return without writing, so the timestamp keeps naming the moment
+            // the user actually removed the photo. Re-stamping it would quietly extend
+            // retention every time a client repeated the call.
+            if (user.AvatarRemovedAt != null)
+            {
+                return AvatarRemoveOutcome.AlreadyRemoved;
+            }
+
+            // Nothing to remove. Deliberately not an error, and deliberately not a marker
+            // either: a marker over a null avatar would mean RestoreAvatar had something to
+            // clear and nothing to show for it.
+            if (string.IsNullOrWhiteSpace(user.AvatarFileName))
+            {
+                return AvatarRemoveOutcome.NoPhoto;
+            }
+
+            // UtcNow, not Now: the column is `timestamp with time zone` and Npgsql throws on a
+            // Local or Unspecified Kind, so this is an insert-time failure rather than a value
+            // that is merely wrong.
+            user.AvatarRemovedAt = DateTime.UtcNow;
+            user.ModifiedOn = DateTime.UtcNow;
+
+            ctx.User.Update(user);
+            ctx.SaveChanges();
+
+            return AvatarRemoveOutcome.Removed;
+        }
+
+        /// <summary>
+        /// Clears the retention marker. The photo and the crop come back exactly, because
+        /// neither was ever changed.
+        /// </summary>
+        public AvatarRestore RestoreAvatar(string userId)
+        {
+            var user = ctx.User.FirstOrDefault(u => u.Id == userId);
+            if (user == null)
+            {
+                return AvatarRestore.Of(AvatarRestoreOutcome.NoSuchUser);
+            }
+
+            if (user.AvatarRemovedAt == null)
+            {
+                // Undo pressed twice, or pressed in a tab whose snackbar outlived the state.
+                // Having a photo already is the outcome that was asked for, so it is reported
+                // as one - while having none is the case where saying "restored" would be a
+                // lie the user discovers by looking at their own avatar.
+                return string.IsNullOrWhiteSpace(user.AvatarFileName)
+                    ? AvatarRestore.Of(AvatarRestoreOutcome.NothingToRestore)
+                    : AvatarRestore.Of(AvatarRestoreOutcome.NotRemoved, user.AvatarFileName);
+            }
+
+            user.AvatarRemovedAt = null;
+            user.ModifiedOn = DateTime.UtcNow;
+
+            ctx.User.Update(user);
+            ctx.SaveChanges();
+
+            return AvatarRestore.Of(AvatarRestoreOutcome.Restored, user.AvatarFileName);
+        }
 
         /// <summary>
         /// All four columns move together, including to null - a crop left over from the
@@ -354,7 +440,10 @@ namespace WebChat.Services
                            select new OponentViewModel
                            {
                                Id = u.Id, Username = u.Username,
-                               AvatarFileName = u.AvatarFileName,
+                               // The AvatarVisibility rule, written inline because it has to
+                               // translate to SQL: a removed photo (#89) keeps its key so Undo
+                               // can restore it, so the column is not the answer.
+                               AvatarFileName = u.AvatarRemovedAt == null ? u.AvatarFileName : null,
                                IsOnline = userConnections.Count() > 0 ? true : false
                            }).FirstOrDefault();
             return profile;
