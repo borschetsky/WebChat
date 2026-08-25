@@ -203,12 +203,15 @@ and fill it in, or the command stops naming the variable it wanted.
     mount does not mask the image's deps, and Docker reuses anonymous volumes across a
     rebuild — so the stale one wins and Vite reports "Failed to resolve import" for a package
     `package.json` plainly lists. Use `--renew-anon-volumes`.
-  - *Editing a source file, in compose:* **`vite.config.ts` sets no `server.watch.usePolling`,
-    and inotify events do not cross a Windows bind mount**, so the watcher never fires and the
-    browser runs code that no longer exists on disk. This produced a confident, wrong bug
-    report — a browser check against a stale module is worse than no check, because it looks
-    like evidence. Restart `react-app` after editing, and confirm the served module matches the
-    file before trusting what you saw.
+  - *Editing a source file, in compose:* **fixed in #91, but know the shape of it.** inotify
+    events do not cross a Windows or macOS bind mount, so the watcher never fired, the module
+    graph was never invalidated, and the dev server kept serving the transform it cached first —
+    the browser ran code that no longer existed on disk. It produced a confident, wrong bug
+    report, because a browser check against a stale module is worse than no check: it looks like
+    evidence. `docker-compose.yml` now sets `VITE_USE_POLLING=true` and `vite.config.ts` turns
+    that into `server.watch.usePolling`. **It is opt-in on purpose** — a native `npm run dev`
+    has working inotify and should not pay for polling — so anything that runs the dev server
+    over a bind mount without that variable brings the trap straight back.
 - **"Removed" is a third avatar state, not an absence.** `AvatarRemovedAt` is a retention
   marker: while it is set every read path must report no avatar, but the keys and the crop
   columns are **kept**, which is the only reason Undo can restore the photo *and* its framing

@@ -317,11 +317,14 @@ Ordered by how much time each has actually cost.
    `/app/node_modules` so the mount does not mask the image's dependencies — but Docker reuses
    anonymous volumes across `--build`, so a plain rebuild keeps the stale one and Vite reports
    "Failed to resolve import" against a package `package.json` plainly lists.
-9. **The dev server serves stale modules after a host edit.** `vite.config.ts` sets no
-   `server.watch.usePolling`, and inotify events do not cross a Windows Docker bind mount, so
-   the watcher never fires: the browser keeps running code that no longer exists on disk. It
-   has already produced one false bug report. Restart `react-app` after editing, and do not
-   trust a browser check until you have confirmed the served module matches the file.
+9. **The dev server used to serve stale modules after a host edit — fixed in #91.** inotify
+   events do not cross a Windows Docker bind mount, so the watcher never fired and the browser
+   kept running code that no longer existed on disk; it produced one false bug report before
+   anyone noticed. `docker-compose.yml` now sets `VITE_USE_POLLING=true`, which `vite.config.ts`
+   turns into `server.watch.usePolling`. Opt-in by design, so a native `npm run dev` keeps
+   native inotify — which also means any *other* way of running the dev server over a bind
+   mount reintroduces it. The old workaround (restart `react-app` after every edit) is no
+   longer needed.
 10. **A `useRef` object pointed at something inside a MUI `Dialog` is `null` when the owning
     component's layout effect runs.** The dialog renders through `Modal`, which is a *portal*,
     and its children are not in the DOM on the commit that mounts the component around it. The

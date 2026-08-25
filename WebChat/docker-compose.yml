@@ -16,6 +16,12 @@ services:
     # compose network. The self-signed certificate is accepted via secure:false.
     environment:
       - VITE_API_PROXY_TARGET=https://webchat-api:8443
+      # Watch by polling, because inotify events do not cross the bind mount below on a
+      # Windows or macOS host: without this the watcher never fires and the dev server keeps
+      # serving the module it cached the first time, so the browser runs code that no longer
+      # exists on disk (#91). Set here and nowhere else - a native `npm run dev` has working
+      # inotify and should not pay for polling.
+      - VITE_USE_POLLING=true
     volumes:
       - ./WebChat/ClientApp:/app
       # Anonymous volume keeps the image's node_modules from being masked by the
