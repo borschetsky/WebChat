@@ -92,6 +92,12 @@ export interface GroupInfoDrawerProps {
   onRemoveMember: (userId: string) => void;
   onSetPermission: (key: 'rename' | 'invite' | 'remove', rule: PermRule) => void;
   onLeave: () => void;
+  /**
+   * Lets focus leave the drawer while a snackbar with an action is up. Without it the trap
+   * pulls focus straight back off the action and a keyboard user can never operate it - see
+   * `AppSnackbar` and issue #96.
+   */
+  disableEnforceFocus?: boolean;
 }
 
 /**
@@ -122,6 +128,7 @@ export default function GroupInfoDrawer({
   onRemoveMember,
   onSetPermission,
   onLeave,
+  disableEnforceFocus = false,
 }: GroupInfoDrawerProps) {
   // Draft state for the inline rename. Local rather than in the slice for the same reason
   // the settings drawer's fields are: it is a controlled input, and a keystroke that
@@ -179,6 +186,7 @@ export default function GroupInfoDrawer({
       anchor="right"
       open={open}
       onClose={onClose}
+      disableEnforceFocus={disableEnforceFocus}
       slotProps={{ paper: { sx: { width: fullWidth ? '100%' : 360 } } }}
     >
       <Stack

@@ -143,31 +143,34 @@ describe('removing a profile photo', () => {
     await waitFor(() => expect(removeAvatar).toHaveBeenCalled());
     expect(await screen.findByText('Profile photo removed')).toBeInTheDocument();
 
-    // **By role**, not by text, and awaited. The drawer is a modal: while it is open MUI marks
-    // the rest of the document `aria-hidden`, and the app's one Snackbar renders in the app
-    // tree rather than a portal - so a `getByText` would have passed against an Undo button no
-    // screen reader could see and no keyboard could reach. Awaiting the role is what waits for
-    // the drawer's exit and proves the button is really in the accessibility tree.
+    // **By role**, not by text. The drawer is a modal: while it is open MUI marks the rest of
+    // the document `aria-hidden`, and until #96 the app's one Snackbar rendered in the app tree
+    // rather than a portal - so a `getByText` would have passed against an Undo button no screen
+    // reader could see and no keyboard could reach. The role query reads the accessibility tree,
+    // which is the only version of this assertion that means anything.
     expect(await screen.findByRole('button', { name: /undo/i })).toBeInTheDocument();
   });
 
   /**
-   * **The reason the settings drawer closes**, pinned so it cannot be tidied away as an
-   * unnecessary side effect.
+   * **The settings drawer stays open**, pinned in the opposite direction from #89.
    *
-   * The drawer is a modal. MUI marks everything outside it `aria-hidden` and traps focus in it,
-   * and this app's single `Snackbar` renders inline rather than through a portal - so with the
-   * drawer open the Undo is a control a mouse can hit and a screen reader cannot see. Closing
-   * the drawer is what puts the snackbar back in the accessibility tree.
+   * #89 closed it, and said so at length: the drawer is a modal, MUI marks everything outside
+   * it `aria-hidden`, and the app's one `Snackbar` rendered inline - so the only way to make
+   * the Undo reachable was to remove the modal. #96 fixed that where it belonged, and the
+   * workaround went with it: Undo means "put me back where I was", which it cannot do if
+   * pressing Remove has already thrown the user out of settings. `snackbar-a11y.test.tsx` is
+   * what now holds the reachability property this used to stand in for.
    */
-  it('closes the settings drawer, so the Undo is not left inside a modal', async () => {
+  it('leaves the settings drawer open, because Undo puts the user back where they were', async () => {
     await openSettings();
     expect(await screen.findByText('Profile & settings')).toBeInTheDocument();
     await openPhotoMenu();
 
     fireEvent.click(await screen.findByRole('menuitem', { name: /remove photo/i }));
 
-    await waitFor(() => expect(screen.queryByText('Profile & settings')).toBeNull());
+    await waitFor(() => expect(removeAvatar).toHaveBeenCalled());
+    expect(await screen.findByRole('button', { name: /undo/i })).toBeInTheDocument();
+    expect(screen.getByText('Profile & settings')).toBeInTheDocument();
   });
 
   it('restores the photo when Undo is pressed', async () => {

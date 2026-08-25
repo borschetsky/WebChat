@@ -62,6 +62,10 @@ export default function SettingsDrawer({
   onLogout,
   onOpenAdmin,
   fullWidth,
+  // Lets focus leave the drawer while a snackbar with an action is up; without it the trap
+  // pulls focus back off the action and the Undo is keyboard-unreachable. See `AppSnackbar`
+  // and issue #96.
+  disableEnforceFocus = false,
 }) {
   // The two text fields stay local on purpose - they are controlled inputs, and a keystroke
   // that reached the store would re-render everything subscribed to it. `saving` and `error`
@@ -120,18 +124,17 @@ export default function SettingsDrawer({
    * pays for it. Closing the cropper is not incidental: if this was pressed from the dialog,
    * the photo it is showing has just stopped being the user's avatar.
    *
-   * **And the drawer closes too, which is not cosmetic.** This drawer is a modal, so MUI marks
-   * everything outside it `aria-hidden` and traps focus inside it - and the app's single
-   * `Snackbar` renders in the app tree, not a portal. Leaving the drawer open therefore leaves
-   * the Undo button visible to a mouse and invisible to a screen reader and unreachable by
-   * keyboard, which is precisely the "button that is there but does not work" this feature was
-   * not allowed to ship. Measured, not assumed: with the drawer open, the snackbar's container
-   * carries `aria-hidden="true"` and `getByRole` cannot find the button that `getByText` can.
+   * **The drawer stays open**, which it did not between #89 and #96. #89 closed it because the
+   * app's one `Snackbar` rendered inline, inside the subtree this modal marks `aria-hidden`, so
+   * the only way to make the Undo real was to remove the modal. #96 fixed that at the source -
+   * the snackbar portals out and its action is handed focus while a modal has it trapped - and
+   * with the reason gone, closing is the wrong behaviour: Undo means "put me back where I was",
+   * and it cannot if pressing Remove has already thrown the user out of settings. Closing also
+   * discarded an unsaved display name or email, because the drawer resets its fields on `open`.
    */
   const removePhoto = () => {
     setPhotoMenuAnchor(null);
     setPickedPhoto(null);
-    onClose?.();
     onRemoveAvatar?.();
   };
 
@@ -171,6 +174,7 @@ export default function SettingsDrawer({
       anchor="right"
       open={open}
       onClose={onClose}
+      disableEnforceFocus={disableEnforceFocus}
       slotProps={{ paper: { sx: { width: fullWidth ? '100%' : 360 } } }}
     >
       <Stack

@@ -49,6 +49,9 @@ export default function ComposeDialog({
   onStartGroup,
   creating = false,
   fullScreen,
+  // Lets focus leave the dialog while a snackbar with an action is up; without it the trap
+  // pulls focus back off the action. See `AppSnackbar` and issue #96.
+  disableEnforceFocus = false,
 }) {
   // `q` and `picked` stay local deliberately. `q` is a controlled input, and `picked` is
   // dialog-scoped selection that must not survive a close. What used to live here and does
@@ -103,6 +106,7 @@ export default function ComposeDialog({
       fullWidth
       maxWidth="xs"
       fullScreen={fullScreen}
+      disableEnforceFocus={disableEnforceFocus}
       slotProps={{ paper: { sx: { borderRadius: fullScreen ? 0 : 4 } } }}
     >
       <DialogTitle sx={{ pb: 0.5 }}>
