@@ -87,6 +87,25 @@ namespace WebChat.Services.Helpers
             };
         }
 
+        public ProfileBroadcastViewModel MapUserModelToProfileBroadcastViewModel(User model)
+        {
+            if (model == null)
+            {
+                return null;
+            }
+
+            return new ProfileBroadcastViewModel()
+            {
+                Id = model.Id,
+                Username = model.Username,
+                // Not model.AvatarFileName: a removed photo (#89) keeps its key in the row so
+                // Undo can restore it, so every read path has to ask the rule rather than the
+                // column. See AvatarVisibility - and here it is load-bearing twice over, since
+                // this payload goes to every connected client at once.
+                AvatarFileName = AvatarVisibility.For(model),
+            };
+        }
+
         public ProfileViewModel MapUserModelRoProfileViewModel(User model)
         {
             // A pending removal hides all three together, and it has to. The photo, the

@@ -189,6 +189,24 @@ export interface GroupEventDto {
   systemMessage?: MessageDto | null;
 }
 
+/**
+ * SignalR ReviceUpdatedOpponentProfile payload: somebody saved their profile.
+ *
+ * Three fields, and that is the whole payload - the hub fans this out to *every* connected
+ * client, whether or not they share a conversation with the sender, so it is deliberately not
+ * a `ProfileDto` (#94). The server used to broadcast the request body, email address and
+ * workspace role included; those are gone from the wire, and nothing here should re-add a
+ * field without asking who receives it.
+ *
+ * `avatarFileName` is already null when the photo has been removed (#89) - the server applies
+ * `AvatarVisibility`, so this is safe to render directly.
+ */
+export interface ProfileBroadcastDto {
+  id: string;
+  username: string | null;
+  avatarFileName: string | null;
+}
+
 /** SignalR ReciveAvatar payload. `body` is an ObjectResult, hence the nesting. */
 export interface AvatarBroadcastDto {
   body: { value?: string } | string;
