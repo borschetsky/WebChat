@@ -57,17 +57,32 @@ namespace WebChat.Controllers
             {
                 return BadRequest();
             }
+            // The row written is the caller's, and `model.Id` is ignored entirely (#99). It
+            // used to decide the target: this method read the identity into a local and then
+            // never used it, so any authenticated user could rewrite any other account's
+            // username and email by posting that account's id. That is account takeover rather
+            // than vandalism, because password reset sends to the *stored* address - change it,
+            // request a reset, receive the link - and the victim loses their own reset at the
+            // same time, since their address no longer matches a row. `GetProfile` immediately
+            // above always took the id from the token; only this method disagreed.
             var currentUserId = this.User.Identity.Name;
-            //Validation TODO: Extract to validations
-            var curentProfile = this.userService.GetUserProfile(model.Id);
-            if(curentProfile == model)
+
+            // The token verified but its user is gone - the same case `GetProfile` answers with
+            // 401. Previously this reached EF with an id that matched nothing and threw on the
+            // null entity, so a stale session got a 500.
+            var broadcast = this.userService.UpdateProfile(currentUserId, model);
+            if (broadcast == null)
             {
-                return Ok();
+                return Unauthorized(new { message = "This session refers to a user that no longer exists. Please sign in again." });
             }
-            //Updating
-            this.userService.UpdateProfile(model);
-            //Invoke WSS to udate frontend
-            await this.hubContext.Clients.All.SendAsync("ReviceUpdatedOpponentProfile", model);
+
+            // Not `model` (#94). This goes to every connected client, including people who
+            // share no conversation with this user, so it carries three fields projected from
+            // the row that was just written - id, username, avatar - and neither the email
+            // address nor the workspace role that a ProfileViewModel also holds. The method
+            // name is misspelt and stays that way: the client's handler is registered under
+            // it.
+            await this.hubContext.Clients.All.SendAsync("ReviceUpdatedOpponentProfile", broadcast);
             return Ok();
         }
 

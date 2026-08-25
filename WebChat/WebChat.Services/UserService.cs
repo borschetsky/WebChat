@@ -32,13 +32,27 @@ namespace WebChat.Services
             this.connectionMapping = connectionMapping ?? throw new ArgumentNullException(nameof(connectionMapping));
         }
 
-        public void UpdateProfile(ProfileViewModel model)
+        public ProfileBroadcastViewModel UpdateProfile(string userId, ProfileViewModel model)
         {
-            var entity = this.ctx.User.FirstOrDefault(u => u.Id == model.Id);
+            // Keyed on the caller's id, never on `model.Id` (#99) - see the comment in
+            // UsersController.UpdateProfile for what taking it from the body allowed.
+            var entity = this.ctx.User.FirstOrDefault(u => u.Id == userId);
+
+            // Null means the token outlived its user. Returning null rather than throwing lets
+            // the controller answer 401, which is what GetProfile already does for that case.
+            if (entity == null) return null;
+
             entity.Email = model.Email;
             entity.Username = model.Username;
             ctx.User.Update(entity);
             ctx.SaveChanges();
+
+            // Projected after the save, from the entity rather than from `model` (#94). The
+            // caller broadcasts this to every connected client, and the request body is the
+            // wrong thing to send them twice over: it carries the email address and the
+            // workspace role, and its other fields - the avatar key especially - are whatever
+            // the caller wrote, since nothing here persists them.
+            return this.mappingService.MapUserModelToProfileBroadcastViewModel(entity);
         }
 
         public IEnumerable<UserViewModel> FindUserByMatch(string match, string curentUser)

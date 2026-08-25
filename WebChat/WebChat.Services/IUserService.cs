@@ -8,7 +8,25 @@ namespace WebChat.Services
 {
     public interface IUserService
     {
-        void UpdateProfile(ProfileViewModel model);
+        /// <summary>
+        /// Writes the username and email, and hands back the little that other clients are
+        /// allowed to know about the change (#94).
+        ///
+        /// Returning something is the fix, not a convenience: the controller broadcasts the
+        /// result to <c>Clients.All</c>, and while this returned <c>void</c> the only object
+        /// it had to send was the request body - which carries the user's email address and
+        /// workspace role, and whose remaining fields the server never persisted at all. The
+        /// projection is built here, from the row after it is saved, so there is no version of
+        /// this call that broadcasts caller input.
+        ///
+        /// <paramref name="userId"/> is the caller's own id, from the token, and it decides
+        /// which row is written - <c>model.Id</c> is ignored (#99). Taking the target from the
+        /// body let any authenticated user rewrite any other account's username and email, which
+        /// is an account-takeover primitive because password reset goes to the stored address.
+        /// Returns null when the token outlived its user, so the controller can answer 401
+        /// rather than throwing on a null entity.
+        /// </summary>
+        ProfileBroadcastViewModel UpdateProfile(string userId, ProfileViewModel model);
 
         OponentViewModel GetOponentProfile(string id);
 

@@ -85,7 +85,14 @@ and fill it in, or the command stops naming the variable it wanted.
 ## Things worth knowing
 
 - **Auth is hand-rolled JWT**, not ASP.NET Identity. Controllers identify the caller via
-  `User.Identity.Name`, which carries the *user id* — not the username.
+  `User.Identity.Name`, which carries the *user id* — not the username. **An id in a request
+  body never decides which row is written.** `UpdateProfile` read the identity into a local,
+  never used it, and keyed the write on `model.Id`, so any authenticated user could rewrite any
+  other account's username and email — and since password reset sends to the *stored* address,
+  that was account takeover, not vandalism (#99). There is no ownership middleware to catch the
+  next one: each endpoint is on its own, so take the id from the token and ignore the body's.
+  **Uniqueness has the same shape of gap** — register checks `isUsernameUniq`/`isEmailUniq`,
+  update checks neither and no unique index exists (#100).
 - **`register` returns no token, and sign-in requires a confirmed address.** The account is
   created, an activation link is emailed, and `login` answers 403 `email_not_confirmed`
   until it is opened — so any test or script that registered and used the token straight

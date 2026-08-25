@@ -12,7 +12,7 @@ import type {
   AvatarBroadcastDto,
   GroupEventDto,
   MessageDto,
-  ProfileDto,
+  ProfileBroadcastDto,
   TypingStatusDto,
 } from '@/types/dto';
 import {
@@ -165,7 +165,12 @@ const connect = async (token: string, dispatch: AppDispatch, getState: () => Roo
     if (getState().auth.user?.id === uploaderId) dispatch(chatApi.util.invalidateTags(['Profile']));
   });
 
-  c.on('ReviceUpdatedOpponentProfile', (p: ProfileDto | null) => {
+  // Three fields, not a whole profile: the server stopped broadcasting the request body -
+  // email address and workspace role with it - to every connected client (#94). Only `id` and
+  // `username` are read here; the avatar arrives on this payload too, but avatar changes have
+  // their own event (`ReciveAvatar`) and patching it from both would be two writers for one
+  // field.
+  c.on('ReviceUpdatedOpponentProfile', (p: ProfileBroadcastDto | null) => {
     if (!p) return;
     threadsOf()
       .filter((t) => t.opponentId === p.id)
