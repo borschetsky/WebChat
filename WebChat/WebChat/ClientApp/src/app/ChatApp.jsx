@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { Button, Snackbar } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import AppShell, { useIsMobile } from '@/app/AppShell';
+import AppSnackbar from '@/app/AppSnackbar';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import {
   useGetProfileQuery,
@@ -383,6 +383,24 @@ export default function ChatApp({ user, onSignOut }) {
    */
   const undoActions = { avatarRemoved: handleUndoRemoveAvatar };
 
+  /** The handler behind the current snackbar's action, or null when it is message-only. */
+  const undoAction = (snackUndo && undoActions[snackUndo]) || null;
+
+  /**
+   * Whether one of the app's modals is open, which is the same question as "is focus trapped".
+   * `AppSnackbar` decides from it whether its action has to be handed focus, because a trapped
+   * keyboard user cannot tab out to one - see #96.
+   */
+  const anyModalOpen = settingsOpen || infoOpen || composeOpen;
+
+  /**
+   * The other half of that answer, for the modals themselves: while a snackbar with an action
+   * is up, the trap must stop dragging focus back out of it. Passed to all three rather than
+   * only to the drawer that raises the one actionable snackbar there is today - the point of
+   * #96 is that the *next* one should not have to rediscover this.
+   */
+  const actionableSnack = !!snack && !!undoAction;
+
   /**
    * Fetches the stored original back so it can be re-cropped, as a `File` the cropper can
    * decode. Returns null on failure, having said so - the drawer then simply does not open,
@@ -538,6 +556,7 @@ export default function ChatApp({ user, onSignOut }) {
         onLogout={onSignOut}
         onOpenAdmin={() => navigate('/admin')}
         fullWidth={isMobile}
+        disableEnforceFocus={actionableSnack}
       />
 
       <GroupInfoDrawer
@@ -553,6 +572,7 @@ export default function ChatApp({ user, onSignOut }) {
         onRemoveMember={handleRemoveMember}
         onSetPermission={handleSetPermission}
         onLeave={handleLeaveGroup}
+        disableEnforceFocus={actionableSnack}
       />
 
       <ComposeDialog
@@ -562,6 +582,7 @@ export default function ChatApp({ user, onSignOut }) {
         onStartGroup={handleStartGroup}
         creating={startGroupState.isLoading}
         fullScreen={isMobile}
+        disableEnforceFocus={actionableSnack}
       />
 
       {/* One snackbar for the whole app, now able to carry an action. The Undo dismisses the
@@ -571,27 +592,24 @@ export default function ChatApp({ user, onSignOut }) {
 
           Twice as long when there is something to undo. Four seconds is enough to read a
           confirmation; it is not enough to notice a mistake, decide, and reach the button -
-          and this is the only control standing where a confirm dialog would have. */}
-      <Snackbar
-        open={!!snack}
+          and this is the only control standing where a confirm dialog would have.
+
+          It renders through a portal, and knows whether a modal has focus trapped, because a
+          drawer used to swallow it whole - see AppSnackbar for the whole of #96. */}
+      <AppSnackbar
         message={snack}
-        autoHideDuration={snackUndo ? 8000 : 4000}
-        onClose={() => dispatch(notificationDismissed())}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-        action={
-          snackUndo && undoActions[snackUndo] ? (
-            <Button
-              color="primary"
-              size="small"
-              onClick={() => {
+        actionLabel={undoAction ? 'Undo' : undefined}
+        onAction={
+          undoAction
+            ? () => {
                 dispatch(notificationDismissed());
-                undoActions[snackUndo]();
-              }}
-            >
-              Undo
-            </Button>
-          ) : null
+                undoAction();
+              }
+            : null
         }
+        autoHideDuration={undoAction ? 8000 : 4000}
+        onClose={() => dispatch(notificationDismissed())}
+        focusTrapped={anyModalOpen}
       />
     </>
   );
