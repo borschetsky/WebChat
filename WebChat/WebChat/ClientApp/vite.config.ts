@@ -6,6 +6,26 @@ import { fileURLToPath, URL } from 'node:url';
 // Override with VITE_API_PROXY_TARGET if you run Kestrel on a different port.
 const apiTarget = process.env.VITE_API_PROXY_TARGET || 'https://localhost:7199';
 
+/**
+ * Watch by polling instead of by inotify, set only by docker-compose (#91).
+ *
+ * The container bind-mounts the host's source, and **inotify events do not cross a Docker
+ * bind mount on Windows or macOS** - so the watcher never fires, the module graph is never
+ * invalidated, and the dev server keeps serving the transform it cached the first time the
+ * browser asked. The file on disk and the file in the browser silently disagree.
+ *
+ * That is worse than no reload: it makes a browser check *evidence for the wrong thing*. It
+ * has already produced one confident, wrong bug report here (a PNG reported as stored
+ * unconverted, on the strength of a page running code that no longer existed), and the
+ * documented workaround was to restart the container after every edit.
+ *
+ * Deliberately opt-in rather than always on: polling wakes the process on a timer and costs
+ * CPU for the whole session, and a native `npm run dev` on the host has working inotify and
+ * needs none of it. 300ms is a compromise - fast enough that saving and alt-tabbing feels
+ * immediate, slow enough not to spin a core over a few hundred files.
+ */
+const usePolling = process.env.VITE_USE_POLLING === 'true';
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
@@ -29,6 +49,8 @@ export default defineConfig({
     // Requests that reach the dev server directly on localhost:3000 are unaffected, which
     // is what makes this look like an API bug rather than a client one.
     allowedHosts: ['react-app'],
+    // See `usePolling` above. Left undefined outside compose so the host keeps native inotify.
+    watch: usePolling ? { usePolling: true, interval: 300 } : undefined,
     // Same-origin API access when browsing the dev server directly. secure:false
     // accepts the ASP.NET developer certificate, which is self-signed.
     proxy: {
