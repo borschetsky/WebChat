@@ -1,10 +1,15 @@
 /**
  * The admin console's view models.
  *
- * The audit log is real (#70); everything else is still served from
- * `services/admin-mocks.ts`. The shapes are chosen to match what the eventual endpoints
- * should return, so making a section real is normally a change to
- * `services/admin-service.ts` and nothing else. See issue #64.
+ * **UI errors is the last section served from `services/admin-mocks.ts`**; the audit log
+ * (#70), members (#71), invitations (#72), the overview (#73) and policies (#75) all have
+ * real endpoints now, and #74 is what would finish the set. `services/admin-service.ts` is
+ * the authority on which is which - it imports exactly `mockErrors` and `mockSetErrorStatus`
+ * - because a comment saying so drifts and that file cannot.
+ *
+ * The shapes are chosen to match what the eventual endpoints should return, so making a
+ * section real is normally a change to `services/admin-service.ts` and nothing else. See
+ * issue #64.
  *
  * **"And nothing else" turned out to have one exception, worth stating because it is the
  * kind that recurs.** The original fixtures held *rendered* strings - `'2 h ago'`,

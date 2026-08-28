@@ -30,9 +30,9 @@ const STAT_ICON = {
 export default function AdminOverview({ isMobile, onNavigate }) {
   const { data } = useGetOverviewQuery();
 
-  // Real, unlike everything else on this screen (#70). Asking for a few more than are shown
-  // is pointless, so the page size is the row count - and the audit log is the one section
-  // where "just fetch them all" would be genuinely unbounded.
+  // Asking for a few more than are shown is pointless, so the page size is the row count -
+  // and the audit log is the one section where "just fetch them all" would be genuinely
+  // unbounded, which is why it is the only one that pages at all.
   const { data: recent = [] } = useGetAuditQuery({ limit: 6 });
 
   if (!data) return null;

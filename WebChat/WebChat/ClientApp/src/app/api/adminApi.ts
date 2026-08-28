@@ -67,8 +67,9 @@ export const adminApi = createApi({
       providesTags: ['Invites'],
     }),
 
-    // Real, like members and overview's counts. Invitations, errors and policies still
-    // resolve against fixtures and ignore authentication entirely - see admin-mocks.ts.
+    // The only paged endpoint here, hence the argument. Everything above and below it is
+    // real too except `getErrors`, which still resolves against fixtures and ignores
+    // authentication entirely - see admin-mocks.ts, and #74 for making it real.
     getAudit: build.query<AdminAudit[], { before?: string; limit?: number } | void>({
       queryFn: (arg, api) => run(() => admin.loadAudit(tokenOf(api.getState), arg ?? {})),
       providesTags: ['Audit'],
