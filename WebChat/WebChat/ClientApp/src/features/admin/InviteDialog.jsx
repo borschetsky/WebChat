@@ -46,7 +46,16 @@ const ROLES = ['member', 'admin'];
  * Multi-line rather than a chip input because the common case is pasting a list out of a
  * spreadsheet or an email, and a chip input turns that into one paste plus N corrections.
  */
-export default function InviteDialog({ open, onClose, onSent, fullScreen }) {
+export default function InviteDialog({
+  open,
+  onClose,
+  onSent,
+  fullScreen,
+  // True while a toast is up. Without it this trap pulls focus back off anything the toast
+  // offers - and this dialog is the one that raises a toast *while staying open*. See
+  // `AppSnackbar` and issues #96 and #102.
+  disableEnforceFocus = false,
+}) {
   const [text, setText] = useState('');
   const [role, setRole] = useState('member');
   const [send, { isLoading }] = useSendInvitesMutation();
@@ -75,7 +84,14 @@ export default function InviteDialog({ open, onClose, onSent, fullScreen }) {
   };
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm" fullScreen={fullScreen}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullWidth
+      maxWidth="sm"
+      fullScreen={fullScreen}
+      disableEnforceFocus={disableEnforceFocus}
+    >
       <DialogTitle sx={{ fontSize: 18, fontWeight: 500 }}>Invite people</DialogTitle>
       <DialogContent>
         <TextField

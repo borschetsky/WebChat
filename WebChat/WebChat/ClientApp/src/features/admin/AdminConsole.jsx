@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Box, Snackbar, Stack, Typography, useMediaQuery } from '@mui/material';
+import { Box, Stack, Typography, useMediaQuery } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ShieldPersonIcon from '@mui/icons-material/AdminPanelSettings';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import AppSnackbar from '@/app/AppSnackbar';
 import SearchField from '@/components/SearchField';
 import PresenceAvatar from '@/components/PresenceAvatar';
 import { ADMIN_NAV, navBadge } from './adminNav';
@@ -16,6 +17,14 @@ import AdminAuditLog from './sections/AdminAuditLog';
 import AdminPolicies from './sections/AdminPolicies';
 import InviteDialog from './InviteDialog';
 import { useGetErrorsQuery, useGetInvitesQuery } from '@/app/api/adminApi';
+
+/**
+ * Bottom-centre, which is where this console's own inline snackbar sat before #102 folded it
+ * into `AppSnackbar`. The chat app's toast is bottom-left and stays there; the design handoff
+ * this screen was built from is external to the repo and settles neither, so the safe change
+ * was the one that moves nothing.
+ */
+const SNACK_ANCHOR = { vertical: 'bottom', horizontal: 'center' };
 
 const SECTIONS = {
   overview: AdminOverview,
@@ -33,8 +42,11 @@ const SECTIONS = {
  * a persistent rail icon in the chat app - the spec's reasoning is that a rare,
  * high-consequence destination should not compete with chat's primary actions.
  *
- * Every section here is served from mocks (`services/admin-mocks.ts`); the only real thing
- * on this screen is the workspace role that gates reaching it at all. See #64.
+ * **UI errors is the last mocked section.** It alone still reads `services/admin-mocks.ts`;
+ * Overview, Members, Invitations, the Audit log and Policies were all given real endpoints by
+ * #70-#73 and #75, and `services/admin-service.ts` is the file to check rather than this
+ * comment - it imports exactly `mockErrors` and `mockSetErrorStatus` and nothing else. #74 is
+ * the issue that would make errors real too. See #64 for the console as a whole.
  */
 export default function AdminConsole({ profile }) {
   const navigate = useNavigate();
@@ -44,6 +56,35 @@ export default function AdminConsole({ profile }) {
   const [query, setQuery] = useState('');
   const [inviteOpen, setInviteOpen] = useState(false);
   const [snack, setSnack] = useState('');
+
+  /**
+   * Whether the section currently on screen has its own modal open - `MemberDetail`'s drawer
+   * under Members, the error-detail drawer under UI errors. Reported up rather than inferred,
+   * because only the section knows, and `AppSnackbar` needs the answer for the whole screen.
+   * Sections without a modal never call it, and a section that unmounts with one open reports
+   * `false` on the way out.
+   */
+  const [sectionModalOpen, setSectionModalOpen] = useState(false);
+
+  /**
+   * Whether one of the console's three modals has focus trapped, which is the question
+   * `AppSnackbar` asks before handing its action focus - a trapped keyboard user cannot tab
+   * out to one. Same flag as `ChatApp`'s `anyModalOpen`; see #96.
+   */
+  const modalOpen = inviteOpen || sectionModalOpen;
+
+  /**
+   * The other half of that answer, for the modals themselves: while a toast is up, the trap
+   * must stop dragging focus back out of it.
+   *
+   * `ChatApp` gates this on the toast carrying an *action*, because that is the only thing
+   * that wants focus outside the trap. No admin toast carries one yet, so gating it the same
+   * way here would be a prop wired to a constant `false` - which is not wiring at all. It is
+   * driven by the toast simply being up instead, and that costs nothing while none of them is
+   * actionable: MUI's sentinel nodes still bounce Tab back into the trap either way, so the
+   * difference is confined to focus put outside it by other means, of which there is none.
+   */
+  const snackUp = Boolean(snack);
 
   // Only for the badges. Each section fetches what it renders itself.
   const { data: invites = [] } = useGetInvitesQuery();
@@ -296,6 +337,8 @@ export default function AdminConsole({ profile }) {
             onNavigate={select}
             onNotify={setSnack}
             onInvite={() => setInviteOpen(true)}
+            onModalOpenChange={setSectionModalOpen}
+            disableEnforceFocus={snackUp}
           />
         </Box>
 
@@ -371,9 +414,20 @@ export default function AdminConsole({ profile }) {
         onClose={() => setInviteOpen(false)}
         onSent={setSnack}
         fullScreen={isMobile}
+        disableEnforceFocus={snackUp}
       />
 
-      <AdminSnackbar message={snack} onClose={() => setSnack('')} />
+      {/* One toast for the console, and the same component the chat app uses. It had its own
+          inline `Snackbar` until #102, which put every message raised from the invite dialog
+          or either detail drawer inside the modal's `aria-hidden` subtree - visible, and
+          absent from the accessibility tree. `AppSnackbar` portals it out; see that file. */}
+      <AppSnackbar
+        message={snack}
+        autoHideDuration={4000}
+        onClose={() => setSnack('')}
+        anchorOrigin={SNACK_ANCHOR}
+        focusTrapped={modalOpen}
+      />
     </Stack>
   );
 }
@@ -397,16 +451,4 @@ function subtitleFor(tab, { invites, errors }) {
     default:
       return '';
   }
-}
-
-function AdminSnackbar({ message, onClose }) {
-  return (
-    <Snackbar
-      open={!!message}
-      message={message}
-      autoHideDuration={4000}
-      onClose={onClose}
-      anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-    />
-  );
 }

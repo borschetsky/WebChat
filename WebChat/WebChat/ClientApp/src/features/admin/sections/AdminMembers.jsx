@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Box, Button, Checkbox, Chip, Stack, Typography } from '@mui/material';
 import PresenceAvatar from '@/components/PresenceAvatar';
 import { avatarColor } from '@/theme/tokens';
@@ -25,13 +25,27 @@ const FILTERS = [
  * reason is sound: a mis-tap that blocks eleven people is not a mistake worth making
  * possible on a phone.
  */
-export default function AdminMembers({ query, isMobile, onNotify }) {
+export default function AdminMembers({
+  query,
+  isMobile,
+  onNotify,
+  onModalOpenChange,
+  disableEnforceFocus,
+}) {
   const { data: members = [] } = useGetMembersQuery();
   const [setStatus] = useSetMemberStatusMutation();
 
   const [filter, setFilter] = useState('all');
   const [selected, setSelected] = useState([]);
   const [detailId, setDetailId] = useState(null);
+
+  // The console owns the toast and has to know whether anything is trapping focus, and only
+  // this section knows about its own drawer. The cleanup covers leaving the section with the
+  // drawer open - the modal goes with the unmount, so the flag must too.
+  useEffect(() => {
+    onModalOpenChange?.(!!detailId);
+    return () => onModalOpenChange?.(false);
+  }, [detailId, onModalOpenChange]);
 
   const q = query.trim().toLowerCase();
   const rows = members
@@ -185,6 +199,7 @@ export default function AdminMembers({ query, isMobile, onNotify }) {
         onClose={() => setDetailId(null)}
         onNotify={onNotify}
         fullWidth={isMobile}
+        disableEnforceFocus={disableEnforceFocus}
       />
     </>
   );
