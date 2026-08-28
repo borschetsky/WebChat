@@ -1,3 +1,5 @@
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
@@ -285,5 +287,45 @@ describe('an actionable snackbar raised while the settings drawer is open', () =
 
     expect(hiddenAncestorOf(undo)).toBeNull();
     expect(document.activeElement).toBe(search);
+  });
+});
+
+/**
+ * The tests above prove the portal is what puts a toast in the accessibility tree; this one is
+ * what stops the next screen doing without it.
+ *
+ * Two sightings, and the second is why this exists. #96 fixed the app shell and left
+ * `AdminConsole`'s own inline `AdminSnackbar` untouched, carrying the identical defect for
+ * another six weeks - not because anyone disagreed, but because nothing connected the two. A
+ * third screen that reaches for MUI's Snackbar directly gets the bug for free and no test will
+ * notice, since the defect is a property of the rendered document rather than of the component.
+ *
+ * Same shape as the `inputProps` scan in `mui-drift.test.tsx`, and for the same reason:
+ * per-component testing cannot find code that has not been written yet, and scanning the
+ * source can. Note that nothing here exempts this file - the sentence above deliberately
+ * avoids writing the tag it scans for, because an exemption is a hole the next one falls
+ * through.
+ */
+describe('there is one snackbar implementation', () => {
+  const OWNER = join('src', 'app', 'AppSnackbar.tsx');
+
+  const sourceFiles = (dir: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) return sourceFiles(path);
+      return /\.(jsx?|tsx?)$/.test(entry.name) ? [path] : [];
+    });
+
+  it('renders MUI Snackbar in AppSnackbar and nowhere else in src', () => {
+    const src = join(__dirname, '..');
+
+    const offenders = sourceFiles(src)
+      .map((file) => file.slice(src.length + 1))
+      .filter((relative) => join('src', relative) !== OWNER)
+      .filter((relative) => /<Snackbar[\s/>]/.test(readFileSync(join(src, relative), 'utf8')));
+
+    // Render `AppSnackbar` instead. It carries the portal, the `aria-hidden` strip and the
+    // conditional focus hand-off, and takes `anchorOrigin` if the placement differs.
+    expect(offenders).toEqual([]);
   });
 });

@@ -19,7 +19,15 @@ const ROLES = ['member', 'admin', 'owner'];
  * The separation is not decoration: block and deactivate are the two actions on this screen
  * that end somebody's access, and they sit where a misplaced click cannot reach them.
  */
-export default function MemberDetail({ member, onClose, onNotify, fullWidth }) {
+export default function MemberDetail({
+  member,
+  onClose,
+  onNotify,
+  fullWidth,
+  // True while a toast is up, so this trap stops pulling focus back off it. Every action in
+  // this drawer raises one. See `AppSnackbar` and issues #96 and #102.
+  disableEnforceFocus = false,
+}) {
   const [setRole] = useSetMemberRoleMutation();
   const [setStatus] = useSetMemberStatusMutation();
 
@@ -48,6 +56,7 @@ export default function MemberDetail({ member, onClose, onNotify, fullWidth }) {
       anchor="right"
       open={!!member}
       onClose={onClose}
+      disableEnforceFocus={disableEnforceFocus}
       slotProps={{ paper: { sx: { width: fullWidth ? '100%' : 380 } } }}
     >
       {member && (

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Box, Button, Chip, Drawer, IconButton, Stack, Typography } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { useGetErrorsQuery, useSetErrorStatusMutation } from '@/app/api/adminApi';
@@ -24,11 +24,24 @@ const FILTERS = [
  * open a new issue on every occurrence, and the list would become a log rather than a set
  * of problems worth fixing.
  */
-export default function AdminErrors({ query, isMobile, onNotify }) {
+export default function AdminErrors({
+  query,
+  isMobile,
+  onNotify,
+  onModalOpenChange,
+  disableEnforceFocus,
+}) {
   const { data: errors = [] } = useGetErrorsQuery();
   const [setStatus] = useSetErrorStatusMutation();
   const [filter, setFilter] = useState('unresolved');
   const [openId, setOpenId] = useState(null);
+
+  // The console owns the toast and cannot see this drawer, which is the third focus trap on
+  // the screen and the one #102 nearly missed. Same report-up as AdminMembers.
+  useEffect(() => {
+    onModalOpenChange?.(!!openId);
+    return () => onModalOpenChange?.(false);
+  }, [openId, onModalOpenChange]);
 
   const q = query.trim().toLowerCase();
   const rows = errors
@@ -152,6 +165,9 @@ export default function AdminErrors({ query, isMobile, onNotify }) {
         anchor="right"
         open={!!open}
         onClose={() => setOpenId(null)}
+        // While a toast is up, stop the trap pulling focus back off it - see `AppSnackbar`
+        // and issues #96 and #102.
+        disableEnforceFocus={disableEnforceFocus}
         slotProps={{ paper: { sx: { width: isMobile ? '100%' : 460 } } }}
       >
         {open && (

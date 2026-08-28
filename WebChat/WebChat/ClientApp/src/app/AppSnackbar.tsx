@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button, Portal, Snackbar } from '@mui/material';
+import type { SnackbarOrigin } from '@mui/material';
+
+/**
+ * Bottom-left, as the chat app has always shown it. A module constant rather than a default
+ * in the destructuring, so the object identity is stable across renders.
+ */
+const DEFAULT_ANCHOR: SnackbarOrigin = { vertical: 'bottom', horizontal: 'left' };
 
 type AppSnackbarProps = {
   /** The message to show. Empty means no snackbar; there is only ever one at a time. */
@@ -15,10 +22,22 @@ type AppSnackbarProps = {
    * this; the snackbar cannot ask the document without guessing at MUI class names.
    */
   focusTrapped?: boolean;
+  /**
+   * Where the toast sits. Defaults to the chat app's bottom-left; the admin console asks for
+   * bottom-centre, which is where its own inline snackbar sat before #102 folded it into this
+   * component. It exists so that folding was behaviour-only - moving a toast the design put
+   * somewhere is not a thing an accessibility fix should do on the way past.
+   */
+  anchorOrigin?: SnackbarOrigin;
 };
 
 /**
- * The app's one snackbar, rendered through a portal - issue #96.
+ * The app's one snackbar per screen, rendered through a portal - issue #96.
+ *
+ * Two screens use it: `ChatApp` and, since #102, `AdminConsole`, which had grown a second
+ * inline `Snackbar` of its own carrying the identical defect. Anything that needs a toast
+ * should render this rather than a `Snackbar`, because a divergent second implementation is
+ * exactly how the console came to be missing everything below.
  *
  * **Why a portal.** A MUI `Drawer` is a `Modal`, and `ModalManager` marks every other child of
  * `body` `aria-hidden="true"` for as long as one is open. This snackbar used to render inline
@@ -67,6 +86,7 @@ export default function AppSnackbar({
   onClose,
   autoHideDuration,
   focusTrapped = false,
+  anchorOrigin = DEFAULT_ANCHOR,
 }: AppSnackbarProps) {
   const open = Boolean(message);
   const hasAction = Boolean(actionLabel && onAction);
@@ -114,7 +134,7 @@ export default function AppSnackbar({
         message={message}
         autoHideDuration={autoHideDuration}
         onClose={onClose}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        anchorOrigin={anchorOrigin}
         action={
           hasAction ? (
             <Button ref={actionRef} color="primary" size="small" onClick={() => onAction?.()}>
