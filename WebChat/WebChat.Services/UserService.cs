@@ -32,15 +32,38 @@ namespace WebChat.Services
             this.connectionMapping = connectionMapping ?? throw new ArgumentNullException(nameof(connectionMapping));
         }
 
-        public ProfileBroadcastViewModel UpdateProfile(string userId, ProfileViewModel model)
+        public ProfileUpdate UpdateProfile(string userId, ProfileViewModel model)
         {
             // Keyed on the caller's id, never on `model.Id` (#99) - see the comment in
             // UsersController.UpdateProfile for what taking it from the body allowed.
             var entity = this.ctx.User.FirstOrDefault(u => u.Id == userId);
 
-            // Null means the token outlived its user. Returning null rather than throwing lets
-            // the controller answer 401, which is what GetProfile already does for that case.
-            if (entity == null) return null;
+            // The token outlived its user. Reported rather than thrown, so the controller can
+            // answer 401 - which is what GetProfile already does for that case.
+            if (entity == null) return ProfileUpdate.Of(ProfileUpdateOutcome.NoSuchUser);
+
+            // #100. Register has always called these; update called neither, and there was no
+            // unique index either, so the rule held at the front door and nowhere else - you
+            // could not register as an existing username but you could rename yourself into
+            // one. `userId` is the exclusion, and it is the difference between a check and a
+            // bug: without it, every save of an unchanged profile collides with the caller's
+            // own row.
+            //
+            // Case-insensitive, because UserQueries' lookups are. An exact-match check would
+            // let `Victim94` sit beside `victim94` - one person as far as sign-in, password
+            // reset and every member list are concerned.
+            //
+            // Email first, matching register's order, so a request that collides on both
+            // names the address: it is the identifier a reset link is delivered to.
+            if (!UserQueries.IsEmailAvailable(this.ctx.User, model.Email, userId))
+            {
+                return ProfileUpdate.Of(ProfileUpdateOutcome.EmailTaken);
+            }
+
+            if (!UserQueries.IsUsernameAvailable(this.ctx.User, model.Username, userId))
+            {
+                return ProfileUpdate.Of(ProfileUpdateOutcome.UsernameTaken);
+            }
 
             entity.Email = model.Email;
             entity.Username = model.Username;
@@ -52,7 +75,8 @@ namespace WebChat.Services
             // wrong thing to send them twice over: it carries the email address and the
             // workspace role, and its other fields - the avatar key especially - are whatever
             // the caller wrote, since nothing here persists them.
-            return this.mappingService.MapUserModelToProfileBroadcastViewModel(entity);
+            return ProfileUpdate.Written(
+                this.mappingService.MapUserModelToProfileBroadcastViewModel(entity));
         }
 
         public IEnumerable<UserViewModel> FindUserByMatch(string match, string curentUser)
