@@ -91,6 +91,19 @@ namespace WebChat.Services
                 .Select(u => new { u.Id, u.Email, u.Status })
                 .ToListAsync();
 
+            // Addresses already held as somebody's *username*, which is not the same set as
+            // the one above: nothing stops a username being an email-shaped string, and it
+            // need not be that account's own address. A pending account is created below with
+            // `Username = email`, so before #100's unique indexes existed this quietly wrote a
+            // second row sharing a username - the exact defect #100 is about - and afterwards
+            // it violates `IX_User_Username_Lower` instead, turning an administrator's invite
+            // into an unhandled 500. Skipped rather than failing the whole send, for the same
+            // reason an already-member address is: the administrator pasted a list.
+            var usernameTaken = await this.ctx.User
+                .Where(u => !u.isDeleted && lowered.Contains(u.Username.ToLower()))
+                .Select(u => u.Username.ToLower())
+                .ToListAsync();
+
             var actorName = await this.ctx.User
                 .Where(u => u.Id == actorId)
                 .Select(u => u.Username)
@@ -115,6 +128,15 @@ namespace WebChat.Services
                 }
 
                 var pendingUserId = match?.Id;
+
+                // Only the branch below inserts, so only it can collide on the username. When
+                // there is already a pending row for this address it is reused and nothing new
+                // is written, which is why this guard sits here rather than above `match`.
+                if (pendingUserId == null && usernameTaken.Contains(email.ToLowerInvariant()))
+                {
+                    result.Skipped.Add(email);
+                    continue;
+                }
 
                 if (pendingUserId == null)
                 {

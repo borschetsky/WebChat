@@ -12,7 +12,8 @@
   `App.jsx`, `AdminConsole.jsx`, `api-service.js`, `admin-service.ts`, `adminApi.ts`,
   `admin-mocks.ts` (deleted), `types/admin.ts`, `auditSentence.ts`, `AuditRow.jsx`,
   `vite.config.ts`.
-- **Status:** done, no browser pass and no run against real PostgreSQL (see below)
+- **Status:** done. No browser pass. The "never run against real PostgreSQL" gap recorded
+  below was **closed afterwards**, while working #100 — see *Not verified*.
 
 ## Context
 
@@ -179,12 +180,19 @@ it is not silently promoted to fact:
 - **No browser pass, at all.** The Chrome extension on this machine has only remote macOS
   instances attached and cannot reach `localhost`. Nothing on the errors screen, no boundary
   fallback, no triage audit row has been seen rendered. This is #86's territory (still open).
-- **The migration has never been applied to a real PostgreSQL database.** Docker Desktop's
-  Linux engine on this machine returns 500 for every API call, so there was no compose run
-  and no end-to-end exercise through Npgsql. The migration was inspected as generated
-  Postgres SQL (confirmed above: `timestamp with time zone`, `ON DELETE CASCADE`, the
-  indexes) and exercised on SQLite. A native PostgreSQL 18 service is reportedly running on
-  this workstation on port 5432 — its availability was not used or investigated here.
+- ~~**The migration has never been applied to a real PostgreSQL database.**~~ **Closed
+  after this note was first written, while working #100.** It was true at merge time: Docker
+  Desktop's Linux engine returns 500 for every API call here, so there was no compose run.
+  What was missed is that **Docker is not the only way to get a PostgreSQL** — `initdb` ships
+  with the native PostgreSQL 18 install on this workstation, so a throwaway cluster can be
+  stood up on a spare port, migrated, inspected and torn down in about a minute, without
+  touching the installed service or needing its credentials. Done afterwards on 18.4:
+  `AddClientErrors` applies clean as part of the full chain, and `\d` confirms in the live
+  catalogue what had only been read off generated SQL — both timestamps
+  `timestamp with time zone`, `FK_ClientErrorEvent_ClientErrorIssue_IssueId … ON DELETE
+  CASCADE`, `IX_ClientErrorIssue_Fingerprint UNIQUE`, and `IX_ClientErrorIssue_LastSeenUtc`
+  as `btree ("LastSeenUtc" DESC)`. **The lesson is the reusable part**: "Docker is down" was
+  taken as "no database available" twice in a row, and it was never the same statement.
 - The 64 KiB `keepalive` body cap is respected by construction (truncation on both the
   client and server sides) but was never measured against a real browser's actual limit.
 - Nothing deployed; no `.do/app.yaml`, CORS or DNS change — none was needed for this slice.

@@ -117,6 +117,56 @@ namespace WebChat.Tests.Admin
             Assert.Equal("ben@acme.com", result.Issued[0].Email);
         }
 
+        /// <summary>
+        /// A pending account is created with <c>Username = email</c>, and nothing stops an
+        /// existing account holding an email-shaped *username* that is not its own address.
+        /// Before #100 that wrote a second row sharing a username - the defect #100 exists to
+        /// close - and after it, it violates `IX_User_Username_Lower` and turns an
+        /// administrator's invite into an unhandled 500. Skipped, like any other address the
+        /// workspace already accounts for, so the rest of a pasted list still goes out.
+        /// </summary>
+        [Fact]
+        public async Task An_address_already_held_as_a_username_is_skipped_not_fatal()
+        {
+            var owner = this.Add("owner", WorkspaceRole.Owner);
+
+            var squatter = this.Add("squatter");
+            squatter.Username = "ben@acme.com";
+            this.ctx.SaveChanges();
+
+            var result = await this.service.SendAsync(
+                owner.Id, new[] { "ben@acme.com", "cara@acme.com" }, WorkspaceRole.Member);
+
+            Assert.True(result.Ok);
+            Assert.Equal(new[] { "ben@acme.com" }, result.Skipped);
+            Assert.Single(result.Issued);
+            Assert.Equal("cara@acme.com", result.Issued[0].Email);
+
+            // The point of the guard: no second row carrying that username.
+            Assert.Single(this.ctx.User.AsNoTracking().Where(u => u.Username == "ben@acme.com"));
+        }
+
+        /// <summary>
+        /// The guard must not fire on a resend. A pending account for this address already
+        /// exists and is reused, so nothing is inserted and nothing can collide - its own
+        /// username is the address, which would otherwise look exactly like the case above.
+        /// </summary>
+        [Fact]
+        public async Task Re_inviting_a_pending_address_is_still_a_resend()
+        {
+            var owner = this.Add("owner", WorkspaceRole.Owner);
+
+            await this.service.SendAsync(owner.Id, new[] { "ben@acme.com" }, WorkspaceRole.Member);
+
+            var result = await this.service.SendAsync(
+                owner.Id, new[] { "ben@acme.com" }, WorkspaceRole.Member);
+
+            Assert.True(result.Ok);
+            Assert.Empty(result.Skipped);
+            Assert.Single(result.Issued);
+            Assert.Single(this.ctx.User.AsNoTracking().Where(u => u.Email == "ben@acme.com"));
+        }
+
         [Fact]
         public async Task An_invitation_cannot_hand_over_the_workspace()
         {

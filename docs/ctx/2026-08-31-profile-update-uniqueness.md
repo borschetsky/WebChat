@@ -7,7 +7,9 @@
   `WebChat/Controllers/UniquenessProblem.cs` (new),
   `WebChat.Connection/UserUniqueIndexes.cs` (new), migration
   `20260831163827_AddUserUniqueIndexes`, `WebChat.Tests/Users/ProfileUniquenessTests.cs` (new),
-  `WebChat.Tests/Users/UserUniqueIndexTests.cs` (new)
+  `WebChat.Tests/Users/UserUniqueIndexTests.cs` (new),
+  `WebChat.Services/InvitationService.cs` + `WebChat.Tests/Admin/InvitationServiceTests.cs`
+  (the blast-radius fix below)
 - **Status:** done
 
 ## Context
@@ -91,6 +93,31 @@ Branch `bugfix/100-profile-update-uniqueness`.
   now-fixed gap; the new text names the two-layer fix, the `lower()` reasoning, and the race
   condition below.
 
+### The blast radius, and the one thing in it that had to be fixed here
+
+An index is not a local change: it makes every *existing* write to those columns able to fail.
+A grep found three writers of `User.Username`/`User.Email` — `CreateUser` (checked at register),
+`UpdateProfile` (checked as of this change), and **`InvitationService.SendAsync`**, which was
+neither.
+
+`SendAsync` creates the pending account with `Username = email`, and it looks for collisions
+only against the `Email` column. Nothing stops an existing account holding an email-shaped
+*username* that is not its own address — `register` does not forbid it — so inviting that
+string wrote a second row sharing a username. That is precisely the defect this issue exists to
+close, reached through a different door, and it was silent.
+
+**Adding the indexes would have made it loud in the worst way**: an unhandled
+`DbUpdateException` out of an administrator's invite, and with no `UseExceptionHandler` outside
+Development that is a bare 500. So it is fixed here rather than filed. The address is added to
+`Skipped`, the bucket that already means "the workspace already accounts for this one" — the
+rest of a pasted list still goes out, which is the established behaviour for an address that is
+already a member.
+
+The guard is deliberately placed *after* the existing-pending lookup rather than beside the
+member check, because a resend reuses the pending row and inserts nothing. A pending account's
+username **is** the invited address, so a guard placed one block earlier would refuse every
+resend — and that path has its own test so the mistake cannot be made silently.
+
 ## Decisions and trade-offs
 
 - **Two layers, not one.** Rejected: service check alone (a bug in a future code path could
@@ -129,8 +156,54 @@ Branch `bugfix/100-profile-update-uniqueness`.
   null usernames don't collide; and one integration test proving the service check and the
   index agree (a taken name is a 400 via the controller, not a raw exception).
   `UserUniqueIndexTests.cs:26-32` documents explicitly that SQLite cannot exercise the
-  migration's PL/pgSQL preflight — that part is "checked by hand against a real PostgreSQL
-  instead," per the comment; this note did not independently re-verify that claim.
+  migration's PL/pgSQL preflight — that part is checked by hand against a real PostgreSQL
+  instead. **That claim has since been re-derived**; see below.
+
+- **The invitation guard, proved red.** `An_address_already_held_as_a_username_is_skipped_not_fatal`
+  fails against the unguarded code with `Assert.Equal() Failure: Collections differ / Expected:
+  ["ben@acme.com"] / Actual: []` — the address was invited rather than skipped, writing the
+  duplicate. Its sibling `Re_inviting_a_pending_address_is_still_a_resend` **passes** in that
+  same run, which is what makes it a guard rather than a reproduction: it is there to catch the
+  guard being placed one block too early. 20 invitation tests, 1 failed / 19 passed unguarded.
+- Full suite after both changes: `dotnet build -warnaserror --no-incremental` → 0 warnings,
+  0 errors; `dotnet test` → **387 passed, 2 skipped, 389 total**. The client is untouched, so
+  `npm run verify` stands at the 325/26 recorded for #74.
+
+### Re-derived on real PostgreSQL 18.4
+
+**Docker is down on this machine and it did not matter.** `initdb` ships with the native
+PostgreSQL install, so a throwaway cluster on a spare port costs about a minute and needs no
+credentials for the installed service — it is torn down afterwards, `pgdata` and all. Run
+independently of the session that wrote the migration:
+
+- **Clean database, full chain** (so this also covers #74's `AddClientErrors`, which had been
+  merged as unverified against real Postgres): applies to `Done.`, and `pg_indexes` shows
+  `IX_User_Username_Lower … btree (lower(("Username")::text))` and the email equivalent —
+  functional, not plain.
+- **The hard case: duplicates already present.** Migrated to `AddClientErrors`, seeded four
+  users forming three collisions — an exact `victim94` pair, plus `QaOwner86`/`qaowner86` and
+  `shared@example.com`/`SHARED@Example.com`, both differing only in case — then ran the last
+  migration:
+
+  ```
+  P0001: Cannot make usernames and email addresses unique: 3 identifier(s) are held by
+         more than one account.
+  email 'shared@example.com' is held by 2 accounts: id-003, id-004
+  username 'qaowner86'       is held by 2 accounts: id-003, id-004
+  username 'victim94'        is held by 2 accounts: id-001, id-002
+  ```
+
+  It caught the case-variant pairs, which is the whole argument for `lower()`, and it names
+  **the account ids** — what the raw index error would not give (Postgres reports only the
+  first duplicated value, and no rows).
+- **Transactional, as claimed.** After that failure `__EFMigrationsHistory` was still at
+  `AddClientErrors` and `pg_indexes` on `User` still held only `PK_User`. "Fix the data and
+  deploy again" is literally true, not aspirational.
+- **Repair and retry**: renamed the two losing rows, re-ran, `Done.`
+- **The indexes then behave.** `ViCtIm94` → `duplicate key value violates unique constraint
+  "IX_User_Username_Lower"`, `DETAIL: Key (lower("Username"::text))=(victim94) already
+  exists.` Two rows with a NULL username → `INSERT 0 2`, so the index does not make a
+  username mandatory.
 
 ## Known issues / follow-ups
 
@@ -149,6 +222,12 @@ Branch `bugfix/100-profile-update-uniqueness`.
   from before register-time checks were made case-insensitive (`docs/ctx/2026-08-05-login-identity-and-password-reset.md`).
   Worth checking `SELECT lower("Username"), count(*) FROM "User" GROUP BY 1 HAVING count(*) > 1`
   (and the same for email) against production before deploying this migration.
-- **Not verified: nothing here was exercised in a browser.** All verification is at the
-  service/controller/SQLite level; no docker-compose or live-PostgreSQL pass was run for this
-  change.
+- **Not verified: nothing here was exercised in a browser.** The Chrome extension on this
+  machine has only remote instances attached and cannot reach `localhost` — #86's blocker.
+  The client is untouched by this change, but see the settings-drawer defect above: how the
+  new 400 renders was read, not seen.
+- **Not verified: DigitalOcean's managed PostgreSQL.** A local 18.4 cluster is not the
+  deployment target. Nothing here uses `citext` or a non-default collation, which is where a
+  provider difference would most plausibly bite, but that is reasoning rather than a test.
+- **Not verified: the concurrent-rename race.** Reasoned about, not exercised — see the
+  first follow-up above.
