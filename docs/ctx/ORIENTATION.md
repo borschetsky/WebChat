@@ -53,10 +53,12 @@ The React client is at `WebChat/WebChat/ClientApp`. Context notes are in `docs/c
 
 ### Routes
 
-Most controllers are `[Route("api/[controller]")]`; `AdminController`, `ConversationsController`,
-`InvitationsController` and `SeedController` use literal routes (`api/admin`,
-`api/conversations/{groupId}`, `api/invitations`, `api`). Controller-level `[Authorize]` unless
-noted. **Register lives on `AuthController`, so it is `api/auth/register`** — `api/users/…`
+Most controllers are `[Route("api/[controller]")]`; `AdminController`, `ClientErrorsController`,
+`ConversationsController`, `InvitationsController` and `SeedController` use literal routes
+(`api/admin`, `api/client-errors`, `api/conversations/{groupId}`, `api/invitations`, `api`).
+Controller-level `[Authorize]` unless noted — and `AdminController` is
+`[Authorize(Roles = owner,admin)]`, which is why crash *reporting* is its own controller
+outside `api/admin`: every member writes to it, only admins read the results back. **Register lives on `AuthController`, so it is `api/auth/register`** — `api/users/…`
 carries the authenticated profile endpoints only, and an unmatched `/api/*` path in Development
 falls through to the SPA dev-server proxy and hangs for ~140s before a 500 rather than 404ing.
 
@@ -224,9 +226,14 @@ transform JSX in `.js`.
 src/
   app/          App, AppShell, ChatApp, store.ts, hooks.ts, api/chatApi.ts
   components/   Shared presentational primitives (PresenceAvatar, EmptyState, …)
+                plus AppErrorBoundary — the only class component in here, and the only
+                thing that catches a render crash
   features/     auth composer messages notifications realtime settings threads ui
-  lib/          Pure helpers (date-time-format)
-  services/     The data seam: chat-service, api-service, adapters, mocks
+                admin (lazy-loaded with the /admin route, its own adminApi)
+  lib/          date-time-format (pure) and error-reporter (not pure: module state,
+                two window listeners, and it is what AppErrorBoundary reports through)
+  services/     The data seam: chat-service, api-service, adapters, mocks,
+                admin-service
   theme/        tokens.js (design handoff), theme.d.ts, ThemeModeProvider
   types/        dto.ts (wire shapes) / models.ts (view models)
 ```
@@ -272,6 +279,13 @@ Six features have no backend. Every one is served from `services/mocks.ts` behin
 call signature the real thing would have, each with a `MOCK BECAUSE:` note naming the missing
 endpoint. Mocked: reactions, reply/quote, attachments, unread counts, read receipts,
 notifications. **Groups are no longer mocked** — issue #37 made them real.
+
+**All six are in the chat.** The admin console has the identical seam in
+`services/admin-service.ts` and, since #74 made UI errors real, nothing behind it — the
+fixtures file is deleted. Which also removed a cost nobody had noticed: `admin-mocks.ts` was
+reachable from `store.ts` → `adminApi` → `admin-service`, so every visitor downloaded the
+console's fixtures in the eager bundle. Anything reachable from `store.ts` is eager; that is
+the shape to watch, not the one file.
 
 > **Components must talk to `services/chat-service`, never to `api-service` or `mocks`
 > directly.** That seam is the whole reason mocked features are indistinguishable from real

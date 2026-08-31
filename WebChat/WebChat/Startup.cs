@@ -39,6 +39,9 @@ namespace WebChat
         /// <summary>Applied to the endpoints that cause an email to be sent.</summary>
         public const string EmailSendPolicy = "EmailSend";
 
+        /// <summary>Applied to <c>POST api/client-errors</c>. See <see cref="AddRateLimiting"/>.</summary>
+        public const string ClientErrorPolicy = "ClientErrors";
+
         private readonly IWebHostEnvironment environment;
 
         public Startup(IConfiguration configuration, IWebHostEnvironment environment)
@@ -131,6 +134,9 @@ namespace WebChat
         }
 
         /// <summary>
+        /// The two rate-limiting policies: one for the endpoints that send email, one for
+        /// crash reports. Both partition by remote IP, for the reason given on the second.
+        ///
         /// Caps how often one caller can make the app send email.
         ///
         /// register and resend-confirmation are unauthenticated and each cause a message to
@@ -159,6 +165,34 @@ namespace WebChat
                         {
                             PermitLimit = 5,
                             Window = TimeSpan.FromMinutes(15),
+                            QueueLimit = 0,
+                        }));
+
+                // Crash reports. A far higher ceiling than the email limit, because the
+                // ordinary case is genuine and bursty - a broken deploy makes every open tab
+                // report at once - and because nothing downstream costs money. What this stops
+                // is the pathological case the issue names: a client stuck in a render loop
+                // reporting thousands of times a minute.
+                //
+                // Partitioned by remote IP and not by the caller's id, even though the endpoint
+                // is authenticated: UseRateLimiter runs *before* UseAuthentication in Configure,
+                // so there is no identity here to partition on - HttpContext.User is still
+                // anonymous and every request would share one bucket. That ordering is worth
+                // keeping, because it means a flood is rejected before it costs the per-request
+                // database read OnTokenValidated does.
+                //
+                // The consequence, and it is the same one the email limiter has: this depends
+                // on ForwardedHeaders__Enabled behind a proxy. Without it every request appears
+                // to come from the proxy, the whole workspace shares one bucket, and reports
+                // are shed as soon as a handful of people hit the same bug. It fails quietly
+                // in the direction of losing data rather than of denying service.
+                options.AddPolicy(ClientErrorPolicy, context =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                        factory: _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = 60,
+                            Window = TimeSpan.FromMinutes(1),
                             QueueLimit = 0,
                         }));
 
@@ -303,6 +337,8 @@ namespace WebChat
             services.AddTransient<IWorkspacePolicyService, WorkspacePolicyService>();
             services.AddSingleton<WorkspacePolicyCache>();
 
+            AddClientErrors(services);
+
             services.AddTransient<IMappingService, MappingService>();
             services.AddTransient<IValidator, Validator>();
             services.AddSingleton(typeof(IConnectionMapping<string>), typeof(ConnectionMapping<string>));
@@ -318,6 +354,35 @@ namespace WebChat
             services.AddTransient<IImageHandler, ImageHandler>();
             AddAvatarStorage(services);
             AddEmail(services);
+        }
+
+        /// <summary>
+        /// Client-error ingestion: a bounded queue, a loop that drains it, and a pruner.
+        ///
+        /// The queue is a **singleton** because it is process state - a queue resolved per
+        /// request would be a new empty queue every time, written to and then discarded, and
+        /// the endpoint would answer 202 to reports nothing ever reads. The service that writes
+        /// them is transient like every other DbContext consumer, and the two background
+        /// services resolve it inside a scope of their own.
+        ///
+        /// Registered unconditionally. There is no "not configured" state to fall back to:
+        /// unlike R2 and SMTP this needs no credentials, only the database the app already
+        /// cannot start without.
+        /// </summary>
+        private void AddClientErrors(IServiceCollection services)
+        {
+            var clientErrors = new WebChat.Services.ClientErrors.ClientErrorOptions();
+            Configuration.GetSection(WebChat.Services.ClientErrors.ClientErrorOptions.SectionName)
+                .Bind(clientErrors);
+            services.AddSingleton(clientErrors);
+
+            services.AddSingleton<WebChat.Services.ClientErrors.IClientErrorQueue,
+                                  WebChat.Services.ClientErrors.ClientErrorQueue>();
+            services.AddTransient<WebChat.Services.ClientErrors.IClientErrorService,
+                                  WebChat.Services.ClientErrors.ClientErrorService>();
+
+            services.AddHostedService<WebChat.Services.ClientErrors.ClientErrorIngestService>();
+            services.AddHostedService<WebChat.Services.ClientErrors.ClientErrorRetentionService>();
         }
 
         /// <summary>

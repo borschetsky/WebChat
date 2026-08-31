@@ -1,15 +1,17 @@
 /**
  * The admin console's view models.
  *
- * **UI errors is the last section served from `services/admin-mocks.ts`**; the audit log
- * (#70), members (#71), invitations (#72), the overview (#73) and policies (#75) all have
- * real endpoints now, and #74 is what would finish the set. `services/admin-service.ts` is
- * the authority on which is which - it imports exactly `mockErrors` and `mockSetErrorStatus`
- * - because a comment saying so drifts and that file cannot.
+ * **Every section of this console is real.** The audit log (#70), members (#71), invitations
+ * (#72), the overview (#73), policies (#75) and finally UI errors (#74) each have an endpoint
+ * behind them, and `services/admin-mocks.ts` - which held the fixtures - has been deleted
+ * rather than emptied, so there is nothing left for a new section to reach for by accident.
+ * `services/admin-service.ts` is the authority on this, not this comment: it now imports from
+ * `./api-service` and nothing else.
  *
- * The shapes are chosen to match what the eventual endpoints should return, so making a
- * section real is normally a change to `services/admin-service.ts` and nothing else. See
- * issue #64.
+ * The shapes here were chosen, while the console was a mock, to match what the endpoints
+ * should return - and they held: five of the six sections became real without a component
+ * changing, and the sixth's server DTO was shaped to `AdminError` rather than the other way
+ * round. See issue #64.
  *
  * **"And nothing else" turned out to have one exception, worth stating because it is the
  * kind that recurs.** The original fixtures held *rendered* strings - `'2 h ago'`,
@@ -111,7 +113,15 @@ export interface AdminInvite {
 
 /** Mirrors `AuditAction` on the server. A value with no case here renders no sentence. */
 export type AdminAuditKind =
-  'block' | 'unblock' | 'deactivate' | 'activate' | 'role' | 'invite' | 'policy' | 'login';
+  | 'block'
+  | 'unblock'
+  | 'deactivate'
+  | 'activate'
+  | 'role'
+  | 'invite'
+  | 'policy'
+  | 'login'
+  | 'error';
 
 /**
  * One audit entry, as **facts** rather than as a sentence.
@@ -149,6 +159,17 @@ export interface AdminErrorCrumb {
 /**
  * One row per **fingerprint** — component + function + error name — never the raw message.
  * Interpolated values in a message would open a new issue per occurrence.
+ *
+ * The component half is a **literal** passed to `AppErrorBoundary`, not a component's runtime
+ * name: Vite 8's minifier renames `AdminOverviewCard` to `t` and the production build ships
+ * no sourcemap, so a runtime name would change every deploy and re-open every issue with it.
+ * The server versions the fingerprint (`v1|…`) so the grouping can be changed later without
+ * a migration.
+ *
+ * Two fields are narrower than they look and are documented on the server DTO too:
+ * `events` counts every occurrence ever ingested, while `users` and `spark` are computed only
+ * over the occurrences retention still holds (30 days). So `events` can exceed the sum of
+ * `spark`, legitimately.
  */
 export interface AdminError {
   id: string;

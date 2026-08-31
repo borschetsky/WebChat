@@ -37,5 +37,15 @@ namespace WebChat.Models
 
         /// <summary>A sign-in worth noticing - currently a refusal, not every success.</summary>
         public const string Login = "login";
+
+        /// <summary>
+        /// A client-error issue was triaged - acknowledged, resolved, or reopened.
+        ///
+        /// The one entry here that is not about a person or about workspace configuration, and
+        /// it earns its place for a narrow reason: when a resolved issue starts happening
+        /// again, "who decided this was fixed, and when" is the first question, and the issue
+        /// row itself only carries the current status.
+        /// </summary>
+        public const string Error = "error";
     }
 }

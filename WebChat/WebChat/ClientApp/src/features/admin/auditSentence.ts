@@ -98,6 +98,24 @@ export const auditSentence = (entry: AdminAudit): string => {
       // kind here follows, and the reason none of them store a sentence.
       return `${actor} turned ${entry.data?.value === true ? 'on' : 'off'} ${policyLabel(policy)}`;
     }
+    case 'error': {
+      // The error's name, not its fingerprint: the log is read by a person, and
+      // "v1|AdminOverview|render|TypeError" is not something anyone recognises.
+      const name = field(entry, 'name') ?? 'an error';
+
+      switch (field(entry, 'status')) {
+        case 'resolved':
+          return `${actor} marked ${name} resolved`;
+        case 'acknowledged':
+          // "Reopened" only when it was resolved before. Acknowledging a new issue is not a
+          // reopening, and calling it one would misdescribe the commonest case.
+          return field(entry, 'from') === 'resolved'
+            ? `${actor} reopened ${name}`
+            : `${actor} acknowledged ${name}`;
+        default:
+          return `${actor} changed the status of ${name}`;
+      }
+    }
     case 'login': {
       const email = field(entry, 'email') ?? 'an unknown address';
       return `Failed sign-in for ${email}`;
@@ -151,6 +169,9 @@ export const auditMeta = (entry: AdminAudit): string => {
     }
     case 'policy':
       parts.push('Workspace policy');
+      break;
+    case 'error':
+      parts.push('UI errors');
       break;
     case 'login': {
       const attempts = number(entry, 'attempts');

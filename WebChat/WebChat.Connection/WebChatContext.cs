@@ -38,6 +38,19 @@ namespace WebChat.Connection
         /// </summary>
         public DbSet<WorkspaceSettings> WorkspaceSettings { get; set; }
 
+        /// <summary>
+        /// One row per client-error fingerprint - the thing an administrator triages. Written
+        /// only by the background drain loop; see <c>IClientErrorQueue</c>.
+        /// </summary>
+        public DbSet<ClientErrorIssue> ClientErrorIssue { get; set; }
+
+        /// <summary>
+        /// One row per occurrence, feeding the sparkline, the user count and the browser list.
+        /// **The only unbounded table in the app**, and therefore the one retention prunes
+        /// hardest - see <c>ClientErrorRetentionService</c>.
+        /// </summary>
+        public DbSet<ClientErrorEvent> ClientErrorEvent { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             // Redemption looks an invitation up *by hash* - the token is never stored, so
@@ -66,6 +79,38 @@ namespace WebChat.Connection
             builder.Entity<WorkspaceSettings>()
                 .Property(s => s.PoliciesJson)
                 .HasColumnType("jsonb");
+
+            // The fingerprint *is* the identity of an issue - the upsert looks it up by this
+            // and by nothing else. Unique, so two instances racing the same first occurrence
+            // collide loudly instead of quietly creating two rows for one problem.
+            builder.Entity<ClientErrorIssue>()
+                .HasIndex(i => i.Fingerprint)
+                .IsUnique();
+
+            // The list is only ever read newest-activity-first, and descending for the same
+            // reason as the audit log's: an ascending index would be scanned backwards every
+            // time.
+            builder.Entity<ClientErrorIssue>()
+                .HasIndex(i => i.LastSeenUtc)
+                .IsDescending();
+
+            // Cascade, unlike every other relationship here. An occurrence has no meaning
+            // without its issue, and retention deletes issues wholesale - a restrict would
+            // make the pruner delete in two ordered passes to achieve the same end.
+            builder.Entity<ClientErrorEvent>()
+                .HasOne(e => e.Issue)
+                .WithMany()
+                .HasForeignKey(e => e.IssueId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Composite, in the order the query filters: every read of this table is "these
+            // issues, within the last fortnight".
+            builder.Entity<ClientErrorEvent>()
+                .HasIndex(e => new { e.IssueId, e.OccurredAtUtc });
+
+            // And this one is for the pruner, which sweeps by age across every issue.
+            builder.Entity<ClientErrorEvent>()
+                .HasIndex(e => e.OccurredAtUtc);
 
             builder.Entity<Message>()
                 .HasOne(m => m.Thread)

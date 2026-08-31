@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
 
 // Where the ASP.NET API is listening. Matches the launchSettings.json profiles.
@@ -26,9 +27,32 @@ const apiTarget = process.env.VITE_API_PROXY_TARGET || 'https://localhost:7199';
  */
 const usePolling = process.env.VITE_USE_POLLING === 'true';
 
+/**
+ * What a crash report calls this build (#74).
+ *
+ * Baked in at build time rather than read from an environment variable at runtime, because a
+ * browser has no environment to read - and folded to a literal by `define`, so the minifier
+ * cannot rename it the way it renames a component.
+ *
+ * The package version is the honest default and it moves rarely, which is the weakness: two
+ * deploys of the same version are indistinguishable on the errors screen. Set `VITE_RELEASE`
+ * in CI to something that identifies the build - a short commit sha - and the "Release" line
+ * on an issue starts being worth reading.
+ */
+const pkg = JSON.parse(
+  readFileSync(fileURLToPath(new URL('./package.json', import.meta.url)), 'utf8'),
+) as { version: string };
+
+const release = process.env.VITE_RELEASE || `web@${pkg.version}`;
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  define: {
+    // Only this one key, not the whole of `import.meta.env` - replacing the object would
+    // clobber everything Vite injects into it.
+    'import.meta.env.VITE_RELEASE': JSON.stringify(release),
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

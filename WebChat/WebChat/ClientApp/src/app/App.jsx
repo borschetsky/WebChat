@@ -4,9 +4,12 @@ import {
   Routes,
   Route,
   Navigate,
+  useLocation,
   useNavigate,
   useSearchParams,
 } from 'react-router-dom';
+import AppErrorBoundary from '@/components/AppErrorBoundary';
+import { breadcrumb } from '@/lib/error-reporter';
 import AuthScreen from '@/features/auth/AuthScreen';
 import CheckYourEmail from '@/features/auth/CheckYourEmail';
 import ConfirmEmail from '@/features/auth/ConfirmEmail';
@@ -64,6 +67,7 @@ const prefetchChatApp = () => importChatApp().catch(() => {});
 
 function AppRoutes() {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useAppDispatch();
   const user = useAppSelector(selectUser);
   const busy = useAppSelector(selectAuthBusy);
@@ -81,6 +85,15 @@ function AppRoutes() {
   useEffect(() => {
     void prefetchChatApp();
   }, []);
+
+  // A navigation breadcrumb per route change, so a crash report says where the user came from
+  // rather than only where they were standing. Recorded here rather than by patching
+  // `history.pushState`, because the router already knows - and only the pathname, never the
+  // search string: invitation and reset tokens travel there, and a breadcrumb trail is read by
+  // an administrator who is not the person it is about.
+  useEffect(() => {
+    breadcrumb('navigation', location.pathname);
+  }, [location.pathname]);
 
   const signIn = useCallback(
     async (payload) => {
@@ -249,8 +262,13 @@ function AppRoutes() {
         path="/dashboard"
         element={
           user ? (
+            // The boundary is inside Suspense, not outside: a chunk that fails to load is a
+            // rejected promise for Suspense to surface, and wrapping the other way round would
+            // put the fallback in place of the whole route before the chunk had a chance.
             <Suspense fallback={null}>
-              <ChatApp user={user} onSignOut={signOut} />
+              <AppErrorBoundary name="ChatApp">
+                <ChatApp user={user} onSignOut={signOut} />
+              </AppErrorBoundary>
             </Suspense>
           ) : (
             <Navigate to="/login" replace />
@@ -269,7 +287,9 @@ function AppRoutes() {
         element={
           user ? (
             <Suspense fallback={null}>
-              <AdminRoute />
+              <AppErrorBoundary name="AdminConsole">
+                <AdminRoute />
+              </AppErrorBoundary>
             </Suspense>
           ) : (
             <Navigate to="/login" replace />

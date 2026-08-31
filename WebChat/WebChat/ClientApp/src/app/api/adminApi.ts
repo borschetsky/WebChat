@@ -67,16 +67,16 @@ export const adminApi = createApi({
       providesTags: ['Invites'],
     }),
 
-    // The only paged endpoint here, hence the argument. Everything above and below it is
-    // real too except `getErrors`, which still resolves against fixtures and ignores
-    // authentication entirely - see admin-mocks.ts, and #74 for making it real.
+    // The only paged endpoint here, hence the argument. Everything else on this api reads or
+    // writes in one call, and the audit log is the one table where "just fetch them all"
+    // would be genuinely unbounded.
     getAudit: build.query<AdminAudit[], { before?: string; limit?: number } | void>({
       queryFn: (arg, api) => run(() => admin.loadAudit(tokenOf(api.getState), arg ?? {})),
       providesTags: ['Audit'],
     }),
 
     getErrors: build.query<AdminError[], void>({
-      queryFn: () => run(() => admin.loadErrors()),
+      queryFn: (_arg, api) => run(() => admin.loadErrors(tokenOf(api.getState))),
       providesTags: ['Errors'],
     }),
 
@@ -129,8 +129,11 @@ export const adminApi = createApi({
     }),
 
     setErrorStatus: build.mutation<AdminError[], { id: string; status: AdminErrorStatus }>({
-      queryFn: ({ id, status }) => run(() => admin.setErrorStatus(id, status)),
-      invalidatesTags: ['Errors'],
+      queryFn: ({ id, status }, api) =>
+        run(() => admin.setErrorStatus(id, status, tokenOf(api.getState))),
+      // Audit too: triage is recorded like every other admin mutation, so the Overview's
+      // recent-activity list has to re-read.
+      invalidatesTags: ['Errors', 'Audit'],
     }),
   }),
 });
