@@ -1,18 +1,22 @@
 // The single surface the admin console talks to.
 //
-// Same rule as services/chat-service.ts: components must not reach into ./admin-mocks
-// directly, so a mocked section is indistinguishable from a real one at the call site.
-// When a section gains a backend, only this file and ./admin-mocks change.
+// Same rule as services/chat-service.ts: components must not reach past this file, so a
+// mocked section is indistinguishable from a real one at the call site. That seam has now
+// done its whole job - **every section of this console is real** as of #74, and
+// `./admin-mocks` is gone. The six mocked features left in this client are all in the chat
+// app, and `services/mocks.ts` is where they live.
 //
 // Everything is async and returns a promise even though the mocks are synchronous, because
 // the endpoints that replace them will not be - a call site written against a synchronous
 // mock has to be rewritten, which is exactly the coupling this seam exists to avoid.
 
 import {
+  getAdminErrors,
   getAdminInvitations,
   getAdminMembers,
   getAdminOverview,
   getAdminPolicies,
+  setAdminErrorStatus,
   setAdminPolicy,
   getAuditLog,
   inspectInvitation,
@@ -23,8 +27,6 @@ import {
   setAdminMemberRole,
   setAdminMemberStatus,
 } from './api-service';
-
-import { mockErrors, mockSetErrorStatus } from './admin-mocks';
 
 import type {
   AdminAudit,
@@ -107,7 +109,16 @@ export const loadAudit = async (
   return listOf<AdminAudit>(await getAuditLog(options, token));
 };
 
-export const loadErrors = async (): Promise<AdminError[]> => mockErrors();
+/**
+ * Real as of #74, and the last section of this console to become so.
+ *
+ * One row per **fingerprint** - component, function and error name - never per occurrence and
+ * never keyed on the message, which would open a fresh issue for every interpolated value and
+ * turn the section into a log. The 14-day sparkline, the distinct-user count and the browser
+ * list are all counted server-side from occurrences the retention job keeps for 30 days.
+ */
+export const loadErrors = async (token: string): Promise<AdminError[]> =>
+  listOf<AdminError>(await getAdminErrors(token));
 
 /**
  * Real as of #75, and deliberately smaller than the screen.
@@ -205,5 +216,17 @@ export const redeemInvite = async (inviteToken: string, token: string): Promise<
   await redeemInvitation(inviteToken, token);
 };
 
-export const setErrorStatus = async (id: string, status: AdminErrorStatus): Promise<AdminError[]> =>
-  mockSetErrorStatus(id, status);
+/**
+ * Triage. Returns the whole list back, like every other mutation here, so the screen
+ * re-renders from what the server now holds.
+ *
+ * There is no "ignore" and no delete: an issue leaves this list by not happening for long
+ * enough, which the retention job decides. Marking one resolved does not stop it counting -
+ * a resolved issue that recurs keeps its status and moves its last-seen forward, because that
+ * is the only shape in which a regression is visible at all.
+ */
+export const setErrorStatus = async (
+  id: string,
+  status: AdminErrorStatus,
+  token: string,
+): Promise<AdminError[]> => listOf<AdminError>(await setAdminErrorStatus(id, status, token));

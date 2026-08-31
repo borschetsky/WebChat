@@ -160,7 +160,17 @@ and fill it in, or the command stops naming the variable it wanted.
 - **UI components talk to `services/chat-service.ts`, never to `api-service` or `mocks`
   directly.** That seam is what keeps mocked features indistinguishable from real ones;
   six features are mocked because the API cannot back them — the settings drawer lists
-  them, and `mocks.ts` names the endpoint each would need.
+  them, and `mocks.ts` names the endpoint each would need. **The admin console has the same
+  seam and nothing behind it is mocked any more** (`services/admin-service.ts`, #74 was the
+  last section); `admin-mocks.ts` is gone, and it turned out to have been reachable from
+  `store.ts` all along, so every visitor had been downloading the console's fixtures.
+- **Anything the client sends the server to *group* on must be a string literal in the
+  source.** `vite build` minifies and ships no sourcemap, so `AdminOverviewCard` becomes `t`:
+  a crash fingerprint built from a runtime `Component.name` is a single letter that changes
+  every deploy, which re-opens every issue on the errors screen at once. Hence
+  `<AppErrorBoundary name="AdminOverview">` written out, and hence any `class X extends Error`
+  setting `this.name = 'X'` as a literal — the constructor name is minified too. Never put a
+  filename or line number in such a key either: chunk names are content-hashed.
 - **`adapters.ts` maps DTOs to view models field by field, so a field it does not name is
   dropped — silently, and the type system will not save you.** `toProfile` omitted `role`
   for five slices: `/users/getprofile` sent it, `ProfileDto` and `Profile` never declared it,
@@ -275,10 +285,12 @@ and fill it in, or the command stops naming the variable it wanted.
   probe from inside the platform's network carries no `X-Forwarded-Proto`, would otherwise
   get a 307, and would roll back a deployment that is in fact healthy. Keep it shallow — the
   app cannot start without a reachable database, so probing one here only adds a way for a
-  transient fault to kill a working instance. **The email rate limiter partitions by remote
-  IP and so depends on this too:** with forwarded headers off, every request looks like the
-  proxy, the whole world shares one bucket, and the first five callers each window lock
-  everyone else out.
+  transient fault to kill a working instance. **The rate limiters partition by remote IP and
+  so depend on this too:** with forwarded headers off, every request looks like the proxy and
+  the whole world shares one bucket — the first five callers each window lock everyone else
+  out of email, and one looping browser locks everyone out of crash reporting. There are two
+  such policies now (email, and `ClientErrors`), and neither can partition by caller instead:
+  `UseRateLimiter` runs *before* `UseAuthentication`, so there is no identity yet.
 - **Secrets are supplied per runner, never committed.** Visual Studio reads
   `appsettings.Secrets.json`; docker compose reads `WebChat/.env`; a deployment sets
   environment variables. All three land on the same keys, because ASP.NET Core maps `__` to

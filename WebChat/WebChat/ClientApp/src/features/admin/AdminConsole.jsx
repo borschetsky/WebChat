@@ -5,6 +5,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ShieldPersonIcon from '@mui/icons-material/AdminPanelSettings';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import AppSnackbar from '@/app/AppSnackbar';
+import AppErrorBoundary from '@/components/AppErrorBoundary';
 import SearchField from '@/components/SearchField';
 import PresenceAvatar from '@/components/PresenceAvatar';
 import { ADMIN_NAV, navBadge } from './adminNav';
@@ -36,17 +37,39 @@ const SECTIONS = {
 };
 
 /**
+ * What each section calls itself when it crashes.
+ *
+ * Written out as literals rather than read off the component, because `AdminOverview.name` is
+ * `t` in a production build - Vite 8 minifies and this app ships no sourcemap. The server
+ * fingerprints on this string, so a minified one would change every deploy and re-open every
+ * issue. See `AppErrorBoundary`.
+ */
+const SECTION_BOUNDARY = {
+  overview: 'AdminOverview',
+  members: 'AdminMembers',
+  invites: 'AdminInvitations',
+  errors: 'AdminErrors',
+  audit: 'AdminAuditLog',
+  policies: 'AdminPolicies',
+};
+
+/**
  * The admin console: a left rail on desktop, bottom navigation below 600px.
  *
  * Reached from Profile & settings → Workspace → Admin console, at its own route rather than
  * a persistent rail icon in the chat app - the spec's reasoning is that a rare,
  * high-consequence destination should not compete with chat's primary actions.
  *
- * **UI errors is the last mocked section.** It alone still reads `services/admin-mocks.ts`;
- * Overview, Members, Invitations, the Audit log and Policies were all given real endpoints by
- * #70-#73 and #75, and `services/admin-service.ts` is the file to check rather than this
- * comment - it imports exactly `mockErrors` and `mockSetErrorStatus` and nothing else. #74 is
- * the issue that would make errors real too. See #64 for the console as a whole.
+ * **Nothing on this screen is mocked any more.** #70-#73 and #75 made the audit log, members,
+ * invitations, the overview and policies real; #74 finished the set with UI errors and deleted
+ * `services/admin-mocks.ts` outright. `services/admin-service.ts` is the file to check rather
+ * than this comment - it imports from `./api-service` and nothing else. See #64 for the
+ * console as a whole.
+ *
+ * Each section renders inside its own error boundary, named with a literal. A section that
+ * throws takes itself out and leaves the rail, the search field and the other five working -
+ * and the boundary is also what puts a real entry into the UI errors section, which is the
+ * one place on this screen that reports on the app it is part of.
  */
 export default function AdminConsole({ profile }) {
   const navigate = useNavigate();
@@ -331,15 +354,21 @@ export default function AdminConsole({ profile }) {
             p: isMobile ? '16px 16px 96px' : '24px 28px 40px',
           }}
         >
-          <Section
-            query={query}
-            isMobile={isMobile}
-            onNavigate={select}
-            onNotify={setSnack}
-            onInvite={() => setInviteOpen(true)}
-            onModalOpenChange={setSectionModalOpen}
-            disableEnforceFocus={snackUp}
-          />
+          {/* Keyed by tab so that leaving a broken section and coming back re-mounts it.
+              An error boundary keeps its failed state until it is unmounted, so without the
+              key a single crash would leave that rail entry showing the fallback for the rest
+              of the session even after a reload of the data would have fixed it. */}
+          <AppErrorBoundary key={tab} name={SECTION_BOUNDARY[tab]}>
+            <Section
+              query={query}
+              isMobile={isMobile}
+              onNavigate={select}
+              onNotify={setSnack}
+              onInvite={() => setInviteOpen(true)}
+              onModalOpenChange={setSectionModalOpen}
+              disableEnforceFocus={snackUp}
+            />
+          </AppErrorBoundary>
         </Box>
 
         {isMobile && (

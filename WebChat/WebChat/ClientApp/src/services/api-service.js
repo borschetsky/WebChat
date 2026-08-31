@@ -3,9 +3,42 @@ import Axios from 'axios';
 // going through it makes the dependency circular.
 import authHeader from './auth-header';
 import Config from '@/config';
+import { breadcrumb } from '@/lib/error-reporter';
 
 // const _baseUrl = 'https://localhost:44397/api/';
 export const _baseUrl = `${Config.network.api}api/`;
+
+// Every API call leaves a breadcrumb, so a crash report says what the app was doing rather
+// than only where it landed (#74). Interceptors on the default axios instance, which is what
+// every function in this file uses.
+//
+// One direction only: this file knows about the reporter, and the reporter deliberately does
+// not know about this one - it posts with `fetch` and builds its own URL from `@/config`.
+// Routing the report through axios would make that a real import cycle, and would also put
+// the crash report through the very interceptors that are recording breadcrumbs about it.
+//
+// The URL is recorded without its query string. Search terms and tokens both travel there,
+// and a breadcrumb trail is read by an administrator who is not the person it is about.
+const path = (url) => (typeof url === 'string' ? url.split('?')[0] : '');
+
+Axios.interceptors.response.use(
+  (response) => {
+    breadcrumb(
+      'fetch',
+      `${response.config?.method?.toUpperCase() ?? 'GET'} ${path(response.config?.url)} · ${response.status}`,
+    );
+    return response;
+  },
+  (error) => {
+    // A failed request is the breadcrumb that matters most, and it is also the one that would
+    // be missing if only the success path were instrumented.
+    breadcrumb(
+      'fetch',
+      `${error?.config?.method?.toUpperCase() ?? 'GET'} ${path(error?.config?.url)} · ${error?.response?.status ?? 'failed'}`,
+    );
+    return Promise.reject(error);
+  },
+);
 
 const register = async (registerObj) => {
   const result = await Axios.post(`${_baseUrl}auth/register`, registerObj);
@@ -208,6 +241,24 @@ const setAdminPolicy = async (key, value, token) => {
   return await result;
 };
 
+// Real as of #74. One row per fingerprint, with the sparkline, the distinct-user count and
+// the browser list all counted server-side from the retained occurrences.
+const getAdminErrors = async (token) => {
+  const result = await Axios.get(`${_baseUrl}admin/errors`, { headers: authHeader(token) });
+  return await result;
+};
+
+// Returns the whole list back, like the member and invitation mutations, so the screen
+// re-renders from what the server holds rather than from a guess about what the change did.
+const setAdminErrorStatus = async (id, status, token) => {
+  const result = await Axios.post(
+    `${_baseUrl}admin/errors/${encodeURIComponent(id)}/status`,
+    { status },
+    { headers: authHeader(token) },
+  );
+  return await result;
+};
+
 const getAdminInvitations = async (token) => {
   const result = await Axios.get(`${_baseUrl}admin/invitations`, { headers: authHeader(token) });
   return await result;
@@ -390,6 +441,8 @@ export {
   getAdminOverview,
   getAdminPolicies,
   setAdminPolicy,
+  getAdminErrors,
+  setAdminErrorStatus,
   getAdminMembers,
   setAdminMemberStatus,
   setAdminMemberRole,

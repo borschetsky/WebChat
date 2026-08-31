@@ -21,6 +21,7 @@ const STYLE = {
   role: ['admin_panel_settings', '#7b1fa2'],
   policy: ['policy', '#00838f'],
   activate: ['task_alt', '#2e7d32'],
+  error: ['bug_report', '#5d4037'],
 };
 
 export default function AuditRow({ entry, compact = false }) {

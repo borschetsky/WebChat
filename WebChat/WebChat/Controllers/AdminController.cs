@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Configuration;
 using WebChat.Models;
 using WebChat.Services;
+using WebChat.Services.ClientErrors;
 using WebChat.Services.Email;
 
 namespace WebChat.Controllers
@@ -43,6 +44,7 @@ namespace WebChat.Controllers
         private readonly IInvitationService invitations;
         private readonly IOverviewService overview;
         private readonly IWorkspacePolicyService policies;
+        private readonly IClientErrorService clientErrors;
         private readonly IEmailSender emailSender;
         private readonly EmailOptions emailOptions;
         private readonly IConfiguration configuration;
@@ -54,6 +56,7 @@ namespace WebChat.Controllers
             IInvitationService invitations,
             IOverviewService overview,
             IWorkspacePolicyService policies,
+            IClientErrorService clientErrors,
             IEmailSender emailSender,
             EmailOptions emailOptions,
             IConfiguration configuration)
@@ -64,6 +67,7 @@ namespace WebChat.Controllers
             this.invitations = invitations;
             this.overview = overview;
             this.policies = policies;
+            this.clientErrors = clientErrors;
             this.emailSender = emailSender;
             this.emailOptions = emailOptions;
             this.configuration = configuration;
@@ -190,6 +194,42 @@ namespace WebChat.Controllers
 
         [HttpGet("invitations")]
         public async Task<IActionResult> Invitations() => this.Ok(await this.invitations.ListAsync());
+
+        /// <summary>
+        /// The UI errors section: one row per fingerprint, newest activity first.
+        ///
+        /// The list is bounded rather than paged - see <c>ClientErrorOptions.MaxIssuesReturned</c>
+        /// - because the screen filters and searches over the whole set client-side. If the
+        /// bound is ever reached, the answer is paging, not a larger number.
+        /// </summary>
+        [HttpGet("errors")]
+        public async Task<IActionResult> Errors() => this.Ok(await this.clientErrors.ListAsync());
+
+        /// <summary>
+        /// Triages an issue: acknowledged, resolved, or reopened.
+        ///
+        /// Returns the whole list back, like the member and invitation mutations, so the screen
+        /// re-renders from what the server holds rather than from a local guess about what the
+        /// change did.
+        /// </summary>
+        [HttpPost("errors/{id}/status")]
+        public async Task<IActionResult> SetErrorStatus(string id, [FromBody] ErrorStatusRequest request)
+        {
+            var errors = await this.clientErrors.SetStatusAsync(
+                this.User.Identity?.Name, id, request?.Status);
+
+            // One refusal for both "no such issue" and "not a status", deliberately: neither is
+            // reachable from the screen, so distinguishing them would only add a code nothing
+            // branches on.
+            return errors == null
+                ? this.BadRequest(new { error = "invalid_error_status" })
+                : this.Ok(errors);
+        }
+
+        public class ErrorStatusRequest
+        {
+            public string Status { get; set; }
+        }
 
         /// <summary>
         /// Issues invitations and mails them.
