@@ -91,8 +91,15 @@ and fill it in, or the command stops naming the variable it wanted.
   other account's username and email — and since password reset sends to the *stored* address,
   that was account takeover, not vandalism (#99). There is no ownership middleware to catch the
   next one: each endpoint is on its own, so take the id from the token and ignore the body's.
-  **Uniqueness has the same shape of gap** — register checks `isUsernameUniq`/`isEmailUniq`,
-  update checks neither and no unique index exists (#100).
+  **Uniqueness is now enforced in two places, and both are needed** (#100): update calls the
+  same availability checks register does — excluding the caller's own row, without which
+  saving an unchanged profile collides with itself — and two unique indexes make it an
+  invariant rather than a convention. They are functional indexes on `lower()`, because the
+  index and the lookup must agree: every lookup in `UserQueries` compares case-insensitively,
+  so a plain unique index would be *looser* than the lookup and would store `Victim94` beside
+  `victim94`. The check still races the write — two concurrent updates can both pass it — and
+  that path is currently an unhandled `DbUpdateException`, so the data is protected but the
+  loser gets a 500 rather than a 400.
 - **`register` returns no token, and sign-in requires a confirmed address.** The account is
   created, an activation link is emailed, and `login` answers 403 `email_not_confirmed`
   until it is opened — so any test or script that registered and used the token straight

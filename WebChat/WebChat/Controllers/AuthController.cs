@@ -108,9 +108,12 @@ namespace WebChat.Controllers
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            if (!userService.isEmailUniq(model.Email)) return BadRequest(new { email = "user with this email already exists" });
+            // The bodies come from UniquenessProblem so that profile update (#100) refuses a
+            // duplicate in exactly the shape register always has, rather than in a second
+            // hand-written spelling of it.
+            if (!userService.isEmailUniq(model.Email)) return BadRequest(UniquenessProblem.EmailTaken());
 
-            if (!userService.isUsernameUniq(model.Username)) return BadRequest(new { username = "user with this username already exists" });
+            if (!userService.isUsernameUniq(model.Username)) return BadRequest(UniquenessProblem.UsernameTaken());
 
             var user = userService.CreateUser(model.Username, model.Email, model.Password);
             userService.AddUser(user);

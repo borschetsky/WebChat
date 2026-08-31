@@ -62,8 +62,13 @@ namespace WebChat.Services
         /// True when no account already uses this email, ignoring case. Without the case fold
         /// both `User@x.com` and `user@x.com` can be registered, and sign-in then resolves to
         /// whichever the database returns first.
+        ///
+        /// <paramref name="exceptUserId"/> is what makes this usable from an *update* as well
+        /// as from register (#100). Without it, saving a profile whose address has not changed
+        /// collides with the caller's own row and is refused - a security fix that breaks the
+        /// settings drawer for everybody who presses Save twice.
         /// </summary>
-        public static bool IsEmailAvailable(IQueryable<User> users, string email)
+        public static bool IsEmailAvailable(IQueryable<User> users, string email, string exceptUserId = null)
         {
             if (string.IsNullOrWhiteSpace(email))
             {
@@ -71,11 +76,14 @@ namespace WebChat.Services
             }
 
             var normalised = email.Trim().ToLower();
-            return !users.Any(u => u.Email.ToLower() == normalised);
+            return !Others(users, exceptUserId).Any(u => u.Email.ToLower() == normalised);
         }
 
-        /// <summary>True when no account already uses this username, ignoring case.</summary>
-        public static bool IsUsernameAvailable(IQueryable<User> users, string username)
+        /// <summary>
+        /// True when no account already uses this username, ignoring case. See
+        /// <see cref="IsEmailAvailable"/> for <paramref name="exceptUserId"/>.
+        /// </summary>
+        public static bool IsUsernameAvailable(IQueryable<User> users, string username, string exceptUserId = null)
         {
             if (string.IsNullOrWhiteSpace(username))
             {
@@ -83,7 +91,22 @@ namespace WebChat.Services
             }
 
             var normalised = username.Trim().ToLower();
-            return !users.Any(u => u.Username.ToLower() == normalised);
+            return !Others(users, exceptUserId).Any(u => u.Username.ToLower() == normalised);
         }
+
+        /// <summary>
+        /// Everyone but one row, or everyone when no id is given.
+        ///
+        /// Branched in C# rather than folded into the predicate as
+        /// <c>(exceptUserId == null || u.Id != exceptUserId)</c>, so what reaches the database
+        /// is the same single-term filter register has always issued and no provider has to be
+        /// trusted to fold a constant away.
+        ///
+        /// Deliberately does **not** exclude soft-deleted rows. Every lookup here counts them -
+        /// <see cref="ByEmailOrUsername"/> would resolve a sign-in to one - so a uniqueness
+        /// check that skipped them would hand out an identifier that is still answering.
+        /// </summary>
+        private static IQueryable<User> Others(IQueryable<User> users, string exceptUserId) =>
+            string.IsNullOrEmpty(exceptUserId) ? users : users.Where(u => u.Id != exceptUserId);
     }
 }

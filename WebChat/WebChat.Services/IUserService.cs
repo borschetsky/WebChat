@@ -23,10 +23,14 @@ namespace WebChat.Services
         /// which row is written - <c>model.Id</c> is ignored (#99). Taking the target from the
         /// body let any authenticated user rewrite any other account's username and email, which
         /// is an account-takeover primitive because password reset goes to the stored address.
-        /// Returns null when the token outlived its user, so the controller can answer 401
-        /// rather than throwing on a null entity.
+        /// Refuses a username or an address that another account already holds (#100), which
+        /// is the same rule register has always applied and which update applied nowhere: you
+        /// could not *register* as an existing username, but you could *rename yourself into*
+        /// one. The outcome says which identifier was at fault so the controller can answer in
+        /// register's own 400 shape; <see cref="ProfileUpdateOutcome.NoSuchUser"/> still means
+        /// the token outlived its user, and the controller answers 401.
         /// </summary>
-        ProfileBroadcastViewModel UpdateProfile(string userId, ProfileViewModel model);
+        ProfileUpdate UpdateProfile(string userId, ProfileViewModel model);
 
         OponentViewModel GetOponentProfile(string id);
 
@@ -167,6 +171,58 @@ namespace WebChat.Services
 
 
 
+    }
+
+    /// <summary>
+    /// What <see cref="IUserService.UpdateProfile"/> did, and - when it refused - which
+    /// identifier was already taken.
+    ///
+    /// A result object rather than a nullable broadcast, for the same reason
+    /// <see cref="AvatarRestore"/> is one: the call now has four endings and only one of them
+    /// is "here is the payload to send". Collapsing the three refusals into a null would make
+    /// the controller answer 401 to somebody whose only mistake was picking a taken name.
+    /// </summary>
+    public class ProfileUpdate
+    {
+        private ProfileUpdate() { }
+
+        public ProfileUpdateOutcome Outcome { get; private set; }
+
+        /// <summary>
+        /// The three fields other clients are allowed to learn about the change, projected
+        /// from the saved row (#94). Null unless <see cref="Outcome"/> is
+        /// <see cref="ProfileUpdateOutcome.Updated"/> - nothing was written, so there is
+        /// nothing to tell anyone.
+        /// </summary>
+        public ProfileBroadcastViewModel Broadcast { get; private set; }
+
+        public static ProfileUpdate Written(ProfileBroadcastViewModel broadcast) =>
+            new ProfileUpdate { Outcome = ProfileUpdateOutcome.Updated, Broadcast = broadcast };
+
+        public static ProfileUpdate Of(ProfileUpdateOutcome outcome) =>
+            new ProfileUpdate { Outcome = outcome };
+    }
+
+    /// <summary>
+    /// The four ways a profile save can land. Three of them write nothing.
+    /// </summary>
+    public enum ProfileUpdateOutcome
+    {
+        /// <summary>The token names a user that is not there. The caller answers 401.</summary>
+        NoSuchUser,
+
+        /// <summary>The row was written and <c>Broadcast</c> is what other clients get told.</summary>
+        Updated,
+
+        /// <summary>
+        /// Another account already holds this address, ignoring case. Checked *before* the
+        /// username, matching register's order: the address is the identifier a password reset
+        /// is delivered to, so it is the one to name first when a request collides on both.
+        /// </summary>
+        EmailTaken,
+
+        /// <summary>Another account already holds this username, ignoring case.</summary>
+        UsernameTaken,
     }
 
     /// <summary>
