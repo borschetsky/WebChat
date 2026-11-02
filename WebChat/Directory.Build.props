@@ -1,0 +1,23 @@
+<Project>
+  <!--
+    NuGet audit advisories accepted on purpose. Each entry needs a reason that is still true,
+    and a test that fails when it stops being true. Remove an entry the moment the package is
+    upgraded past it.
+
+    SixLabors.ImageSharp 3.1.12. Every fix is in 3.2.0+, which refuses to build in Release
+    without a Six Labors license key. Instead the vulnerable code is unreachable:
+    - TIFF decoding (heap OOB write on tiled fax TIFF; BigTIFF endless loop): uploads are
+      decoded only as JPEG/PNG/GIF/BMP - AvatarImageProcessor.DecoderOptions, and TIFF is
+      rejected before it.
+    - TIFF CCITT T4/T6 encoders, HistogramEqualization, IccProfile.Entries: never called.
+    Enforced by WebChat.Tests/Avatars/AvatarFormatTests.cs.
+  -->
+  <ItemGroup>
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-v76p-62qx-wwq2" />
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-wmxv-xphr-5c9g" />
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-j9gm-c75j-xc9q" />
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-jjfr-hcj7-qf5w" />
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-j3p4-wp97-rph4" />
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-gwg2-r3hj-4w44" />
+  </ItemGroup>
+</Project>
