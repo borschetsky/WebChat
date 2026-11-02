@@ -97,7 +97,7 @@ alongside new 600k ones.
 Order is load-bearing in two places:
 
 ```
-UseHttpsRedirection → UseStaticFiles → UseSpaStaticFiles → Swagger
+UseHttpsRedirection → UseStaticFiles → UseSpaStaticFiles → Swagger (Development only; 404 otherwise)
    → UseRouting → UseCors → UseAuthentication → UseAuthorization
    → UseEndpoints → UseSpa
 ```
@@ -366,7 +366,7 @@ The other profile, `WebChat (starts the client automatically)`, launches the dev
 itself via `Microsoft.AspNetCore.SpaProxy` — so use that one and skip the first command.
 
 Browse `http://localhost:3000` (Vite proxies `/api`, `/chat`, `/images`; gives HMR) or
-`https://localhost:7199` (also serves Swagger). The database migrates itself on startup;
+`https://localhost:7199` (also serves Swagger — Development only, see `Swagger:Enabled`). The database migrates itself on startup;
 both profiles point at a Postgres on `localhost:5432`.
 
 ```bash
