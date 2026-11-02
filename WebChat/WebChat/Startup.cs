@@ -111,7 +111,10 @@ namespace WebChat
             });
 
             services.AddControllers().AddNewtonsoftJson();
-            services.AddSwaggerGen();
+            if (this.SwaggerEnabled(this.environment))
+            {
+                services.AddSwaggerGen();
+            }
             services.AddRazorPages();
             services.AddHealthChecks();
 
@@ -504,6 +507,19 @@ namespace WebChat
                     TimeSpan.FromMinutes(r2.UrlCacheMinutes)));
         }
 
+        /// <summary>
+        /// Whether the OpenAPI document and UI are served. `Swagger:Enabled` decides, and
+        /// defaults to on only in Development.
+        ///
+        /// The document maps every endpoint, parameter and model in the API - a free survey
+        /// for anyone probing it, on an app that has already had an account-takeover bug
+        /// (#99). Production served it publicly until this existed. Set
+        /// `Swagger__Enabled=true` to turn it on for a non-Development environment that
+        /// needs it; never on the public deployment.
+        /// </summary>
+        private bool SwaggerEnabled(IHostEnvironment env) =>
+            Configuration.GetValue("Swagger:Enabled", env.IsDevelopment());
+
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
@@ -559,11 +575,25 @@ namespace WebChat
             app.UseStaticFiles();
             app.UseSpaStaticFiles();
 
-            app.UseSwagger();
-            app.UseSwaggerUI(c =>
+            if (this.SwaggerEnabled(env))
             {
-                c.SwaggerEndpoint("/swagger/v1/swagger.json", "my API v.1");
-            });
+                app.UseSwagger();
+                app.UseSwaggerUI(c =>
+                {
+                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "my API v.1");
+                });
+            }
+            else
+            {
+                // Leaving the middleware out is not enough on its own: an unmatched GET falls
+                // through to UseSpa, which answers 200 with index.html. Say 404 plainly, so
+                // nothing - a scanner, a code generator - mistakes the SPA shell for a spec.
+                app.Map("/swagger", swagger => swagger.Run(context =>
+                {
+                    context.Response.StatusCode = StatusCodes.Status404NotFound;
+                    return Task.CompletedTask;
+                }));
+            }
 
             app.UseRouting();
             app.UseCors(CorsPolicyName);
