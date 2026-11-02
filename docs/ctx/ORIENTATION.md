@@ -322,8 +322,11 @@ Ordered by how much time each has actually cost.
    first. The error names the PID.
 5. **`launchSettings.json` is strict JSON** — no `//` comments, unlike `appsettings.json`,
    which tolerates them.
-6. **ImageSharp is pinned to 3.1.x on purpose.** 4.0 fails the build outright without a paid
-   Six Labors licence key. Do not "just upgrade" it.
+6. **ImageSharp is pinned to 3.1.12 on purpose.** 3.2.0 and 4.x both fail a Release build
+   without a Six Labors licence key. Do not "just upgrade" it. Its known advisories are
+   suppressed in `WebChat/Directory.Build.props` because uploads are decoded only as
+   JPEG/PNG/GIF/BMP (`AvatarImageProcessor.DecoderOptions`; TIFF is refused) —
+   `AvatarFormatTests` enforces that the suppressions stay true.
 7. **Vite 8 needs Node ≥ 20.19.** `package.json` has `vite ^8.2.0`, so the client Dockerfile
    cannot drop below `node:22` and a Node 18 host cannot build the client at all.
 8. **Adding a client dependency needs `docker compose up -d --build --renew-anon-volumes`.**

@@ -237,6 +237,12 @@ and fill it in, or the command stops naming the variable it wanted.
   because a client-supplied key would let anyone point their avatar at any object in the
   bucket. Any new query that reads `AvatarFileName` must gate on the marker — `AvatarVisibility`
   states the rule, and EF projections spell it inline because it has to translate to SQL.
+- **ImageSharp stays on 3.1.12 and a new advisory against it will fail CI.** 3.2.0+ will not
+  build in Release without a Six Labors licence key, so the fix is to make the vulnerable code
+  unreachable and suppress the advisory in `WebChat/Directory.Build.props` with its reason.
+  Uploads are decoded only as JPEG/PNG/GIF/BMP (`AvatarImageProcessor.DecoderOptions`) because
+  the TIFF decoder held a heap overflow any signed-in user could reach; never widen that list
+  without re-reading the suppressions. `AvatarFormatTests` enforces both.
 - **An avatar is now two objects with two different delete rules, and `/images/{name}` must
   never serve one of them.** The cropped avatar keeps its anonymous GUID path; the *original*
   lives under `originals/` and is reachable only through `GET api/avatars/original`, which
