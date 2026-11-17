@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@azure/msal-browser": "5.27.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@microsoft/signalr": "^10.0.0",

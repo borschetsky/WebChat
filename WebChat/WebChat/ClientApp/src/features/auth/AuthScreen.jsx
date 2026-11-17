@@ -46,8 +46,25 @@ const friendly = (field, raw) =>
  * Shared sign-in / sign-up card, matching the handoff's login screen: centred 420px Paper,
  * radius 16, outlined fields, contained submit.
  *
- * The handoff also drew a "Continue with SSO" button. There is no SSO on the server, so it
- * is left out rather than rendered as a button that cannot work.
+ * The handoff's "Continue with SSO" button is `external`: rendered only when an external
+ * provider is configured, so it never appears as a button that cannot work. Sign-in only -
+ * the provider's own page handles sign-up, so it is the same button for both.
+ *
+ * `localEnabled={false}` drops the password form and leaves the button alone on the card.
+ *
+ * Typed in JSDoc because TypeScript otherwise infers each prop from its default - and the
+ * default for `external` is null, which would make every real value a type error at the call.
+ *
+ * @param {{
+ *   mode: 'login' | 'register',
+ *   onSubmit: (payload: object) => Promise<unknown>,
+ *   onSwitch?: () => void,
+ *   busy?: boolean,
+ *   onNeedsConfirmation?: (email: string) => void,
+ *   onForgotPassword?: () => void,
+ *   external?: { label: string, busy: boolean, error: string | null, onClick: () => unknown } | null,
+ *   localEnabled?: boolean,
+ * }} props
  */
 export default function AuthScreen({
   mode,
@@ -56,8 +73,12 @@ export default function AuthScreen({
   busy,
   onNeedsConfirmation,
   onForgotPassword,
+  external = null,
+  localEnabled = true,
 }) {
   const isRegister = mode === 'register';
+  const showExternal = !isRegister && !!external;
+  const showForm = localEnabled;
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -161,7 +182,29 @@ export default function AuthScreen({
             </Alert>
           )}
 
-          {isRegister && (
+          {showExternal && external.error && (
+            <Alert severity="error" sx={{ fontSize: 13 }}>
+              {external.error}
+            </Alert>
+          )}
+
+          {showExternal && (
+            <Button
+              type="button"
+              variant={showForm ? 'outlined' : 'contained'}
+              size="large"
+              disabled={external.busy || busy}
+              onClick={() => void external.onClick()}
+            >
+              {external.busy ? 'Signing you in…' : `Continue with ${external.label}`}
+            </Button>
+          )}
+
+          {showExternal && showForm && (
+            <Divider sx={{ fontSize: 13, color: 'text.secondary' }}>OR</Divider>
+          )}
+
+          {showForm && isRegister && (
             <TextField
               label="Username"
               fullWidth
@@ -174,64 +217,68 @@ export default function AuthScreen({
             />
           )}
 
-          {/* type="email" only on the register form. On sign-in the field also accepts a
+          {showForm && (
+            <>
+              {/* type="email" only on the register form. On sign-in the field also accepts a
               username, and the browser's own validation would reject one before submit. */}
-          <TextField
-            label={isRegister ? 'Email' : 'Email or username'}
-            type={isRegister ? 'email' : 'text'}
-            fullWidth
-            required
-            autoComplete={isRegister ? 'email' : 'username'}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            error={!!(errors.email || errors.identifier)}
-            helperText={errors.email || errors.identifier}
-          />
+              <TextField
+                label={isRegister ? 'Email' : 'Email or username'}
+                type={isRegister ? 'email' : 'text'}
+                fullWidth
+                required
+                autoComplete={isRegister ? 'email' : 'username'}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                error={!!(errors.email || errors.identifier)}
+                helperText={errors.email || errors.identifier}
+              />
 
-          <TextField
-            label="Password"
-            type="password"
-            fullWidth
-            required
-            autoComplete={isRegister ? 'new-password' : 'current-password'}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            error={!!errors.password}
-            helperText={errors.password}
-          />
+              <TextField
+                label="Password"
+                type="password"
+                fullWidth
+                required
+                autoComplete={isRegister ? 'new-password' : 'current-password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                error={!!errors.password}
+                helperText={errors.password}
+              />
 
-          <Button type="submit" variant="contained" size="large" disabled={busy}>
-            {busy ? 'Please wait…' : isRegister ? 'Create account' : 'Sign in'}
-          </Button>
+              <Button type="submit" variant="contained" size="large" disabled={busy}>
+                {busy ? 'Please wait…' : isRegister ? 'Create account' : 'Sign in'}
+              </Button>
 
-          {/* Sign-in only. On the register form there is no account to recover yet, and the
+              {/* Sign-in only. On the register form there is no account to recover yet, and the
               link would read as an invitation to go and fail at it. */}
-          {!isRegister && onForgotPassword && (
-            <Link
-              component="button"
-              type="button"
-              underline="hover"
-              onClick={onForgotPassword}
-              sx={{ fontSize: 14, alignSelf: 'center' }}
-            >
-              Forgot your password?
-            </Link>
+              {!isRegister && onForgotPassword && (
+                <Link
+                  component="button"
+                  type="button"
+                  underline="hover"
+                  onClick={onForgotPassword}
+                  sx={{ fontSize: 14, alignSelf: 'center' }}
+                >
+                  Forgot your password?
+                </Link>
+              )}
+
+              <Divider sx={{ fontSize: 13, color: 'text.secondary' }}>OR</Divider>
+
+              <Typography sx={{ fontSize: 14, textAlign: 'center', color: 'text.secondary' }}>
+                {isRegister ? 'Already have an account? ' : 'New here? '}
+                <Link
+                  component="button"
+                  type="button"
+                  underline="hover"
+                  onClick={onSwitch}
+                  sx={{ fontSize: 14 }}
+                >
+                  {isRegister ? 'Sign in' : 'Create an account'}
+                </Link>
+              </Typography>
+            </>
           )}
-
-          <Divider sx={{ fontSize: 13, color: 'text.secondary' }}>OR</Divider>
-
-          <Typography sx={{ fontSize: 14, textAlign: 'center', color: 'text.secondary' }}>
-            {isRegister ? 'Already have an account? ' : 'New here? '}
-            <Link
-              component="button"
-              type="button"
-              underline="hover"
-              onClick={onSwitch}
-              sx={{ fontSize: 14 }}
-            >
-              {isRegister ? 'Sign in' : 'Create an account'}
-            </Link>
-          </Typography>
         </Stack>
       </Paper>
     </Box>

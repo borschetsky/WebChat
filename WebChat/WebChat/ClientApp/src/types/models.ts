@@ -188,11 +188,21 @@ export interface AvatarCrop {
   height: number;
 }
 
-/** What the login flow persists to localStorage under 'user-data'. */
+/**
+ * The signed-in session. A password session is persisted to localStorage under 'user-data';
+ * an external one is not - see authSlice.
+ */
 export interface SessionUser {
   token: string;
+  /** Unix seconds. */
   tokenExpirationTime: number;
   id: string;
+  /**
+   * Who issued the token: absent or 'local' for the app's own sign-in, otherwise the external
+   * provider's configured name. Absent on every session stored before external sign-in
+   * existed, which is why absent means local.
+   */
+  provider?: string;
 }
 
 export type ThemeMode = 'light' | 'dark';

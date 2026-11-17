@@ -70,7 +70,12 @@ const connect = async (token: string, dispatch: AppDispatch, getState: () => Roo
   // Config.network.api is relative by default, so this resolves same-origin and works both
   // behind the Vite proxy and when served by the ASP.NET host.
   const c = new signalR.HubConnectionBuilder()
-    .withUrl(`${Config.network.api}${Config.network.wss}`, { accessTokenFactory: () => token })
+    // Read from the store on every call, not captured: an external session's token is renewed
+    // hourly (tokenRefreshed), and an automatic reconnect after that must present the new one.
+    // The captured value is only the fallback for the instant between sign-out and teardown.
+    .withUrl(`${Config.network.api}${Config.network.wss}`, {
+      accessTokenFactory: () => getState().auth.user?.token ?? token,
+    })
     .withAutomaticReconnect()
     .build();
 

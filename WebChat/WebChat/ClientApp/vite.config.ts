@@ -145,6 +145,13 @@ export default defineConfig({
               test: /node_modules[\\/](axios[\\/]|@microsoft[\\/]signalr[\\/])/,
               tags: ['$initial'],
             },
+            {
+              // MSAL, for external sign-in. Named so it is recognisable in the network tab,
+              // and deliberately *not* tagged $initial: it is reached only through the
+              // dynamic import in externalAuth.ts, so a password-only build never fetches it.
+              name: 'vendor-msal',
+              test: /node_modules[\\/]@azure[\\/]msal-/,
+            },
           ],
         },
       },

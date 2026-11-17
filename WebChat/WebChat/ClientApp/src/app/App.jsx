@@ -27,12 +27,16 @@ import {
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import { useGetProfileQuery } from '@/app/api/chatApi';
 import { isAdminRole } from '@/features/admin/adminAccess';
+import Config from '@/config';
+import { externalAuth } from '@/features/auth/externalAuth';
+import { useExternalSession } from '@/features/auth/useExternalSession';
 import {
   authBusy,
   signedIn,
   signedOut,
   selectAuthBusy,
   selectUser,
+  isLocalSession,
 } from '@/features/auth/authSlice';
 
 /**
@@ -76,6 +80,12 @@ function AppRoutes() {
   // the store because it is worthless after a reload - the account exists either way, and a
   // refreshed page should show the sign-in screen, not a stale "check your email".
   const [pending, setPending] = useState(null);
+
+  // An external provider's session, turned into the app's on load and kept renewed. The
+  // chunk is warmed first for the same reason signIn below does it.
+  const external = useExternalSession(externalAuth, () => {
+    void prefetchChatApp().then(() => navigate('/dashboard', { replace: true }));
+  });
 
   // Warm the chat chunk as soon as the first screen has painted. On the auth routes that is
   // dead time - the visitor is reading or typing - and by the time they submit, the chunk is
@@ -164,9 +174,19 @@ function AppRoutes() {
   }, []);
 
   const signOut = useCallback(() => {
+    const wasExternal = user !== null && !isLocalSession(user);
     dispatch(signedOut());
+    if (wasExternal && externalAuth) {
+      // Leaves for the provider and comes back to the app root. Signing out of the app alone
+      // would let the next "Continue with…" click silently sign the same person back in.
+      void externalAuth.signOut();
+      return;
+    }
     navigate('/login', { replace: true });
-  }, [dispatch, navigate]);
+  }, [dispatch, navigate, user]);
+
+  // Password routes exist only while the password sign-in does.
+  const localOnly = (element) => (Config.auth.local ? element : <Navigate to="/login" replace />);
 
   return (
     <Routes>
@@ -179,6 +199,15 @@ function AppRoutes() {
             <AuthScreen
               mode="login"
               busy={busy}
+              localEnabled={Config.auth.local}
+              external={
+                externalAuth && {
+                  label: externalAuth.label,
+                  busy: external.resuming,
+                  error: external.error,
+                  onClick: external.signIn,
+                }
+              }
               onSubmit={signIn}
               onSwitch={() => navigate('/register')}
               onForgotPassword={() => navigate('/forgot-password')}
@@ -195,7 +224,7 @@ function AppRoutes() {
 
       <Route
         path="/register"
-        element={
+        element={localOnly(
           user ? (
             <Navigate to="/dashboard" replace />
           ) : (
@@ -205,8 +234,8 @@ function AppRoutes() {
               onSubmit={signUp}
               onSwitch={() => navigate('/login')}
             />
-          )
-        }
+          ),
+        )}
       />
 
       <Route
@@ -225,7 +254,10 @@ function AppRoutes() {
         }
       />
 
-      <Route path="/confirm" element={<ConfirmRoute onConfirm={activate} onDone={activated} />} />
+      <Route
+        path="/confirm"
+        element={localOnly(<ConfirmRoute onConfirm={activate} onDone={activated} />)}
+      />
 
       {/* Statically imported like the other auth screens, not lazily like the console.
           This is the first page an invited stranger ever sees, and a chunk fetch failing
@@ -234,18 +266,18 @@ function AppRoutes() {
 
       <Route
         path="/forgot-password"
-        element={
+        element={localOnly(
           user ? (
             <Navigate to="/dashboard" replace />
           ) : (
             <ForgotPassword onRequest={requestReset} onBackToLogin={() => navigate('/login')} />
-          )
-        }
+          ),
+        )}
       />
 
       <Route
         path="/reset-password"
-        element={<ResetRoute onReset={applyReset} onDone={activated} />}
+        element={localOnly(<ResetRoute onReset={applyReset} onDone={activated} />)}
       />
 
       {/* The Suspense boundary wraps this element and nothing else.
