@@ -28,3 +28,7 @@ LICENSE
 README.md
 # Local credentials - must never reach an image. See appsettings.Secrets.example.json.
 **/appsettings.Secrets.json
+
+# Local client env files hold per-developer values; the image is built from build args.
+**/.env.*
+!**/.env.example

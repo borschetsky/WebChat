@@ -17,6 +17,15 @@ WORKDIR /spa
 COPY WebChat/ClientApp/package.json WebChat/ClientApp/package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY WebChat/ClientApp/ ./
+# Vite bakes VITE_* into the bundle at build time, so they have to reach *this* stage as build
+# args - setting them on the running container does nothing. App Platform passes BUILD_TIME
+# env vars as build args. All optional: unset, the build is password-only and never loads MSAL.
+# See ClientApp/.env.example.
+ARG VITE_AUTH_LOCAL
+ARG VITE_ENTRA_CLIENT_ID
+ARG VITE_ENTRA_AUTHORITY
+ARG VITE_ENTRA_API_SCOPE
+ARG VITE_ENTRA_LABEL
 RUN npm run build
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
