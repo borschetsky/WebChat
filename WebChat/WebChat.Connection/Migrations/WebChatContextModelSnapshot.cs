@@ -442,6 +442,30 @@ namespace WebChat.Connection.Migrations
                     b.ToTable("User");
                 });
 
+            modelBuilder.Entity("WebChat.Models.UserLogin", b =>
+                {
+                    b.Property<string>("Provider")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Subject")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Provider", "Subject");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserLogin");
+                });
+
             modelBuilder.Entity("WebChat.Models.WorkspaceSettings", b =>
                 {
                     b.Property<string>("Id")
@@ -511,6 +535,17 @@ namespace WebChat.Connection.Migrations
                         .HasForeignKey("UserId");
 
                     b.Navigation("Thread");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("WebChat.Models.UserLogin", b =>
+                {
+                    b.HasOne("WebChat.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });
