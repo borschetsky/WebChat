@@ -84,8 +84,15 @@ and fill it in, or the command stops naming the variable it wanted.
 
 ## Things worth knowing
 
-- **Auth is hand-rolled JWT**, not ASP.NET Identity. Controllers identify the caller via
-  `User.Identity.Name`, which carries the *user id* — not the username. **An id in a request
+- **Auth is pluggable by config, not ASP.NET Identity.** The `Auth` section enables the local
+  HS256 scheme and/or external OIDC providers (Entra today); a policy scheme routes each token
+  by its `iss`, and external identities map onto users through the `UserLogin` table — see
+  `WebChat/Auth/` and ORIENTATION. Whatever the provider, controllers identify the caller via
+  `User.Identity.Name`, which carries the *local user id* — not the username, and for an
+  external token not Entra's `name` either (`webchat_uid` is its `NameClaimType`; a test pins
+  it). **Linking a token to an existing account by email is the account-takeover switch**:
+  only a provider with `EmailIsVerified` may do it, and an unconfirmed local registration it
+  links to loses its password. **An id in a request
   body never decides which row is written.** `UpdateProfile` read the identity into a local,
   never used it, and keyed the write on `model.Id`, so any authenticated user could rewrite any
   other account's username and email — and since password reset sends to the *stored* address,
@@ -114,7 +121,13 @@ and fill it in, or the command stops naming the variable it wanted.
   groups produced until they reloaded. Anything that revokes access must also call
   `IConnectionAborter.AbortAll`, which closes their live hub connections. It is a
   process-local singleton: on a second instance it would silently disconnect nobody on the
-  other node.
+  other node. **External tokens carry no stamp at all** — for them only the per-request
+  status check and the token's own lifetime (an hour for Entra) end a session.
+- **In a `WebApplicationFactory`, `UseSetting` loses to `appsettings.json`.** It writes host
+  settings, which the app's own config sources are layered over, so any key that file
+  declares (`Auth:Local:Enabled`, for one) silently keeps its file value — a "disabled" test
+  ran with the feature on. Override such keys with `ConfigureAppConfiguration` +
+  `AddInMemoryCollection`, as `ExternalLoginFactory` does.
 - **A system message is a real row with `Text = null`**, carrying `Type`, `SystemKind` and
   `SystemData` (JSON facts, never a rendered sentence — the client builds the wording, so it
   is not frozen in the actor's language). Any endpoint that returns messages must project all
