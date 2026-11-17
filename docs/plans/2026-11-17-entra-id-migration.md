@@ -1,6 +1,6 @@
 # План: переход WebChat на Microsoft Entra ID (Azure identity)
 
-Дата: 2026-11-17 · Статус: фазы 0–2 сделаны · Ветка: `feature/entra-id-backend`
+Дата: 2026-11-17 · Статус: фазы 0–3 сделаны, вход через Entra проверен локально · Ветка: `feature/entra-id-client`
 
 ## Цель
 
@@ -89,7 +89,7 @@ optional claim → Access → `email`**. Без него в access token нет 
 **Не сделано в фазе 2:** приглашённые (`pending`) пользователи через Entra пока отклоняются
 (фаза 4); bootstrap-владелец по-прежнему назначается только при старте приложения.
 
-## Фаза 3. Frontend: MSAL (PR 2)
+## Фаза 3. Frontend: MSAL (PR 2) — ✅ сделано, см. docs/ctx/2026-11-17-entra-id-client.md
 
 Файлы: `ClientApp/src/config.ts`, `services/auth-header.ts`, `features/auth/*`,
 `features/realtime/signalrMiddleware.ts`, `app/api/chatApi.ts`, `app/api/adminApi.ts`,

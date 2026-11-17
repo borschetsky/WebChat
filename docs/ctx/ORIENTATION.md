@@ -263,7 +263,8 @@ This is the single most useful thing to know before editing the client:
 | State | Owner | Note |
 |---|---|---|
 | Server data (threads, messages, profile) | **RTK Query** (`app/api/chatApi.ts`) | Cache is the source of truth |
-| Session / token | `features/auth/authSlice` | Hydrated in `makeStore` preloadedState, **not** at module scope |
+| Session / token | `features/auth/authSlice` | Hydrated in `makeStore` preloadedState, **not** at module scope. Only a local session is persisted; an external one (`provider` set) is restored by MSAL and renewed by `useExternalSession` via `tokenRefreshed` |
+| External sign-in | `features/auth/externalAuth.ts` | `ExternalAuthClient` interface + MSAL impl, lazy `vendor-msal` chunk. On only when `VITE_ENTRA_CLIENT_ID` is set (`ClientApp/.env.example`); its redirect is consumed in `index.jsx` **before** the router renders |
 | Active thread, filters, overlays, snackbar | `features/ui/uiSlice` | |
 | Draft text, reply target, attachment | `features/composer/composerSlice` | |
 | Hub-derived overlays (presence, typing, unread) | `features/realtime/realtimeSlice` | Patches layered *over* the RTK Query cache |
