@@ -64,7 +64,7 @@ falls through to the SPA dev-server proxy and hangs for ~140s before a 500 rathe
 
 | Controller | Auth | Endpoints |
 |---|---|---|
-| `AuthController` | anonymous | `POST login`, `POST register` |
+| `AuthController` | anonymous; **404 when `Auth:Local:Enabled` is false** | `POST login`, `POST register` |
 | `HeyController` | authorize | `POST send`, `GET getusers`, `GET getthreads`, `POST createthread` |
 | `ThreadController` | authorize | `GET getmessages/{id}`, `GET search` |
 | `UsersController` | authorize | `GET search`, `GET getprofile`, `POST update` |
@@ -82,13 +82,31 @@ Two things to notice:
 
 ### Auth
 
-Hand-rolled JWT (HS256), **not** ASP.NET Identity.
+Not ASP.NET Identity. Two kinds of token, behind one default scheme (`WebChat/Auth/`):
 
-> **`User.Identity.Name` carries the user *id*, not the username.** Every controller
-> identifies the caller this way. Read it as an id everywhere.
+```
+                      ┌─ no iss ──────────────▶ Bearer       local HS256, security stamp
+request ─▶ "WebChat" ─┤
+  (policy scheme)     └─ iss = Auth:Oidc:n ───▶ oidc:<name>  Entra / any OIDC issuer
+                                                  └─▶ ExternalLoginService: UserLogin → User
+```
 
-The hub cannot use an `Authorization` header, so `Startup.cs:94` reads the token from the
-`access_token` query string for `/chat` requests. Passwords use CryptoHelper Identity V3
+The `Auth` config section decides which exist: `Auth:Local:Enabled` (default true; off →
+`api/auth/*` 404s via `[RequiresLocalAuth]` and `JWTSecretKey` is no longer required) and
+`Auth:Oidc`, one entry per provider. **Switching provider is a config change.** External
+identities live in `UserLogin (Provider, Subject) → UserId`; the first sign-in links by
+email only when the provider vouches for it (`EmailIsVerified`), otherwise creates a member.
+
+> **`User.Identity.Name` carries the user *id*, not the username** — for both kinds. Every
+> controller identifies the caller this way. External principals get it from the
+> `webchat_uid` claim, set as their `NameClaimType`; Entra's own `name` is a display name.
+
+Both paths read the user row on every request for status and role. External tokens carry no
+security stamp: what ends an external session is the status check and the token's lifetime.
+
+The hub cannot use an `Authorization` header, so `AuthenticationSetup.ReadHubToken` reads the
+token from the `access_token` query string for `/chat` requests — and the scheme selector
+reads it there too. Passwords use CryptoHelper Identity V3
 PBKDF2; the iteration count is embedded in each hash, so old 10k hashes still verify
 alongside new 600k ones.
 
@@ -245,7 +263,8 @@ This is the single most useful thing to know before editing the client:
 | State | Owner | Note |
 |---|---|---|
 | Server data (threads, messages, profile) | **RTK Query** (`app/api/chatApi.ts`) | Cache is the source of truth |
-| Session / token | `features/auth/authSlice` | Hydrated in `makeStore` preloadedState, **not** at module scope |
+| Session / token | `features/auth/authSlice` | Hydrated in `makeStore` preloadedState, **not** at module scope. Only a local session is persisted; an external one (`provider` set) is restored by MSAL and renewed by `useExternalSession` via `tokenRefreshed` |
+| External sign-in | `features/auth/externalAuth.ts` | `ExternalAuthClient` interface + MSAL impl, lazy `vendor-msal` chunk. On only when `VITE_ENTRA_CLIENT_ID` is set (`ClientApp/.env.example`); its redirect is consumed in `index.jsx` **before** the router renders |
 | Active thread, filters, overlays, snackbar | `features/ui/uiSlice` | |
 | Draft text, reply target, attachment | `features/composer/composerSlice` | |
 | Hub-derived overlays (presence, typing, unread) | `features/realtime/realtimeSlice` | Patches layered *over* the RTK Query cache |

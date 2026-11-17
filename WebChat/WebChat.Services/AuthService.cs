@@ -75,8 +75,24 @@ namespace WebChat.Services
             throw new NotImplementedException();
         }
 
+        /// <summary>
+        /// Stored in <c>User.Password</c> for an account that has no local password - one
+        /// created by an external sign-in, or taken over from an unconfirmed registration.
+        ///
+        /// A marker rather than null because the column is <c>NOT NULL</c> and every existing
+        /// reader assumes a string. It is not valid base64, so no hash can ever equal it, and
+        /// <see cref="VerifyPassword"/> refuses it before the hasher sees it - the hasher would
+        /// otherwise throw on it and turn a wrong password into a 500.
+        /// </summary>
+        public const string NoLocalPassword = "!no-local-password";
+
         public bool VerifyPassword(string actualPassword, string hashedPassword)
         {
+            if (string.IsNullOrEmpty(hashedPassword) || hashedPassword == NoLocalPassword)
+            {
+                return false;
+            }
+
             return PasswordHasher.VerifyHashedPassword(hashedPassword, actualPassword);
         }
 

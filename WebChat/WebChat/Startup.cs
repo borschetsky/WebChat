@@ -20,6 +20,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
 using System.Threading.Tasks;
+using WebChat.Auth;
 using WebChat.Connection;
 using WebChat.Handler;
 using WebChat.Hubs;
@@ -61,8 +62,17 @@ namespace WebChat
         /// reintroduced to appsettings.json, with one published on GitHub. Both fail silently,
         /// which is the reason to fail here instead.
         /// </summary>
-        private void ValidateRequiredConfiguration()
+        private void ValidateRequiredConfiguration(AuthOptions auth)
         {
+            // Every environment: a half-configured provider is broken on a laptop too, and
+            // finding out at the first sign-in is later than finding out at boot.
+            var authProblems = auth.Problems();
+            if (authProblems.Count > 0)
+            {
+                throw new InvalidOperationException(
+                    "Invalid Auth configuration: " + string.Join("; ", authProblems) + ".");
+            }
+
             if (this.environment.IsDevelopment())
             {
                 return;
@@ -70,7 +80,8 @@ namespace WebChat
 
             var missing = new List<string>();
 
-            if (string.IsNullOrWhiteSpace(Configuration.GetValue<string>("JWTSecretKey")))
+            // Only the local scheme signs anything with it.
+            if (auth.Local.Enabled && string.IsNullOrWhiteSpace(Configuration.GetValue<string>("JWTSecretKey")))
             {
                 missing.Add("JWTSecretKey");
             }
@@ -92,8 +103,9 @@ namespace WebChat
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            this.ValidateRequiredConfiguration();
-            this.RegisterAuthentication(services);
+            var auth = AuthOptions.From(Configuration);
+            this.ValidateRequiredConfiguration(auth);
+            this.RegisterAuthentication(services, auth);
             this.RegisterServices(services);
 
             services.AddCors(options =>
@@ -213,10 +225,17 @@ namespace WebChat
             });
         }
 
-        private void RegisterAuthentication(IServiceCollection services)
+        /// <summary>
+        /// Local sign-in plus every provider under <c>Auth:Oidc</c>, behind one selector - see
+        /// <see cref="AuthenticationSetup"/>. Only the local scheme's configuration lives here.
+        /// </summary>
+        private void RegisterAuthentication(IServiceCollection services, AuthOptions auth)
         {
-            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                .AddJwtBearer(options =>
+            services.AddWebChatAuthentication(auth, this.ConfigureLocalBearer);
+        }
+
+        private void ConfigureLocalBearer(JwtBearerOptions options)
+        {
                 {
                     options.TokenValidationParameters = new TokenValidationParameters
                     {
@@ -298,22 +317,11 @@ namespace WebChat
                             }
                         },
 
-                        OnMessageReceived = context =>
-                        {
-                            var accessToken = context.Request.Query["access_token"];
-
-                            // If the request is for our hub...
-                            var path = context.HttpContext.Request.Path;
-                            if (!string.IsNullOrEmpty(accessToken) &&
-                                (path.StartsWithSegments("/chat")))
-                            {
-                                // Read the token out of the query string
-                                context.Token = accessToken;
-                            }
-                            return Task.CompletedTask;
-                        }
+                        // The hub reads its token from the query string; shared with the
+                        // external schemes so the two cannot drift apart.
+                        OnMessageReceived = AuthenticationSetup.ReadHubToken
                     };
-                });
+                }
         }
 
         private void RegisterServices(IServiceCollection services)

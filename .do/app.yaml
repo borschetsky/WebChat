@@ -137,6 +137,44 @@ services:
       - key: App__PublicUrl
         value: https://chat.vtechsolutions.site
 
+      # External sign-in with Microsoft Entra External ID (docs/plans/2026-11-17-entra-id-
+      # migration.md). None of these are secrets - tenant and client ids are in every token.
+      # Server side: one Auth:Oidc provider. Issuer has the tenant *id* as its host, unlike
+      # Authority. Leave all of these out and the app is password-only, as before.
+      - key: Auth__Oidc__0__Name
+        scope: RUN_TIME
+        value: entra
+      - key: Auth__Oidc__0__Authority
+        scope: RUN_TIME
+        value: https://webchatdev.ciamlogin.com/1951c62d-3d08-436c-9a60-dbe81791e5a0/v2.0
+      - key: Auth__Oidc__0__Issuer
+        scope: RUN_TIME
+        value: https://1951c62d-3d08-436c-9a60-dbe81791e5a0.ciamlogin.com/1951c62d-3d08-436c-9a60-dbe81791e5a0/v2.0
+      - key: Auth__Oidc__0__Audiences__0
+        scope: RUN_TIME
+        value: ef4b68e3-a337-45a9-9b17-a067436fa36c
+      - key: Auth__Oidc__0__RequiredScope
+        scope: RUN_TIME
+        value: chat.access
+      - key: Auth__Oidc__0__SubjectClaim
+        scope: RUN_TIME
+        value: oid
+      - key: Auth__Oidc__0__EmailIsVerified
+        scope: RUN_TIME
+        value: "true"
+
+      # Client side: BUILD_TIME, because Vite bakes them into the bundle - see the Dockerfile's
+      # spa stage. Changing them needs a rebuild, not a restart.
+      - key: VITE_ENTRA_CLIENT_ID
+        scope: BUILD_TIME
+        value: a2d22260-a4b1-40f5-ba5e-c7828f68d114
+      - key: VITE_ENTRA_AUTHORITY
+        scope: BUILD_TIME
+        value: https://webchatdev.ciamlogin.com/1951c62d-3d08-436c-9a60-dbe81791e5a0/v2.0
+      - key: VITE_ENTRA_API_SCOPE
+        scope: BUILD_TIME
+        value: api://ef4b68e3-a337-45a9-9b17-a067436fa36c/chat.access
+
 databases:
   - name: db
     engine: PG

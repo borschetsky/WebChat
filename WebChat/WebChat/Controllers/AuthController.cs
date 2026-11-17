@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Configuration;
+using WebChat.Auth;
 using System;
 using System.Threading.Tasks;
 using WebChat.Models;
@@ -12,6 +13,7 @@ using WebChat.ViewModels;
 namespace WebChat.Controllers
 {
     [Route("api/[controller]")]
+    [RequiresLocalAuth]
     [ApiController]
     public class AuthController : ControllerBase
     {

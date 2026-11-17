@@ -51,8 +51,28 @@ namespace WebChat.Connection
         /// </summary>
         public DbSet<ClientErrorEvent> ClientErrorEvent { get; set; }
 
+        /// <summary>
+        /// External sign-in identities - see <see cref="Models.UserLogin"/>. Read on every
+        /// request that presents an external provider's token; resolved through
+        /// <c>IExternalLoginService</c>, never written directly.
+        /// </summary>
+        public DbSet<UserLogin> UserLogin { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
+            // The composite key is the uniqueness that matters - see UserLogin. The UserId
+            // index serves "which providers does this account have" (one per provider is
+            // enforced in ExternalLoginService, not here, so that rule can relax later
+            // without a migration).
+            builder.Entity<UserLogin>()
+                .HasKey(l => new { l.Provider, l.Subject });
+            builder.Entity<UserLogin>()
+                .HasOne(l => l.User)
+                .WithMany()
+                .HasForeignKey(l => l.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            builder.Entity<UserLogin>().HasIndex(l => l.UserId);
+
             // Redemption looks an invitation up *by hash* - the token is never stored, so
             // there is nothing else to look it up by. Unique because two invitations sharing
             // a token hash would mean the RNG repeated, and failing loudly beats redeeming an

@@ -4,11 +4,22 @@ import type { SessionUser } from '@/types/models';
 
 const STORAGE_KEY = 'user-data';
 
-/** The session is persisted here rather than in a component, so a reload rehydrates it. */
+/** True for the app's own password sessions, including ones stored before `provider` existed. */
+export const isLocalSession = (user: SessionUser | null | undefined): boolean =>
+  !!user && (user.provider === undefined || user.provider === 'local');
+
+/**
+ * The session is persisted here rather than in a component, so a reload rehydrates it.
+ *
+ * Only a local session comes back. An external one is never written (below), and one found
+ * anyway is ignored: its token expires within the hour, and the provider's own cache is what
+ * restores that session on load - with a token that is actually current.
+ */
 export const readStoredUser = (): SessionUser | null => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as SessionUser) : null;
+    const user = raw ? (JSON.parse(raw) as SessionUser) : null;
+    return isLocalSession(user) ? user : null;
   } catch {
     return null;
   }
@@ -16,7 +27,7 @@ export const readStoredUser = (): SessionUser | null => {
 
 const writeStoredUser = (user: SessionUser | null) => {
   try {
-    if (user) localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+    if (user && isLocalSession(user)) localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
     else localStorage.removeItem(STORAGE_KEY);
   } catch {
     /* private mode - the session just will not survive a reload */
@@ -53,6 +64,19 @@ const authSlice = createSlice({
       state.busy = false;
       writeStoredUser(action.payload);
     },
+    /**
+     * A fresh token for the *same* session - an external provider's silent renewal.
+     *
+     * Deliberately not `signedIn`: the realtime middleware reconnects the hub on signedIn, and
+     * renewing every hour must not drop and re-open the socket. The hub reads the token from
+     * the store whenever it next needs one.
+     */
+    tokenRefreshed(state, action: PayloadAction<{ token: string; tokenExpirationTime: number }>) {
+      if (!state.user) return;
+      state.user.token = action.payload.token;
+      state.user.tokenExpirationTime = action.payload.tokenExpirationTime;
+      writeStoredUser(state.user);
+    },
     signedOut(state) {
       state.user = null;
       state.busy = false;
@@ -68,7 +92,7 @@ const authSlice = createSlice({
   },
 });
 
-export const { authBusy, signedIn, signedOut } = authSlice.actions;
+export const { authBusy, signedIn, signedOut, tokenRefreshed } = authSlice.actions;
 export const { selectUser, selectToken, selectUserId, selectIsAuthenticated, selectAuthBusy } =
   authSlice.selectors;
 export default authSlice.reducer;

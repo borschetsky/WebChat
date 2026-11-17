@@ -49,9 +49,23 @@ namespace WebChat.Tests.Admin
         /// </summary>
         private const string JwtKey = "test-only-signing-key-at-least-32-bytes-long";
 
-        // Held open for the lifetime of the factory: an in-memory SQLite database exists only
-        // while a connection to it does, and closing the last one drops the schema.
-        private readonly SqliteConnection connection = new("DataSource=:memory:");
+        // A named, shared-cache in-memory database, and every DbContext opens its *own*
+        // connection to it. One connection shared by every context raced whenever two were
+        // constructed at once - EF registers a collation on the connection in the context's
+        // constructor, into a plain Dictionary - and a hosted service starting beside the first
+        // request did exactly that, failing one run in a few.
+        private readonly string connectionString =
+            $"DataSource=file:webchat-{Guid.NewGuid():N}?mode=memory&cache=shared";
+
+        // Held open for the lifetime of the factory and used for nothing else: a shared-cache
+        // in-memory database exists only while some connection to it is open, and closing the
+        // last one drops the schema.
+        private readonly SqliteConnection keepAlive;
+
+        public AdminApiFactory()
+        {
+            this.keepAlive = new SqliteConnection(this.connectionString);
+        }
 
         private readonly IAuthService auth = new AuthService(JwtKey, 3600);
 
@@ -71,6 +85,10 @@ namespace WebChat.Tests.Admin
             builder.UseSetting("JWTSecretKey", JwtKey);
             builder.UseSetting("ConnectionStrings:DefaultConnection", "unused");
 
+            // Pruning would run DELETEs against the test database the moment the host starts,
+            // concurrently with whatever the first test is doing. Nothing here tests pruning.
+            builder.UseSetting("ClientErrors:PruningEnabled", "false");
+
             builder.ConfigureServices(services =>
             {
                 // Replace Npgsql with SQLite. Every part of the original registration has to
@@ -84,8 +102,8 @@ namespace WebChat.Tests.Admin
                 services.RemoveAll<DbContextOptions>();
                 services.RemoveAll<WebChatContext>();
 
-                this.connection.Open();
-                services.AddDbContext<WebChatContext>(options => options.UseSqlite(this.connection));
+                this.keepAlive.Open();
+                services.AddDbContext<WebChatContext>(options => options.UseSqlite(this.connectionString));
             });
         }
 
@@ -162,7 +180,7 @@ namespace WebChat.Tests.Admin
         protected override void Dispose(bool disposing)
         {
             base.Dispose(disposing);
-            if (disposing) this.connection.Dispose();
+            if (disposing) this.keepAlive.Dispose();
         }
     }
 }
