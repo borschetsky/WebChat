@@ -95,7 +95,10 @@ and fill it in, or the command stops naming the variable it wanted.
   links to loses its password. **On the client, read the token from the store at send time,
   never capture it**: an external session's token is replaced in place every hour
   (`tokenRefreshed`, deliberately not `signedIn`, which would reconnect the hub), so a token
-  held in a closure goes stale — the hub's `accessTokenFactory` was exactly that. **An id in a request
+  held in a closure goes stale — the hub's `accessTokenFactory` was exactly that. The same goes
+  for the user id: **localStorage `user-data` holds password sessions only**, so anything that
+  reads the session from it sees nobody for a Microsoft user — `currentUserId()` did, and every
+  Entra user's message went out with `senderId: null` and a 400. **An id in a request
   body never decides which row is written.** `UpdateProfile` read the identity into a local,
   never used it, and keyed the write on `model.Id`, so any authenticated user could rewrite any
   other account's username and email — and since password reset sends to the *stored* address,
