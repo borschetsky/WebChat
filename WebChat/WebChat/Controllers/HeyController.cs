@@ -58,23 +58,36 @@ namespace WebChat.Controllers
             {
                 return BadRequest(new { error = "Message should have all props" });
             }
+            // The sender is the caller, and only the caller. This used to be whatever the body
+            // said - AddMessage stored model.SenderId as it came - with only the response and
+            // the hub echo corrected afterwards, so the stored row could name anyone (#99's
+            // class: an id in a request body never decides which row is written).
+            var senderId = User.Identity.Name;
+
+            // And only into a thread they are in. Nothing checked this, so any signed-in user
+            // could post into any conversation whose id they had. 404 rather than 403, so the
+            // answer does not reveal which thread ids exist - ChatHub.BroadcastTyping's rule.
+            var participants = this.thredService.GetParticipantIds(model.ThreadId);
+            if (!participants.Contains(senderId))
+            {
+                return NotFound();
+            }
+
             model.Id = Guid.NewGuid().ToString();
-            
-            //Add message async to Db
-            //TODO:
-            //Check time format!!!!
+            model.SenderId = senderId;
+
             MessageViewModel responseModel = await messageService.AddMessage(model);
 
-            var senderId = User.Identity.Name;
-            responseModel.Username = model.Username;
+            // The name too: it was copied from the body, so the live echo could show a message
+            // under any name the sender typed, until the recipient reloaded and the stored row
+            // (joined to User) showed the real one.
+            responseModel.Username = this.userSercvice.GetUserNameById(senderId);
             responseModel.Date = responseModel.Time.Date;
             responseModel.SenderId = senderId;
 
             // Everyone in the thread, not "the other person". A group has more than one
             // recipient, and the sender is included so their own other devices see it too.
-            var listOfConnections = this.thredService.GetParticipantIds(model.ThreadId);
-            
-            await hubContext.Clients.Users(listOfConnections).SendAsync("ReciveMessage", responseModel);
+            await hubContext.Clients.Users(participants).SendAsync("ReciveMessage", responseModel);
 
             return Created("", responseModel); 
         }
