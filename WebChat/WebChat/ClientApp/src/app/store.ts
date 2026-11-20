@@ -7,6 +7,7 @@ import composerReducer from '@/features/composer/composerSlice';
 import uiReducer from '@/features/ui/uiSlice';
 import realtimeReducer from '@/features/realtime/realtimeSlice';
 import { realtimeMiddleware } from '@/features/realtime/signalrMiddleware';
+import { setCurrentUserId } from '@/services/adapters';
 
 /**
  * Exported so tests can build an isolated store with a chosen session.
@@ -16,7 +17,20 @@ import { realtimeMiddleware } from '@/features/realtime/signalrMiddleware';
  * so a second store could never be given a different session - which made the slice
  * untestable and hid a real coupling.
  */
-export const makeStore = (auth?: AuthState) =>
+export const makeStore = (auth?: AuthState) => {
+  const created = createStore(auth);
+
+  // The services layer's view of who is signed in (see currentUserId). Synced on every
+  // change rather than at sign-in only, so token renewal, sign-out and a rehydrated session
+  // all land without each action remembering to do it.
+  const sync = () => setCurrentUserId(created.getState().auth.user?.id ?? null);
+  sync();
+  created.subscribe(sync);
+
+  return created;
+};
+
+const createStore = (auth?: AuthState) =>
   configureStore({
     reducer: {
       auth: authReducer,

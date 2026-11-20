@@ -35,14 +35,26 @@ import {
   mockMessageAttachment,
 } from './mocks';
 
-/** The signed-in user id, as issued by AuthService and stored by the login flow. */
-export const currentUserId = (): string | null => {
-  try {
-    return JSON.parse(localStorage.getItem('user-data') ?? 'null')?.id ?? null;
-  } catch {
-    return null;
-  }
+/**
+ * The signed-in user's local id, mirrored from the store's session by `makeStore`.
+ *
+ * Mirrored rather than read from the store, because the services layer sits below the store
+ * (the store imports the API slices, which import these adapters) and importing it here
+ * would be a cycle.
+ *
+ * **Never read this from localStorage 'user-data'.** It did, and that key holds *password*
+ * sessions only - an external (Entra) session is never written there, because MSAL's cache
+ * restores it with a current token. So every Microsoft user had a null id: their messages
+ * went out with `senderId: null` and were refused with a 400, and every "is this mine?"
+ * below answered wrongly for them.
+ */
+let sessionUserId: string | null = null;
+
+export const setCurrentUserId = (id: string | null): void => {
+  sessionUserId = id;
 };
+
+export const currentUserId = (): string | null => sessionUserId;
 
 /**
  * ThreadViewModel -> thread row.
