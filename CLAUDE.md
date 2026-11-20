@@ -104,6 +104,9 @@ and fill it in, or the command stops naming the variable it wanted.
   other account's username and email — and since password reset sends to the *stored* address,
   that was account takeover, not vandalism (#99). There is no ownership middleware to catch the
   next one: each endpoint is on its own, so take the id from the token and ignore the body's.
+  It recurred: `hey/send` stored the body's `senderId` and never checked the caller was in the
+  thread, so anyone could post anywhere as anyone — and its *response* was correct, so only a
+  test of the stored row could catch it. Check membership as well as identity.
   **Uniqueness is now enforced in two places, and both are needed** (#100): update calls the
   same availability checks register does — excluding the caller's own row, without which
   saving an unchanged profile collides with itself — and two unique indexes make it an
