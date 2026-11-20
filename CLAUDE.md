@@ -298,7 +298,11 @@ and fill it in, or the command stops naming the variable it wanted.
   with `deploy_on_push: true`, but the live app was created from a plain `git:` clone source,
   which App Platform never auto-deploys — so the flag describes an integration the app does
   not have, and a merge that "should have shipped" silently sits there. Ship with
-  `doctl apps create-deployment 7337e1b0-3696-44f8-9462-df84a75c5bab`, and **never**
+  `doctl apps create-deployment 7337e1b0-3696-44f8-9462-df84a75c5bab` (or the dashboard's
+  Actions → Deploy). **Saving environment variables in the dashboard also deploys — but the
+  commit of the *previous* deployment, not `master`'s head** — so "merge, then set the vars"
+  ships the new config on the old code. Check the build log's `Checking out commit` line, and
+  deploy explicitly after the merge. **Never**
   `doctl apps update --spec`: that replaces the entire spec, and the secrets read back as
   encrypted `EV[…]` placeholders, so a round-trip writes those placeholders in as literal
   values. Two settings are load-bearing and easy to miss when adding an origin:

@@ -3,7 +3,7 @@
 - **Date:** 2026-11-17
 - **Type:** change
 - **Scope:** `WebChat/WebChat/ClientApp/` - `src/config.ts`, `.env.example` (new), `src/features/auth/{externalAuth.ts,useExternalSession.ts}` (new), `authSlice.ts`, `AuthScreen.jsx`, `src/features/realtime/signalrMiddleware.ts`, `src/app/App.jsx`, `src/index.jsx`, `vite.config.ts`, `src/test/external-auth.test.tsx` (new), `package.json`; also `CLAUDE.md` and `docs/ctx/ORIENTATION.md`
-- **Status:** partial (done on branch `feature/entra-id-client`, uncommitted at time of writing; works end to end locally; reload, hourly renewal and sign-out not confirmed against real Entra; nothing deployed)
+- **Status:** done; merged in #112 (`dd51ff4`) and live in production, where the owner signed in through Microsoft. Reload, hourly renewal and sign-out are still not confirmed against real Entra.
 
 ## Context
 Phase 3 of `docs/plans/2026-11-17-entra-id-migration.md`: the browser half of sign-in with Microsoft Entra External ID, on top of the provider-agnostic backend in [2026-11-17-entra-id-backend.md](2026-11-17-entra-id-backend.md) (phase 2). The client mirrors the server's abstraction so the app can later swap Azure for its own implementation.
@@ -45,6 +45,21 @@ Phase 3 of `docs/plans/2026-11-17-entra-id-migration.md`: the browser half of si
 
 ## Known issues / follow-ups
 - **Not verified**: hourly renewal against real Entra (fake timers only); a page reload restoring the session; sign-out via `logoutRedirect`. These checks were pending with the owner when this was written.
-- **Not verified**: production configuration. The prod redirect URI is registered but nothing is deployed.
+
+## Production rollout (2026-11-17)
+- **Configuration:** the 10 variables from `.do/app.yaml` were added one row at a time in the dashboard's environment-variable editor on the `web` component:
+  - the 7 `Auth__Oidc__0__*`;
+  - the 3 `VITE_ENTRA_*`, left at the default "Run and build time" scope, which App Platform passes to Docker as build args.
+- **Avoided the bulk "Add from .env" editor:** it shows *every* variable, encrypted secrets included, and editing it risks the same `EV[…]` round-trip as `doctl apps update --spec`.
+- **doctl could not be used:** its saved token answered 401, so everything went through the dashboard.
+- **Gotcha: saving the variables started a deployment of `a9e6498`, the previous deployment's commit, not the just-merged `dd51ff4`.** It was cancelled and replaced with Actions → Deploy ("fetch any updates from your source repository"), whose build log showed `Checking out commit "dd51ff4…"`. `CLAUDE.md`'s deploy bullet now says this.
+- **Verified in production:**
+  - a served JS asset contains the SPA client id, so the build args reached Vite;
+  - `/health` returns 200, and the app would not boot with an invalid `Auth` section;
+  - unauthenticated `api/users/getprofile` returns 401;
+  - the login page shows "Continue with Microsoft";
+  - the owner signed in through it.
+- **Docker build:** the `VITE_*` build args were used here for the first time, and the build succeeded.
+- **Dependency on the trial:** production now relies on the trial-subscription tenant, with local password sign-in kept as the fallback.
 - Invitations are still refused for external sign-in (phase 4, see the backend note).
 - Pre-existing, unrelated: `npm audit` reports 2 high advisories in axios / follow-redirects.
