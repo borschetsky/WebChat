@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Signing in…</title>
+  </head>
+  <body>
+    <!--
+      MSAL's redirect bridge, and nothing else - not the app. Entra redirects the hidden
+      renewal iframe here, and this page hands the response back to the main window.
+      See src/redirect-bridge.ts.
+    -->
+    <script type="module" src="/src/redirect-bridge.ts"></script>
+  </body>
+</html>

@@ -67,6 +67,11 @@ export const createMsalClient = (
   const signInScopes = [provider.apiScope, 'email'];
   const apiScopes = [provider.apiScope];
   const appRoot = () => `${window.location.origin}/`;
+  // Silent renewal's redirect target. Once the SPA refresh token is gone (24 hours), MSAL v5
+  // renews in a hidden iframe, and the page that iframe lands on must hand the response back
+  // with broadcastResponseToMainFrame - which redirect.html does and the app root cannot.
+  // Must be registered as an SPA redirect URI in Entra, beside the app root.
+  const bridgePage = () => `${window.location.origin}/redirect.html`;
 
   let ready: Promise<{ msal: MsalModule; pca: IPublicClientApplication }> | null = null;
 
@@ -107,12 +112,26 @@ export const createMsalClient = (
     if (!account) return null;
 
     try {
-      return toToken(await pca.acquireTokenSilent({ scopes: apiScopes, account }));
+      return toToken(
+        await pca.acquireTokenSilent({ scopes: apiScopes, account, redirectUri: bridgePage() }),
+      );
     } catch (err) {
       // The refresh token expired or consent changed: only the sign-in page can fix that,
       // and sending someone there unasked mid-conversation would lose what they were typing.
-      if (err instanceof msal.InteractionRequiredAuthError) return null;
-      throw err;
+      // A timed-out iframe means the same thing in practice - the provider's session could
+      // not be used silently - and must read as "signed out", not as a failure: reported as
+      // an error it put "did not complete" over a sign-in button that worked.
+      const cannotRenew =
+        err instanceof msal.InteractionRequiredAuthError ||
+        (err instanceof msal.BrowserAuthError && err.errorCode === 'timed_out');
+      if (!cannotRenew) throw err;
+
+      // Forget the account too. Left cached, MSAL sends it as the next sign-in's login_hint,
+      // and Entra refused that stale hint with "We couldn't sign you in" until the cache was
+      // cleared by hand. clearCache drops only this app's local copy; it signs nobody out.
+      await pca.clearCache({ account }).catch(() => {});
+      pca.setActiveAccount(null);
+      return null;
     }
   };
 
