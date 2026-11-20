@@ -107,6 +107,14 @@ export default defineConfig({
     // unaffected either way - this setting only applies to `vite build`.
     sourcemap: process.env.VITE_SOURCEMAP === 'true',
     rolldownOptions: {
+      // Two pages: the app, and MSAL's redirect bridge for silent renewal (redirect.html,
+      // src/redirect-bridge.ts). Listing the second is what makes `vite build` emit it - the
+      // dev server would serve it either way, so forgetting this breaks production only.
+      input: {
+        // `index`, as Vite names a single entry, so the app's chunk names do not change.
+        index: fileURLToPath(new URL('./index.html', import.meta.url)),
+        redirect: fileURLToPath(new URL('./redirect.html', import.meta.url)),
+      },
       output: {
         // Vendor splitting. This does NOT make the first load smaller - the same bytes are
         // still fetched, just in more files. What it buys is cache reuse: react-dom and MUI

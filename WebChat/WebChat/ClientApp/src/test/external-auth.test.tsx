@@ -30,6 +30,16 @@ const provider: ExternalProviderConfig = {
  */
 class InteractionRequiredAuthError extends Error {}
 
+/** MSAL's own error type, carrying the code the client branches on. */
+class BrowserAuthError extends Error {
+  constructor(
+    public errorCode: string,
+    public subError = '',
+  ) {
+    super(errorCode);
+  }
+}
+
 const fakeMsal = (opts: {
   redirectAccount?: object | null;
   cachedAccounts?: object[];
@@ -43,9 +53,10 @@ const fakeMsal = (opts: {
     ),
     getActiveAccount: () => active,
     getAllAccounts: () => opts.cachedAccounts ?? [],
-    setActiveAccount: (a: object) => {
+    setActiveAccount: (a: object | null) => {
       active = a;
     },
+    clearCache: vi.fn(async () => {}),
     acquireTokenSilent: vi.fn(
       opts.silent ?? (async () => ({ accessToken: 'at', expiresOn: new Date(1_900_000_000_000) })),
     ),
@@ -54,6 +65,7 @@ const fakeMsal = (opts: {
   };
   const module = {
     InteractionRequiredAuthError,
+    BrowserAuthError,
     createStandardPublicClientApplication: vi.fn(async (config: unknown) => {
       pca.config = config;
       return pca;
@@ -85,10 +97,56 @@ describe('createMsalClient', () => {
     const token = await createMsalClient(provider, load).resume();
 
     expect(token).toEqual({ token: 'at', tokenExpirationTime: 1_900_000_000 });
-    expect(pca.acquireTokenSilent).toHaveBeenCalledWith({
-      scopes: [provider.apiScope],
-      account: { homeAccountId: 'a' },
+    expect(pca.acquireTokenSilent).toHaveBeenCalledWith(
+      expect.objectContaining({ scopes: [provider.apiScope], account: { homeAccountId: 'a' } }),
+    );
+  });
+
+  /**
+   * MSAL v5 renews in a hidden iframe once the SPA refresh token (24 hours) is gone, and the
+   * iframe's redirect page must hand the response back with broadcastResponseToMainFrame.
+   * The app root cannot - it boots the whole SPA instead - so the iframe waited 10 s and
+   * failed with timed_out / redirect_bridge_timeout for everyone signed in a day earlier.
+   */
+  it('renews silently through the redirect bridge page, not the app root', async () => {
+    const { pca, load } = fakeMsal({ redirectAccount: { homeAccountId: 'a' } });
+
+    await createMsalClient(provider, load).resume();
+
+    expect(pca.acquireTokenSilent).toHaveBeenCalledWith(
+      expect.objectContaining({ redirectUri: `${window.location.origin}/redirect.html` }),
+    );
+  });
+
+  it('reports a renewal that timed out as null, so the sign-in button is all that shows', async () => {
+    const { load } = fakeMsal({
+      redirectAccount: { homeAccountId: 'a' },
+      silent: async () => {
+        throw new BrowserAuthError('timed_out', 'redirect_bridge_timeout');
+      },
     });
+
+    expect(await createMsalClient(provider, load).resume()).toBeNull();
+  });
+
+  /**
+   * The stale account is what Entra then refused: MSAL sent it as login_hint with the next
+   * sign-in, and the provider answered "We couldn't sign you in" until its cache was cleared
+   * by hand.
+   */
+  it('forgets the stale account when renewal cannot continue, so the next sign-in starts clean', async () => {
+    const stale = { homeAccountId: 'a' };
+    const { pca, load } = fakeMsal({
+      redirectAccount: stale,
+      silent: async () => {
+        throw new BrowserAuthError('timed_out', 'redirect_bridge_timeout');
+      },
+    });
+
+    await createMsalClient(provider, load).resume();
+
+    expect(pca.clearCache).toHaveBeenCalledWith({ account: stale });
+    expect(pca.getActiveAccount()).toBeNull();
   });
 
   it('falls back to a cached account when no redirect is in flight', async () => {
