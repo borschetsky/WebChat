@@ -9,7 +9,11 @@ namespace WebChat.Models.ViewModels
     {
         public string Id { get; set; }
 
-        [Required]
+        /// <summary>
+        /// Output only. Not required, and ignored on input: <c>hey/send</c> takes the sender from
+        /// the token. Requiring it made the server depend on the client knowing its own id - a
+        /// client that did not (every Entra session, once) was refused with a 400.
+        /// </summary>
         public string SenderId { get; set; }
         [Required]
         public string Text { get; set; }
